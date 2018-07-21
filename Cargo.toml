@@ -5,4 +5,11 @@ authors = ["elipmoc <relipmoc101@gmail.com>"]
 readme = "README.md"
 
 license = "MIT"
+
 [dependencies]
+llvm-sys = "60"
+libc="0.2"
+combine = "3.3.0"
+
+[build-dependencies]
+cc = "1.0"
