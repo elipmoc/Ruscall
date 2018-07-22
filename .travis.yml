@@ -1,20 +1,29 @@
 language: rust
 rust:
   - stable
-compiler:
-  - clang
-before_install: 
-  - sudo apt install -y llvm 
-  - llc -version
 os: linux
 dist: trusty
 sudo: required
+env:
+  global:
+    - GCC=gcc-5
+    - GXX=g++-5
+before_install: 
+  - export CC=/usr/bin/$GCC
+  - export CXX=/usr/bin/$GXX
+  - llc -version
+
 addons:
   apt:
     update: true
     sources:
       - ubuntu-toolchain-r-test
       - llvm-toolchain-trusty-6.0
-      - llvm-toolchain-precise
     packages:
-      - clang-6.0
+      - gcc-5
+      - g++-5
+      - libgmp-dev
+      - llvm-6.0-dev
+      - libllvm-6.0
+      - llvm-6.0
+      - llvm-6.0-runtime
