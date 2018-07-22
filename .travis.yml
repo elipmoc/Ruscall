@@ -21,5 +21,6 @@ addons:
       - llvm-6.0-dev
       - llvm-6.0-runtime
 script:
-  - llc --version
   - llc-6.0 --version
+  - cargo build --verbose --all
+  - cargo test --verbose --all
