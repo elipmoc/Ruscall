@@ -1,3 +1,5 @@
+mod cmd_args;
+
 fn main() {
-    println!("Hello, world!");
+    cmd_args::parse_cmd_args().run();
 }
