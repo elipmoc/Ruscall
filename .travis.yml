@@ -4,7 +4,7 @@ rust:
 compiler:
   - clang
 before_install: 
-  - apt install -y llvm 
+  - apt-get install -y llvm 
   - llc -version
 os: linux
 dist: trusty
