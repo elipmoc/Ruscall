@@ -2,18 +2,28 @@ language: rust
 cache: cargo
 rust:
   - stable
+
 compiler:
   - clang
+
 os: linux
 dist: trusty
 sudo: required
+env:
+  global:
+    - GCC=gcc-5
+    - GXX=g++-5
+before_install: 
+  - export CC=/usr/bin/$GCC
+  - export CXX=/usr/bin/$GXX
+  - llc -version
+
 addons:
   apt:
     update: true
     sources:
       - ubuntu-toolchain-r-test
       - llvm-toolchain-trusty-6.0
-      - llvm-toolchain-precise
     packages:
       - clang-6.0
       - libllvm6.0
