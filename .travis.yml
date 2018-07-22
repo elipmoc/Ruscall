@@ -6,7 +6,7 @@ compiler:
   - clang
 os: linux
 dist: trusty
-sudo: required
+sudo: false
 addons:
   apt:
     update: true
@@ -22,5 +22,4 @@ addons:
       - llvm-6.0-runtime
 script:
   - llc-6.0 --version
-  - cargo build --verbose --all
   - cargo test --verbose --all
