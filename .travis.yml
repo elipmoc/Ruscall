@@ -1,18 +1,18 @@
 language: rust
 rust:
   - stable
-    
-matrix:
-  include:
-    - os: linux
-      dist: trusty
-      sudo: required
-      addons:
-        apt:
-          update: true
-        sources:
-          - ubuntu-toolchain-r-test
-          - llvm-toolchain-trusty-6.0
-          - llvm-toolchain-precise
-        packages:
-          - clang-6.0
+compiler:
+  - clang
+before_install: llc -version
+os: linux
+dist: trusty
+sudo: required
+addons:
+  apt:
+    update: true
+    sources:
+      - ubuntu-toolchain-r-test
+      - llvm-toolchain-trusty-6.0
+      - llvm-toolchain-precise
+    packages:
+      - clang-6.0
