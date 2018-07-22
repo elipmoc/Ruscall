@@ -2,9 +2,8 @@ language: rust
 rust:
   - stable
 before_install:
-  - git clone https://github.com/llvm-mirror/llvm.git
-  - cmake -DCMAKE_BUILD_TYPE=Release llvm 
-  - cmake --build /home/travis/build/elipmoc/Ruscall
+  - deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-6.0 main
+  - deb-src http://apt.llvm.org/trusty/ llvm-toolchain-trusty-6.0 main
 addons:
   apt:
     update: true
@@ -13,3 +12,8 @@ addons:
     packages:
       - cmake-data
       - cmake
+matrix:
+  include:
+    - os: linux
+      dist: trusty
+      sudo: required
