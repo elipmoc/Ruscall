@@ -3,9 +3,6 @@ rust:
   - stable
 compiler:
   - clang
-before_install: 
-  - sudo apt install -y llvm 
-  - llc -version
 os: linux
 dist: trusty
 sudo: required
@@ -18,3 +15,9 @@ addons:
       - llvm-toolchain-precise
     packages:
       - clang-6.0
+      - libllvm6.0
+      - llvm-6.0
+      - llvm-6.0-dev
+      - llvm-6.0-runtime
+script:
+  - llc --version
