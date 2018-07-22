@@ -1,19 +1,25 @@
 language: rust
+cache: cargo
 rust:
   - stable
-before_install:
-  - deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-6.0 main
-  - deb-src http://apt.llvm.org/trusty/ llvm-toolchain-trusty-6.0 main
+compiler:
+  - clang
+os: linux
+dist: trusty
+sudo: required
 addons:
   apt:
     update: true
     sources:
-      - george-edison55-precise-backports
+      - ubuntu-toolchain-r-test
+      - llvm-toolchain-trusty-6.0
+      - llvm-toolchain-precise
     packages:
-      - cmake-data
-      - cmake
-matrix:
-  include:
-    - os: linux
-      dist: trusty
-      sudo: required
+      - clang-6.0
+      - libllvm6.0
+      - llvm-6.0
+      - llvm-6.0-dev
+      - llvm-6.0-runtime
+script:
+  - llc --version
+  - llc-6.0 --version
