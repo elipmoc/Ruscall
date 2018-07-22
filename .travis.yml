@@ -1,0 +1,25 @@
+language: rust
+cache: cargo
+rust:
+  - stable
+compiler:
+  - clang
+os: linux
+dist: trusty
+sudo: required
+addons:
+  apt:
+    update: true
+    sources:
+      - ubuntu-toolchain-r-test
+      - llvm-toolchain-trusty-6.0
+      - llvm-toolchain-precise
+    packages:
+      - clang-6.0
+      - libllvm6.0
+      - llvm-6.0
+      - llvm-6.0-dev
+      - llvm-6.0-runtime
+script:
+  - llc --version
+  - llc-6.0 --version

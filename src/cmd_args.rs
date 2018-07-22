@@ -12,7 +12,7 @@ impl CmdArgsKind {
     //コマンドラインオプションによる実行
     pub fn run(&self) {
         match self {
-            CmdArgsKind::Help => {
+            &CmdArgsKind::Help => {
                 println!("");
                 println!("Usage:");
                 println!("Ruscall.exe [OPTIONS]");
@@ -21,8 +21,8 @@ impl CmdArgsKind {
                 println!("-h           help");
                 println!("-v           version\n");
             }
-            CmdArgsKind::Version => println!("\nRuscall version 0.1.0\n"),
-            CmdArgsKind::Error => println!("\nerror cmd args\n"),
+            &CmdArgsKind::Version => println!("\nRuscall version 0.1.0\n"),
+            &CmdArgsKind::Error => println!("\nerror cmd args\n"),
         }
     }
 }
