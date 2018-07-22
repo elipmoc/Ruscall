@@ -33,7 +33,7 @@ impl Module {
         if ok == 0 {
             Option::None
         } else {
-            Option::Some(unsafe { ram_to_string(error) })
+            Option::Some(ram_to_string(error))
         }
     }
 
