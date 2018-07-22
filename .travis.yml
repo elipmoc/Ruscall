@@ -14,3 +14,5 @@ matrix:
           - ubuntu-toolchain-r-test
           - llvm-toolchain-trusty-6.0
           - llvm-toolchain-precise
+        packages:
+          - clang-6.0
