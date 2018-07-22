@@ -10,11 +10,6 @@ before_install:
 addons:
   apt:
     update: true
-    sources:
-      - george-edison55-precise-backports
-    packages:
-      - cmake-data
-      - cmake
 matrix:
   include:
     - os: linux
