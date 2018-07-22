@@ -4,6 +4,7 @@ rust:
 before_install:
   - git clone https://github.com/llvm-mirror/llvm.git
   - cmake -DCMAKE_BUILD_TYPE=Release llvm 
+  - cmake --build llvm
 addons:
   apt:
     update: true
