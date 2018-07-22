@@ -2,8 +2,10 @@ language: rust
 rust:
   - stable
 before_install:
-  - deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-6.0 main
-  - deb-src http://apt.llvm.org/trusty/ llvm-toolchain-trusty-6.0 main
+  - echo "http://apt.llvm.org/trusty/ llvm-toolchain-trusty-6.0 main" >> /etc/apt/sources.list
+  - echo "deb-src http://apt.llvm.org/trusty/ llvm-toolchain-trusty-6.0 main" >> /etc/apt/sources.list
+  - apt-get update
+  - apt-install llvm
 addons:
   apt:
     update: true
