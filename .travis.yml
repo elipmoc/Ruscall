@@ -2,8 +2,8 @@ language: rust
 rust:
   - stable
 before_install:
-  - sudo sh -c "echo 'deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-6.0 main' >> /etc/apt/sources.list"
-  - sudo sh -c "echo 'deb-src http://apt.llvm.org/trusty/ llvm-toolchain-trusty-6.0 main' >> /etc/apt/sources.list"
+  - sudo sh -c "echo 'deb http://apt.llvm.org/bionic/ llvm-toolchain-bionic-6.0 main' >> /etc/apt/sources.list"
+  - sudo sh -c "echo 'deb-src http://apt.llvm.org/bionic/ llvm-toolchain-bionic-6.0 main' >> /etc/apt/sources.list"
   - sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 15CF4D18AF4F7421
   - sudo apt-get update
   - sudo apt install llvm
@@ -14,5 +14,5 @@ addons:
 matrix:
   include:
     - os: linux
-      dist: trusty
+      dist: bionic
       sudo: required
