@@ -6,6 +6,10 @@ readme = "README.md"
 
 license = "MIT"
 
+[lib]
+name="ruscall"
+path="src/lib.rs"
+
 [dependencies]
 llvm-sys = "60"
 libc="0.2"

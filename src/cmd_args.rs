@@ -1,5 +1,7 @@
 use std::env;
 
+//コマンドラインオプションの種類
+#[derive(Debug, PartialEq)]
 pub enum CmdArgsKind {
     Help,
     Version,
@@ -7,6 +9,7 @@ pub enum CmdArgsKind {
 }
 
 impl CmdArgsKind {
+    //コマンドラインオプションによる実行
     pub fn run(&self) {
         match self {
             CmdArgsKind::Help => {
@@ -24,8 +27,13 @@ impl CmdArgsKind {
     }
 }
 
-pub fn parse_cmd_args() -> CmdArgsKind {
-    let args: Vec<String> = env::args().collect();
+//コマンドライン引数取得
+pub fn get_cmd_args() -> Vec<String> {
+    env::args().collect()
+}
+
+//コマンドライン引数からCmdArgsKindを生成
+pub fn parse_cmd_args(args: Vec<String>) -> CmdArgsKind {
     if args.len() == 1 {
         CmdArgsKind::Help
     } else if args.len() == 2 {
