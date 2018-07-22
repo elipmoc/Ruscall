@@ -24,6 +24,3 @@ addons:
       - g++-5
       - libgmp-dev
       - llvm-6.0-dev
-      - libllvm-6.0
-      - llvm-6.0
-      - llvm-6.0-runtime
