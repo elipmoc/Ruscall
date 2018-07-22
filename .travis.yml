@@ -10,11 +10,9 @@ addons:
   apt:
     update: true
     sources:
-    - sourceline: 'deb http://apt.llvm.org/bionic/ llvm-toolchain-bionic-6.0 main'
-    - sourceline: 'deb-src http://apt.llvm.org/bionic/ llvm-toolchain-bionic-6.0 main'
-    
-matrix:
-  include:
-    - os: linux
-      dist: bionic
-      sudo: required
+      - ubuntu-toolchain-r-test
+      - sourceline: 'deb http://apt.llvm.org/bionic/ llvm-toolchain-bionic-6.0 main'
+      - sourceline: 'deb-src http://apt.llvm.org/bionic/ llvm-toolchain-bionic-6.0 main'
+os: linux
+dist: bionic
+sudo: required
