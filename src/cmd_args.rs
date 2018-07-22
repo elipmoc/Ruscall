@@ -1,11 +1,12 @@
+use super::hello;
 use std::env;
-
 //コマンドラインオプションの種類
 #[derive(Debug, PartialEq)]
 pub enum CmdArgsKind {
     Help,
     Version,
     Error,
+    Hello,
 }
 
 impl CmdArgsKind {
@@ -22,6 +23,7 @@ impl CmdArgsKind {
                 println!("-v           version\n");
             }
             &CmdArgsKind::Version => println!("\nRuscall version 0.1.0\n"),
+            &CmdArgsKind::Hello => hello::hello(),
             &CmdArgsKind::Error => println!("\nerror cmd args\n"),
         }
     }
@@ -40,6 +42,7 @@ pub fn parse_cmd_args(args: Vec<String>) -> CmdArgsKind {
         match &*(args[1]) {
             "-h" => CmdArgsKind::Help,
             "-v" => CmdArgsKind::Version,
+            "-hello" => CmdArgsKind::Hello,
             _ => CmdArgsKind::Error,
         }
     } else {

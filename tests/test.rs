@@ -24,4 +24,8 @@ fn parse_cmd_args_test() {
         parse_cmd_args(to_str_vec(vec!["my.exe", "-hoge"])),
         CmdArgsKind::Error
     );
+    assert_eq!(
+        parse_cmd_args(to_str_vec(vec!["my.exe", "-hello"])),
+        CmdArgsKind::Hello
+    );
 }
