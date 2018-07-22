@@ -1,3 +1,13 @@
 language: rust
 rust:
   - stable
+before_install:
+  - git clone https://github.com/llvm-mirror/llvm.git
+addons:
+  apt:
+    update: true
+    sources:
+      - george-edison55-precise-backports
+    packages:
+      - cmake-data
+      - cmake
