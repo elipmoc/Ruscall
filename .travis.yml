@@ -3,7 +3,9 @@ rust:
   - stable
 compiler:
   - clang
-before_install: llc -version
+before_install: 
+  - apt install -y llvm 
+  - llc -version
 os: linux
 dist: trusty
 sudo: required
