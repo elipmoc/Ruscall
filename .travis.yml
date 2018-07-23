@@ -3,10 +3,9 @@ cache: cargo
 env:
   global:
     - LLVM_SYS_60_PREFIX=/usr/lib/llvm-6.0
+    - secure: cuKKOctlrRBIoVyftaQNA47eoHirdY5Yfu4iNy5WCNI5USiEIJK6aYa2iuPJ0lFsTepdnyooBfRO46cLvS8jpINRjmY/4a3mg0Evfpy9+hp34+73XIkcCzkUYSwHq/sqYm6uO1ACobtD8H3m+so/TQ6Fu1tbBGoRWoAPzmkD5hoF/ZvOcCDE28eiqwm6WslYgKric9/SYr4MUTTAIDuwSp/NEtCebJXIOdTnK048QkOQjn0n7Ai2p+cfkqPuks0Y2dKVCVhtZaNMKnZIS9XwwVOe0OTpKMk1GGsutCV+rbwjoiBdvEiXWVj74AdpUVQf6xHMdd+jgLH4uwZk+vwG8rJN91m4JY04UhURynczqqf0zgtXXEdXcakG2RLZN3KprqU4neLIr5oPK6HMfSKe8Sq+igO+a8lkeEjO7bBjxRY+MlV69gKHP3HpVamQjRy4BGeEUhy7r+Gr8OpFDFE2ToFhqjLnu1fklCraXlEu6MptpcJooEoppPB6v51+TmzNELHf9CjqnT+Eugw0WuNAxw0wgyUyEBu/cggTr7dejbKDaJCWEJtvx7SUMd0z36KfRdYKoPuaM/XRbEFxjt7V7jvyASSw7L7K0+IvAdF+W/D5L2Uwqn113Hn25Mx7YRwY9V3qxHH221iUpT749LbcTiD5QRmhQbbOOhrlT9eWJs8=
 rust:
-  - stable
-compiler:
-  - clang
+- stable
 os: linux
 dist: trusty
 sudo: false
@@ -14,34 +13,33 @@ addons:
   apt:
     update: true
     sources:
-      - ubuntu-toolchain-r-test
-      - llvm-toolchain-trusty-6.0
-      - llvm-toolchain-precise
+    - ubuntu-toolchain-r-test
+    - llvm-toolchain-trusty-6.0
+    - llvm-toolchain-precise
     packages:
-      - clang-6.0
-      - libllvm6.0
-      - llvm-6.0
-      - llvm-6.0-dev
-      - llvm-6.0-runtime
-      
-# load travis-cargo
+    - libcurl4-openssl-dev
+    - libelf-dev
+    - libdw-dev
+    - binutils-dev
+    - clang-6.0
+    - libllvm6.0
+    - llvm-6.0
+    - llvm-6.0-dev
+    - llvm-6.0-runtime
 before_script:
-  - |
-      pip install 'travis-cargo<0.2' --user &&
-      export PATH=$HOME/.local/bin:$PATH
+- |
+  pip install 'travis-cargo<0.2' --user &&
+  export PATH=$HOME/.local/bin:$PATH
 after_success:
-  # upload the documentation from the build with stable (automatically only actually
-  # runs on the master branch, not individual PRs)
-  - travis-cargo --only stable doc-upload
-  # measure code coverage and upload to coveralls.io (the verify
-  # argument mitigates kcov crashes due to malformed debuginfo, at the
-  # cost of some speed <https://github.com/huonw/travis-cargo/issues/12>)
-  - travis-cargo coveralls --no-sudo --verify
+- echo $LLVM_SYS_60_PREFIX
+- travis-cargo --only stable doc-upload
+- travis-cargo coveralls --no-sudo --verify --exclude-pattern="/.cargo"
 script:
-  - llc-6.0 --version
-  - cargo test --verbose --all
-  - |
-    travis-cargo build &&
-    travis-cargo test &&
-    travis-cargo bench &&
-    travis-cargo --only stable doc
+- llc-6.0 --version
+- cargo build --verbose --all
+- cargo test --verbose --all
+- |
+  travis-cargo build &&
+  travis-cargo test &&
+  travis-cargo bench &&
+  travis-cargo --only stable doc
