@@ -28,4 +28,8 @@ fn parse_cmd_args_test() {
         parse_cmd_args(to_str_vec(vec!["my.exe", "-hello"])),
         CmdArgsKind::Hello
     );
+    assert_eq!(
+        parse_cmd_args(to_str_vec(vec!["my.exe", "-build", "hoge"])),
+        CmdArgsKind::Compile("hoge".to_string())
+    );
 }
