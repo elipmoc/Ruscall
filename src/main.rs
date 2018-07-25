@@ -1,4 +1,5 @@
 mod cmd_args;
+mod compile;
 mod hello;
 mod my_llvm;
 

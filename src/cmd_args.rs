@@ -1,5 +1,7 @@
+use super::compile;
 use super::hello;
 use std::env;
+
 //コマンドラインオプションの種類
 #[derive(Debug, PartialEq)]
 pub enum CmdArgsKind {
@@ -25,7 +27,7 @@ impl CmdArgsKind {
             }
             &CmdArgsKind::Version => println!("\nRuscall version 0.1.0\n"),
             &CmdArgsKind::Hello => hello::hello(),
-            &CmdArgsKind::Compile(ref file_name) => println!("{}", file_name),
+            &CmdArgsKind::Compile(ref file_name) => compile::compile(file_name),
             &CmdArgsKind::Error => println!("\nerror cmd args\n"),
         }
     }
