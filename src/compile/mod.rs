@@ -1,3 +1,4 @@
+mod ast;
 use std::io::{BufReader, Read};
 use std::{fs, mem};
 
