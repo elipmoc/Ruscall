@@ -1,4 +1,6 @@
 mod ast;
+mod parser;
+
 use std::io::{BufReader, Read};
 use std::{fs, mem};
 

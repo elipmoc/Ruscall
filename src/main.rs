@@ -1,3 +1,5 @@
+#[macro_use]
+extern crate combine;
 mod cmd_args;
 mod compile;
 mod hello;
