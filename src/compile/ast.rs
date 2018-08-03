@@ -1,6 +1,6 @@
 #[derive(Debug, Clone)]
 pub struct ProgramAST {
-    stmt_list: Vec<StmtAST>,
+    pub stmt_list: Vec<StmtAST>,
 }
 
 #[derive(Debug, Clone)]
@@ -17,8 +17,9 @@ pub enum ExprAST {
 
 #[derive(Debug, Clone)]
 pub struct InfixAST {
-    ty: InfixType,
-    priority: i8,
+    pub ty: InfixType,
+    pub op: String,
+    pub priority: i8,
 }
 
 #[derive(Debug, Clone)]
@@ -29,7 +30,7 @@ pub enum InfixType {
 
 #[derive(Debug, Clone)]
 pub struct OpAST {
-    op: char,
+    op: String,
     l_expr: ExprAST,
     r_expr: ExprAST,
 }

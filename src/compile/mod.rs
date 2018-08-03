@@ -9,5 +9,5 @@ pub fn compile(file_name: &str) {
     let mut f = BufReader::new(fs::File::open(file_name).unwrap());
     let mut src_str: String = "".to_string();
     f.read_to_string(&mut src_str).unwrap();
-    println!("{}", src_str);
+    println!("{:?}", parser::parse(&src_str));
 }
