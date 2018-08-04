@@ -4,14 +4,15 @@ use combine::parser::combinator::try;
 use combine::{error, many, many1, value, Parser, Stream};
 /*
 BNF
-<program> := {<stmt>}
-<stmt>    := {<skip>} ( <infix> | <expr> ) {<skip>}
-<expr>    := <num> { <op> <num> }
-<infix>   := ('infixr' | 'infixl') <space>+ <num> <space>+ <op>
-<op>      := '+' | '-' | '/' | '*'
-<num>     := [0-9]+
-<skip>    := '\n' | <space>
-<space>   := ' ' | '\t'
+<program>  := {<stmt>}
+<stmt>     := <skip_many> ( <infix> | <expr> ) <skip_many>
+<expr>     := <num> <skip_many> { <op> <skip_many> <num> <skip_many> }
+<infix>    := ('infixr' | 'infixl') <space>+ <num> <space>+ <op>
+<op>       := '+' | '-' | '/' | '*'
+<num>      := [0-9]+
+<skip>     := '\n' | <space>
+<skip_many>:= {<skip>}
+<space>    := ' ' | '\t'
 
 */
 
@@ -33,13 +34,34 @@ parser!{
    fn stmt_parser[I]()(I) ->ast::StmtAST
     where [I: Stream<Item=char>]
     {
-        many::<Vec<_>,_>(skip_parser()).
+        skip_many_parser().
         with (
-            infix_parser().map(|x|ast::StmtAST::InfixAST(x))
+            infix_parser().map(|x|ast::StmtAST::InfixAST(x)).
+            or(expr_parser().map(|x|ast::StmtAST::ExprAST(x)))
         ).
         skip(
-            many::<Vec<_>,_>(skip_parser())
+            skip_many_parser()
         )
+    }
+}
+
+//<expr>
+parser!{
+    fn expr_parser[I]()(I)->ast::ExprAST
+    where[I:Stream<Item=char>]
+    {
+        (
+           num_parser().skip(skip_many_parser()),
+           many((
+                    op_parser().skip(skip_many_parser()),num_parser().skip(skip_many_parser())
+               ))
+        ).
+       map(|(x,y):(String,Vec<(String,String)>)|{
+           let expr = ast::ExprAST::create_num_ast(x);
+            y.into_iter().fold(expr,|acc,(op,num)|{
+                ast::ExprAST::create_op_ast(&op, &acc, &ast::ExprAST::create_num_ast(num))
+            })
+       })
     }
 }
 
@@ -100,6 +122,15 @@ parser!{
     where[I:Stream<Item=char>]
     {
         newline().map(|_|()).or(space_parser())
+    }
+}
+
+//<skip_many>
+parser!{
+    fn skip_many_parser[I]()(I)->()
+    where[I:Stream<Item=char>]
+    {
+        many::<Vec<_>,_>(skip_parser()).map(|_|())
     }
 }
 

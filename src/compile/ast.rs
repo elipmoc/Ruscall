@@ -15,6 +15,21 @@ pub enum ExprAST {
     OpAST(Box<OpAST>),
 }
 
+impl ExprAST {
+    pub fn create_num_ast(num: String) -> ExprAST {
+        ExprAST::NumAST(NumAST {
+            num: num.parse::<i32>().unwrap(),
+        })
+    }
+    pub fn create_op_ast(op: &String, l_expr: &ExprAST, r_expr: &ExprAST) -> ExprAST {
+        ExprAST::OpAST(Box::new(OpAST {
+            op: op.clone(),
+            l_expr: l_expr.clone(),
+            r_expr: r_expr.clone(),
+        }))
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct InfixAST {
     pub ty: InfixType,
@@ -30,12 +45,12 @@ pub enum InfixType {
 
 #[derive(Debug, Clone)]
 pub struct OpAST {
-    op: String,
-    l_expr: ExprAST,
-    r_expr: ExprAST,
+    pub op: String,
+    pub l_expr: ExprAST,
+    pub r_expr: ExprAST,
 }
 
 #[derive(Debug, Clone)]
 pub struct NumAST {
-    num: i32,
+    pub num: i32,
 }
