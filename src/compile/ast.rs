@@ -1,15 +1,32 @@
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ProgramAST {
     pub stmt_list: Vec<StmtAST>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum StmtAST {
     ExprAST(ExprAST),
     InfixAST(InfixAST),
 }
 
-#[derive(Debug, Clone)]
+impl StmtAST {
+    pub fn create_infixl_ast(op: String, priority: i8) -> StmtAST {
+        StmtAST::InfixAST(InfixAST {
+            op: op,
+            priority: priority,
+            ty: InfixType::Left,
+        })
+    }
+    pub fn create_infixr_ast(op: String, priority: i8) -> StmtAST {
+        StmtAST::InfixAST(InfixAST {
+            op: op,
+            priority: priority,
+            ty: InfixType::Right,
+        })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub enum ExprAST {
     NumAST(NumAST),
     OpAST(Box<OpAST>),
@@ -30,27 +47,27 @@ impl ExprAST {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct InfixAST {
     pub ty: InfixType,
     pub op: String,
     pub priority: i8,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum InfixType {
     Left,
     Right,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct OpAST {
     pub op: String,
     pub l_expr: ExprAST,
     pub r_expr: ExprAST,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct NumAST {
     pub num: i32,
 }

@@ -1,5 +1,5 @@
-mod ast;
-mod parser;
+pub mod ast;
+pub mod parser;
 
 use std::io::{BufReader, Read};
 use std::{fs, mem};
