@@ -1,7 +1,7 @@
 use super::ast;
-use combine::char::{char, digit, letter, newline, space, string, tab};
+use combine::char::{digit, newline, space, string, tab};
 use combine::parser::combinator::try;
-use combine::{error, many, many1, value, Parser, Stream};
+use combine::{error, many, many1, Parser, Stream};
 /*
 BNF
 <program>  := {<stmt>}
@@ -57,10 +57,12 @@ parser!{
                ))
         ).
        map(|(x,y):(String,Vec<(String,String)>)|{
-           let expr = ast::ExprAST::create_num_ast(x);
-            y.into_iter().fold(expr,|acc,(op,num)|{
-                ast::ExprAST::create_op_ast(&op, &acc, &ast::ExprAST::create_num_ast(num))
-            })
+           let mut op_token_list = vec![ast::OpTokenAST::create_num_ast(x)];
+            y.into_iter().for_each(|(x,y)|{
+                op_token_list.push(ast::OpTokenAST::Op(x));
+                op_token_list.push(ast::OpTokenAST::create_num_ast(y));
+            });
+            ast::ExprAST::OpTokenListAST(ast::OpTokenListAST{op_token_list: op_token_list})
        })
     }
 }

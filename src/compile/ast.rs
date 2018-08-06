@@ -28,23 +28,7 @@ impl StmtAST {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ExprAST {
-    NumAST(NumAST),
-    OpAST(Box<OpAST>),
-}
-
-impl ExprAST {
-    pub fn create_num_ast(num: String) -> ExprAST {
-        ExprAST::NumAST(NumAST {
-            num: num.parse::<i32>().unwrap(),
-        })
-    }
-    pub fn create_op_ast(op: &String, l_expr: &ExprAST, r_expr: &ExprAST) -> ExprAST {
-        ExprAST::OpAST(Box::new(OpAST {
-            op: op.clone(),
-            l_expr: l_expr.clone(),
-            r_expr: r_expr.clone(),
-        }))
-    }
+    OpTokenListAST(OpTokenListAST),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -61,10 +45,22 @@ pub enum InfixType {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct OpAST {
-    pub op: String,
-    pub l_expr: ExprAST,
-    pub r_expr: ExprAST,
+pub enum OpTokenAST {
+    NumAST(NumAST),
+    Op(String),
+}
+
+impl OpTokenAST {
+    pub fn create_num_ast(num: String) -> OpTokenAST {
+        OpTokenAST::NumAST(NumAST {
+            num: num.parse::<i32>().unwrap(),
+        })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct OpTokenListAST {
+    pub op_token_list: Vec<OpTokenAST>,
 }
 
 #[derive(Debug, Clone, PartialEq)]

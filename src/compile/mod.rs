@@ -1,8 +1,8 @@
 pub mod ast;
 pub mod parser;
 
+use std::fs;
 use std::io::{BufReader, Read};
-use std::{fs, mem};
 
 pub fn compile(file_name: &str) {
     println!("input:{}", file_name);
