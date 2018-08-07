@@ -30,6 +30,7 @@ impl StmtAST {
 pub enum ExprAST {
     OpTokenListAST(OpTokenListAST),
     OpAST(Box<OpAST>),
+    NumAST(NumAST),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -74,4 +75,37 @@ pub struct OpAST {
     pub op: String,
     pub l_expr: ExprAST,
     pub r_expr: ExprAST,
+}
+
+//優先順位ごとのinfixのまとまり
+pub struct Infixes {
+    pub priority: i8,
+    pub list: Vec<InfixAST>,
+}
+use std::cmp::Ordering;
+
+impl Ord for Infixes {
+    fn cmp(&self, other: &Infixes) -> Ordering {
+        self.priority.cmp(&other.priority)
+    }
+}
+
+impl PartialOrd for Infixes {
+    fn partial_cmp(&self, other: &Infixes) -> Option<Ordering> {
+        Some(self.priority.cmp(&other.priority))
+    }
+}
+
+impl PartialEq for Infixes {
+    fn eq(&self, other: &Infixes) -> bool {
+        self.priority == other.priority
+    }
+}
+impl Eq for Infixes {}
+
+impl OpAST {
+    pub fn create_op_ast(infix_list: &mut Vec<Infixes>, op_token_list: OpTokenListAST) {
+        infix_list.sort();
+    }
+    fn create_op_ast2(index: usize) {}
 }
