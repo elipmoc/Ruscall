@@ -29,6 +29,7 @@ impl StmtAST {
 #[derive(Debug, Clone, PartialEq)]
 pub enum ExprAST {
     OpTokenListAST(OpTokenListAST),
+    OpAST(Box<OpAST>),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -66,4 +67,11 @@ pub struct OpTokenListAST {
 #[derive(Debug, Clone, PartialEq)]
 pub struct NumAST {
     pub num: i32,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct OpAST {
+    pub op: String,
+    pub l_expr: ExprAST,
+    pub r_expr: ExprAST,
 }
