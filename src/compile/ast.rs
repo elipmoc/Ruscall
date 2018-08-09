@@ -82,6 +82,16 @@ pub struct Infixes {
     pub priority: i8,
     pub list: Vec<InfixAST>,
 }
+
+impl Infixes {
+    pub fn new(priority: i8) -> Infixes {
+        Infixes {
+            priority: priority,
+            list: vec![],
+        }
+    }
+}
+
 use std::cmp::Ordering;
 
 impl Ord for Infixes {
@@ -101,6 +111,7 @@ impl PartialEq for Infixes {
         self.priority == other.priority
     }
 }
+
 impl Eq for Infixes {}
 
 impl OpAST {

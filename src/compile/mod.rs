@@ -1,5 +1,6 @@
 pub mod ast;
 pub mod parser;
+pub mod resolve_op;
 
 use std::fs;
 use std::io::{BufReader, Read};
