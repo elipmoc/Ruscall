@@ -5,6 +5,7 @@ pub struct ProgramAST {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum StmtAST {
+    RawExpr(String),
     ExprAST(ExprAST),
     InfixAST(InfixAST),
 }
@@ -77,14 +78,25 @@ pub struct OpAST {
     pub r_expr: ExprAST,
 }
 
-//優先順位ごとのinfixのまとまり
-pub struct Infixes {
-    pub priority: i8,
-    pub list: Vec<InfixAST>,
+impl OpAST {
+    pub fn new(op: String, l_expr: ExprAST, r_expr: ExprAST) -> OpAST {
+        OpAST {
+            op: op,
+            l_expr: l_expr,
+            r_expr: r_expr,
+        }
+    }
 }
 
-impl Infixes {
-    pub fn new(priority: i8) -> Infixes {
+//優先順位ごとのinfixのまとまり
+#[derive(Debug, Clone)]
+pub struct Infixes<'a> {
+    pub priority: i8,
+    pub list: Vec<&'a InfixAST>,
+}
+
+impl<'a> Infixes<'a> {
+    pub fn new(priority: i8) -> Infixes<'a> {
         Infixes {
             priority: priority,
             list: vec![],
@@ -94,29 +106,22 @@ impl Infixes {
 
 use std::cmp::Ordering;
 
-impl Ord for Infixes {
+impl<'a> Ord for Infixes<'a> {
     fn cmp(&self, other: &Infixes) -> Ordering {
         self.priority.cmp(&other.priority)
     }
 }
 
-impl PartialOrd for Infixes {
+impl<'a> PartialOrd for Infixes<'a> {
     fn partial_cmp(&self, other: &Infixes) -> Option<Ordering> {
         Some(self.priority.cmp(&other.priority))
     }
 }
 
-impl PartialEq for Infixes {
+impl<'a> PartialEq for Infixes<'a> {
     fn eq(&self, other: &Infixes) -> bool {
         self.priority == other.priority
     }
 }
 
-impl Eq for Infixes {}
-
-impl OpAST {
-    pub fn create_op_ast(infix_list: &mut Vec<Infixes>, op_token_list: OpTokenListAST) {
-        infix_list.sort();
-    }
-    fn create_op_ast2(index: usize) {}
-}
+impl<'a> Eq for Infixes<'a> {}

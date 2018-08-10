@@ -10,5 +10,11 @@ pub fn compile(file_name: &str) {
     let mut f = BufReader::new(fs::File::open(file_name).unwrap());
     let mut src_str: String = "".to_string();
     f.read_to_string(&mut src_str).unwrap();
-    println!("{:?}", parser::parse(&src_str));
+    match parser::parse(&src_str) {
+        Ok(ast) => {
+            println!("{:?}", ast);
+            println!("resolve_op {:?}", resolve_op::resolve_op(ast.0));
+        }
+        Err(_) => println!("err!!"),
+    }
 }

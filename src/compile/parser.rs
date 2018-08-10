@@ -37,7 +37,7 @@ parser!{
         skip_many_parser().
         with (
             infix_parser().map(|x|ast::StmtAST::InfixAST(x)).
-            or(expr_parser().map(|x|ast::StmtAST::ExprAST(x)))
+            or(expr_parser().map(|x|ast::StmtAST::RawExpr(x)))
         ).
         skip(
             skip_many_parser()
@@ -47,7 +47,7 @@ parser!{
 
 //<expr>
 parser!{
-    fn expr_parser[I]()(I)->ast::ExprAST
+    fn expr_parser[I]()(I)->String
     where[I:Stream<Item=char>]
     {
         (
@@ -57,12 +57,12 @@ parser!{
                ))
         ).
        map(|(x,y):(String,Vec<(String,String)>)|{
-           let mut op_token_list = vec![ast::OpTokenAST::create_num_ast(x)];
+           let mut s=x;
             y.into_iter().for_each(|(x,y)|{
-                op_token_list.push(ast::OpTokenAST::Op(x));
-                op_token_list.push(ast::OpTokenAST::create_num_ast(y));
+                s+=&x;
+                s+=&y;
             });
-            ast::ExprAST::OpTokenListAST(ast::OpTokenListAST{op_token_list: op_token_list})
+           s
        })
     }
 }
