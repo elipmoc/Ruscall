@@ -42,13 +42,13 @@ fn regist_infix<'a>(infixes_hash: &mut InfixesHash<'a>, infix: &'a ast::InfixAST
         .push(infix);
 }
 
-use combine::char::{digit, newline, space, string, tab};
+use combine::char::{digit, string};
 use combine::parser::combinator::try;
-use combine::{eof, error, look_ahead, many, many1, satisfy, Parser, Stream};
+use combine::{eof, look_ahead, many, many1, satisfy, Parser, Stream};
 
 fn op_parse<'a>(mut infix_list: Vec<&'a ast::Infixes>, s: &str) -> ast::ExprAST {
     infix_list.sort();
-    match op_parser2(0, &infix_list).skip(eof()).parse(s) {
+    match op_parser(0, &infix_list).skip(eof()).parse(s) {
         Ok(result) => result.0,
         Err(err) => panic!(format!(
             "error resolve_op parse \n result:{:?}\n infix{:?}\n",
@@ -58,23 +58,23 @@ fn op_parse<'a>(mut infix_list: Vec<&'a ast::Infixes>, s: &str) -> ast::ExprAST 
 }
 
 parser!{
-    fn op_parser2['a,I](index: usize, infix_list:  &'a Vec<&'a ast::Infixes<'a>>)(I)->ast::ExprAST
+    fn op_parser['a,I](index: usize, infix_list:  &'a Vec<&'a ast::Infixes<'a>>)(I)->ast::ExprAST
         where [I: Stream<Item=char>] {
             choice!{
-                try(look_ahead(satisfy(|_|infix_list.len() > *index)).with(op_parser3(*index,infix_list))),
+                try(look_ahead(satisfy(|_|infix_list.len() > *index)).with(op_parser2(*index,infix_list))),
                 num_parser()
             }
     }
 }
 
 parser!{
-    fn op_parser3['a,I] (index: usize, infix_list:&'a Vec<&'a ast::Infixes<'a>>)(I)->ast::ExprAST
+    fn op_parser2['a,I] (index: usize, infix_list:&'a Vec<&'a ast::Infixes<'a>>)(I)->ast::ExprAST
     where [I: Stream<Item=char>] {
-        op_parser2(*index+1,infix_list).and(
+        op_parser(*index+1,infix_list).and(
             many(
                 try((
                     op_symbol_parser(infix_list[*index]),
-                    op_parser2(*index+1,infix_list)
+                    op_parser(*index+1,infix_list)
                 ))
             )
         ).map(|(fst_expr,list):(ast::ExprAST,Vec<(String,ast::ExprAST)>)|{
