@@ -1,4 +1,5 @@
 pub mod ast;
+pub mod infixes;
 pub mod parser;
 pub mod resolve_op;
 
