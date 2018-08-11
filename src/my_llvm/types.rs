@@ -3,7 +3,7 @@ use std::os::raw::c_char;
 
 pub type TargetDataRef = *mut llvm::target::LLVMOpaqueTargetData;
 pub type TargetTriple = *mut c_char;
-use self::llvm::prelude::LLVMTypeRef;
+pub use self::llvm::prelude::{LLVMTypeRef, LLVMValueRef};
 
 pub fn int32_type() -> LLVMTypeRef {
     unsafe { llvm::core::LLVMInt32Type() }

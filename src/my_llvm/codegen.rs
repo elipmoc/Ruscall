@@ -39,6 +39,19 @@ impl CodeGenerator {
         unsafe { llvm::core::LLVMBuildRet(self.builder, val) }
     }
 
+    pub fn build_add(&self, lhs: LLVMValueRef, rhs: LLVMValueRef, name: &str) -> LLVMValueRef {
+        unsafe { llvm::core::LLVMBuildAdd(self.builder, lhs, rhs, string_cast(name).as_ptr()) }
+    }
+    pub fn build_sub(&self, lhs: LLVMValueRef, rhs: LLVMValueRef, name: &str) -> LLVMValueRef {
+        unsafe { llvm::core::LLVMBuildSub(self.builder, lhs, rhs, string_cast(name).as_ptr()) }
+    }
+    pub fn build_mul(&self, lhs: LLVMValueRef, rhs: LLVMValueRef, name: &str) -> LLVMValueRef {
+        unsafe { llvm::core::LLVMBuildMul(self.builder, lhs, rhs, string_cast(name).as_ptr()) }
+    }
+    pub fn build_fdiv(&self, lhs: LLVMValueRef, rhs: LLVMValueRef, name: &str) -> LLVMValueRef {
+        unsafe { llvm::core::LLVMBuildFDiv(self.builder, lhs, rhs, string_cast(name).as_ptr()) }
+    }
+
     pub fn dispose(&self) {
         unsafe {
             llvm::core::LLVMDisposeBuilder(self.builder);

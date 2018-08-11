@@ -1,4 +1,5 @@
 pub mod ast;
+pub mod code_gen;
 pub mod infixes;
 pub mod parser;
 pub mod resolve_op;
@@ -13,8 +14,10 @@ pub fn compile(file_name: &str) {
     f.read_to_string(&mut src_str).unwrap();
     match parser::parse(&src_str) {
         Ok(ast) => {
-            println!("{:?}", ast);
-            println!("resolve_op {:?}", resolve_op::resolve_op(ast.0));
+            println!("\nparse\n{:?}\n", ast);
+            let ast = resolve_op::resolve_op(ast.0);
+            println!("resolve_op\n{:?}\n", ast);
+            code_gen::code_gen(ast, "compiled");
         }
         Err(_) => println!("err!!"),
     }
