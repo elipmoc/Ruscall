@@ -35,7 +35,10 @@ pub fn code_gen(ast: ast::ProgramAST, file_name: &str) {
         panic!("llvm error:{}", err_msg);
     }
     module.dump_module();
+    output_file(file_name, module, codegen);
 }
+
+//四則演算のコード生成
 fn gen_expr(expr_ast: ast::ExprAST, module: &Module, codegen: &CodeGenerator) -> LLVMValueRef {
     match expr_ast {
         ast::ExprAST::NumAST(num_ast) => const_int(int32_type(), num_ast.num as u64, true),
@@ -47,9 +50,51 @@ fn gen_expr(expr_ast: ast::ExprAST, module: &Module, codegen: &CodeGenerator) ->
                 "+" => codegen.build_add(lhs, rhs, ""),
                 "-" => codegen.build_sub(lhs, rhs, ""),
                 "*" => codegen.build_mul(lhs, rhs, ""),
-                "/" => codegen.build_fdiv(lhs, rhs, ""),
+                "/" => {
+                    let lhs = codegen.build_si_to_fp(lhs, double_type(), "");
+                    let rhs = codegen.build_si_to_fp(rhs, double_type(), "");
+                    codegen.build_fp_to_si(codegen.build_fdiv(lhs, rhs, ""), int32_type(), "")
+                }
                 _ => panic!("error"),
             }
         }
     }
+}
+
+//コードをexeで出力
+fn output_file(file_name: &str, module: Module, codegen: CodeGenerator) {
+    use std::env;
+    use std::process::Command;
+    let target_machine = TargetMachine::create(
+        "generic",
+        "",
+        LLVMCodeGenOptLevel::LLVMCodeGenLevelDefault,
+        LLVMRelocMode::LLVMRelocDefault,
+        LLVMCodeModel::LLVMCodeModelDefault,
+    ).unwrap();
+    module.set_data_layout(target_machine.create_data_layout());
+    module.set_target_triple(target_machine.target_triple);
+    module.write_bitcode_to_file(&(file_name.to_string() + ".bc"));
+    target_machine.emit_to_file(
+        &module,
+        &(file_name.to_string() + ".obj"),
+        LLVMCodeGenFileType::LLVMObjectFile,
+    );
+    module.dispose_module();
+    codegen.dispose();
+    target_machine.dispose();
+
+    let current_dir = env::current_dir().unwrap().to_str().unwrap().to_string();
+    if cfg!(target_os = "windows") {
+        Command::new("cmd")
+            .args(&[
+                "/C",
+                &(current_dir.clone() + "\\compile.bat"),
+                &(current_dir + "\\" + file_name + ".obj"),
+            ])
+            .output()
+            .expect("failed to execute process")
+    } else {
+        panic!("support windows only!!")
+    };
 }

@@ -9,6 +9,10 @@ pub fn int32_type() -> LLVMTypeRef {
     unsafe { llvm::core::LLVMInt32Type() }
 }
 
+pub fn double_type() -> LLVMTypeRef {
+    unsafe { llvm::core::LLVMDoubleType() }
+}
+
 pub fn void_type() -> LLVMTypeRef {
     unsafe { llvm::core::LLVMVoidType() }
 }

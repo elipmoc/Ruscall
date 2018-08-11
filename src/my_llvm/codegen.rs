@@ -51,6 +51,28 @@ impl CodeGenerator {
     pub fn build_fdiv(&self, lhs: LLVMValueRef, rhs: LLVMValueRef, name: &str) -> LLVMValueRef {
         unsafe { llvm::core::LLVMBuildFDiv(self.builder, lhs, rhs, string_cast(name).as_ptr()) }
     }
+    //浮動小数点数から符号付整数へのキャスト
+    pub fn build_fp_to_si(
+        &self,
+        val: LLVMValueRef,
+        dest_ty: LLVMTypeRef,
+        name: &str,
+    ) -> LLVMValueRef {
+        unsafe {
+            llvm::core::LLVMBuildFPToSI(self.builder, val, dest_ty, string_cast(name).as_ptr())
+        }
+    }
+    //符号付整数から浮動小数点数へのキャスト
+    pub fn build_si_to_fp(
+        &self,
+        val: LLVMValueRef,
+        dest_ty: LLVMTypeRef,
+        name: &str,
+    ) -> LLVMValueRef {
+        unsafe {
+            llvm::core::LLVMBuildSIToFP(self.builder, val, dest_ty, string_cast(name).as_ptr())
+        }
+    }
 
     pub fn dispose(&self) {
         unsafe {
