@@ -5,7 +5,6 @@ pub struct ProgramAST {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum StmtAST {
-    RawExpr(String),
     ExprAST(ExprAST),
     InfixAST(InfixAST),
     NoneAST,
@@ -17,11 +16,23 @@ pub enum ExprAST {
     NumAST(NumAST),
 }
 
+impl ExprAST {
+    pub fn create_op_ast(op: String, l_expr: ExprAST, r_expr: ExprAST) -> ExprAST {
+        ExprAST::OpAST(Box::new(OpAST::new(op, l_expr, r_expr)))
+    }
+    pub fn create_num_ast(num: String) -> ExprAST {
+        ExprAST::NumAST(NumAST::new(num))
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, PartialOrd)]
+pub struct Priority(pub i8);
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct InfixAST {
     pub ty: InfixType,
     pub op: String,
-    pub priority: i8,
+    pub priority: Priority,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -33,6 +44,14 @@ pub enum InfixType {
 #[derive(Debug, Clone, PartialEq)]
 pub struct NumAST {
     pub num: i32,
+}
+
+impl NumAST {
+    pub fn new(num: String) -> NumAST {
+        NumAST {
+            num: num.parse().unwrap(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]

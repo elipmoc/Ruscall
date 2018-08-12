@@ -40,14 +40,14 @@ fn create_infixl_ast(op: &str, priority: i8) -> ast::StmtAST {
     ast::StmtAST::InfixAST(ast::InfixAST {
         op: op.to_string(),
         ty: ast::InfixType::Left,
-        priority: priority,
+        priority: ast::Priority(priority),
     })
 }
 fn create_infixr_ast(op: &str, priority: i8) -> ast::StmtAST {
     ast::StmtAST::InfixAST(ast::InfixAST {
         op: op.to_string(),
         ty: ast::InfixType::Right,
-        priority: priority,
+        priority: ast::Priority(priority),
     })
 }
 

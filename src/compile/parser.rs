@@ -37,7 +37,7 @@ parser!{
         skip_many_parser().
         with (
             infix_parser().map(|x|ast::StmtAST::InfixAST(x)).
-            or(expr_parser().map(|x|ast::StmtAST::RawExpr(x)))
+            or(expr_parser().map(|x|ast::StmtAST::ExprAST(x)))
         ).
         skip(
             skip_many_parser()
@@ -47,7 +47,7 @@ parser!{
 
 //<expr>
 parser!{
-    fn expr_parser[I]()(I)->String
+    fn expr_parser[I]()(I)->ast::ExprAST
     where[I:Stream<Item=char>]
     {
         (
@@ -57,12 +57,10 @@ parser!{
                ))
         ).
        map(|(x,y):(String,Vec<(String,String)>)|{
-           let mut s=x;
-            y.into_iter().for_each(|(x,y)|{
-                s+=&x;
-                s+=&y;
-            });
-           s
+           let  e=ast::ExprAST::create_num_ast(x);
+            y.into_iter().fold(e,move|acc,(op,num)|{
+                ast::ExprAST::create_op_ast(op, acc, ast::ExprAST::create_num_ast(num))
+            })
        })
     }
 }
@@ -90,7 +88,7 @@ parser!{
         map(|(ty,priority,op)|{
             ast::InfixAST{
                 ty: ty,
-                priority:priority.parse::<i8>().unwrap(),
+                priority:ast::Priority(priority.parse::<i8>().unwrap()),
                 op:op
             }
         })
