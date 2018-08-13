@@ -1,9 +1,5 @@
 
-infixr 1 +
-infixr 2 *
-infixr 3 /
+infixl 1 +
+infixr 1 -
 
-8/2*4+5
-
-infixr 3 /
-8+2
+1+2+3-4-5-6
