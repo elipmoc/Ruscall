@@ -22,8 +22,10 @@ impl CmdArgsKind {
                 println!("Ruscall.exe [OPTIONS]");
                 println!("");
                 println!("OPTIONS:");
-                println!("-h           help");
-                println!("-v           version\n");
+                println!("-h                    help");
+                println!("-v                    version");
+                println!("-hello                hello world build");
+                println!("-build [SOURCE_FILE]  build source file");
             }
             &CmdArgsKind::Version => println!("\nRuscall version 0.1.0\n"),
             &CmdArgsKind::Hello => hello::hello(),
