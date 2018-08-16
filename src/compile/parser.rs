@@ -1,7 +1,10 @@
 use super::ast;
 use combine::char::{digit, newline, space, string, tab};
+use combine::easy;
 use combine::parser::combinator::try;
-use combine::{error, many, many1, Parser, Stream};
+use combine::stream;
+use combine::stream::state::{DefaultPositioned, SourcePosition, State};
+use combine::{eof, error, many, many1, ParseError, Parser, Positioned, Stream, StreamOnce};
 /*
 BNF
 <program>  := {<stmt>}
@@ -16,23 +19,34 @@ BNF
 
 */
 
-pub fn parse(s: &str) -> Result<(ast::ProgramAST, &str), error::StringStreamError> {
-    program_parser().parse(s)
+#[derive(Debug)]
+struct Position {}
+
+pub fn parse(
+    s: &str,
+) -> Result<
+    (
+        ast::ProgramAST,
+        stream::state::State<&str, stream::state::SourcePosition>,
+    ),
+    easy::Errors<char, &str, stream::state::SourcePosition>,
+> {
+    program_parser().easy_parse(State::new(s))
 }
 
 //<program>
 parser!{
    fn program_parser[I]()(I) ->ast::ProgramAST
-    where [I: Stream<Item=char>]
+   where[ I:Stream<Item=char>]
     {
-        many(stmt_parser()).map(|x|ast::ProgramAST{stmt_list:x})
+        many(stmt_parser()).skip(eof().expected("statement or infix")).map(|x|ast::ProgramAST{stmt_list:x})
     }
 }
 
 //<stmt>
 parser!{
    fn stmt_parser[I]()(I) ->ast::StmtAST
-    where [I: Stream<Item=char>]
+   where[ I:Stream<Item=char>]
     {
         skip_many_parser().
         with (
@@ -48,7 +62,8 @@ parser!{
 //<expr>
 parser!{
     fn expr_parser[I]()(I)->ast::ExprAST
-    where[I:Stream<Item=char>]
+   where[ I:Stream<Item=char>]
+
     {
         (
            num_parser().skip(skip_many_parser()),
@@ -68,7 +83,8 @@ parser!{
 //<infix>
 parser!{
     fn infix_parser[I]()(I)->ast::InfixAST
-    where[I:Stream<Item=char>]
+   where[ I:Stream<Item=char>]
+
     {
         (try(string("infixr")).
         or(string("infixl")).
@@ -98,7 +114,8 @@ parser!{
 //<op>
 parser!{
     fn op_parser[I]()(I)->String
-    where[I:Stream<Item=char>]
+   where[ I:Stream<Item=char>]
+
     {
         string("+").
         or(string("-")).
@@ -110,7 +127,8 @@ parser!{
 //<num>
 parser!{
     fn num_parser[I]()(I)->String
-    where[I:Stream<Item=char>]
+   where[ I:Stream<Item=char>]
+
     {
         many1(digit())
     }
@@ -119,7 +137,8 @@ parser!{
 //<skip>
 parser!{
     fn skip_parser[I]()(I)->()
-    where[I:Stream<Item=char>]
+   where[ I:Stream<Item=char>]
+
     {
         newline().map(|_|()).or(space_parser())
     }
@@ -128,7 +147,8 @@ parser!{
 //<skip_many>
 parser!{
     fn skip_many_parser[I]()(I)->()
-    where[I:Stream<Item=char>]
+   where[ I:Stream<Item=char>]
+
     {
         many::<Vec<_>,_>(skip_parser()).map(|_|())
     }
@@ -137,7 +157,8 @@ parser!{
 //<space>
 parser!{
    fn space_parser[I]()(I) ->()
-    where [I: Stream<Item=char>]
+   where[ I:Stream<Item=char>]
+
     {
         space().or(tab()).map(|_|())
     }

@@ -11,13 +11,17 @@ pub fn compile(file_name: &str) {
     let mut f = BufReader::new(fs::File::open(file_name).unwrap());
     let mut src_str: String = "".to_string();
     f.read_to_string(&mut src_str).unwrap();
-    match parser::parse(&src_str) {
+    let src_str: &str = &src_str;
+    match parser::parse(src_str) {
         Ok(ast) => {
             println!("\nparse\n{:?}\n", ast);
             let ast = resolve_op::resolve_op(ast.0);
             println!("resolve_op\n{:?}\n", ast);
             code_gen::code_gen(ast, "compiled");
         }
-        Err(_) => println!("err!!"),
+        Err(err) => println!(
+            "compile error!\nposition:\nline:{} column:{}\n\nmessage:\n{:?}",
+            err.position.line, err.position.column, err.errors
+        ),
     }
 }
