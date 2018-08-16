@@ -3,8 +3,8 @@ use combine::char::{digit, newline, space, string, tab};
 use combine::easy;
 use combine::parser::combinator::try;
 use combine::stream;
-use combine::stream::state::{DefaultPositioned, SourcePosition, State};
-use combine::{eof, error, many, many1, ParseError, Parser, Positioned, Stream, StreamOnce};
+use combine::stream::state::State;
+use combine::{eof, many, many1, unexpected, value, Parser, Stream};
 /*
 BNF
 <program>  := {<stmt>}
@@ -18,9 +18,6 @@ BNF
 <space>    := ' ' | '\t'
 
 */
-
-#[derive(Debug)]
-struct Position {}
 
 pub fn parse(
     s: &str,
@@ -98,13 +95,19 @@ parser!{
         }).
         skip(many1::<Vec<_>,_>(space_parser())),
         num_parser().
+        then(|num_s|
+            match num_s.parse::<i8>(){
+                Ok(num) if (0<=num && num<=30) =>value(num).left(),
+                _=>unexpected("not 0 <= number <= 30 ").map(|_|0).right()
+            }
+        ).
         skip(many1::<Vec<_>,_>(space_parser())),
         op_parser()
         ).
         map(|(ty,priority,op)|{
             ast::InfixAST{
                 ty: ty,
-                priority:ast::Priority(priority.parse::<i8>().unwrap()),
+                priority:ast::Priority(priority),
                 op:op
             }
         })
