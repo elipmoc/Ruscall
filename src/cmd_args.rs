@@ -14,9 +14,9 @@ pub enum CmdArgsKind {
 
 impl CmdArgsKind {
     //コマンドラインオプションによる実行
-    pub fn run(&self) {
+    pub fn run(self) {
         match self {
-            &CmdArgsKind::Help => {
+            CmdArgsKind::Help => {
                 println!("");
                 println!("Usage:");
                 println!("Ruscall.exe [OPTIONS]");
@@ -27,10 +27,10 @@ impl CmdArgsKind {
                 println!("-hello                hello world build");
                 println!("-build [SOURCE_FILE]  build source file");
             }
-            &CmdArgsKind::Version => println!("\nRuscall version 0.1.0\n"),
-            &CmdArgsKind::Hello => hello::hello(),
-            &CmdArgsKind::Compile(ref file_name) => compile::compile(file_name),
-            &CmdArgsKind::Error => println!("\nerror cmd args\n"),
+            CmdArgsKind::Version => println!("\nRuscall version 0.1.0\n"),
+            CmdArgsKind::Hello => hello::hello(),
+            CmdArgsKind::Compile(ref file_name) => compile::compile(file_name),
+            CmdArgsKind::Error => println!("\nerror cmd args\n"),
         }
     }
 }

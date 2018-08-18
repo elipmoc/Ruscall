@@ -15,9 +15,14 @@ pub fn compile(file_name: &str) {
     match parser::parse(src_str) {
         Ok(ast) => {
             println!("\nparse\n{:?}\n", ast);
-            let ast = resolve_op::resolve_op(ast.0);
-            println!("resolve_op\n{:?}\n", ast);
-            code_gen::code_gen(ast, "compiled");
+            let result_ast = resolve_op::resolve_op(ast.0);
+            match result_ast {
+                Ok(ast) => {
+                    println!("resolve_op\n{:?}\n", ast);
+                    code_gen::code_gen(ast, "compiled");
+                }
+                _ => println!("compile error!\n resolve_op\n"),
+            }
         }
         Err(err) => println!(
             "compile error!\nposition:\nline:{} column:{}\n\nmessage:\n{:?}",
