@@ -21,11 +21,14 @@ pub fn compile(file_name: &str) {
                     println!("resolve_op\n{:?}\n", ast);
                     code_gen::code_gen(ast, "compiled");
                 }
-                _ => println!("compile error!\n resolve_op\n"),
+                Err(pos) => println!(
+                    "compile error!\nposition:\nline:{} column:{}\n\nmessage:\n{}\n",
+                    pos.line, pos.column, "no declare op"
+                ),
             }
         }
         Err(err) => println!(
-            "compile error!\nposition:\nline:{} column:{}\n\nmessage:\n{:?}",
+            "compile error!\nposition:\nline:{} column:{}\n\nmessage:\n{:?}\n",
             err.position.line, err.position.column, err.errors
         ),
     }

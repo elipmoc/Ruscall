@@ -3,8 +3,8 @@ use combine::char::{digit, newline, space, string, tab};
 use combine::easy;
 use combine::parser::combinator::try;
 use combine::stream;
-use combine::stream::state::State;
-use combine::{eof, many, many1, unexpected, value, Parser, Stream};
+use combine::stream::state::{DefaultPositioned, SourcePosition, State};
+use combine::{eof, many, many1, position, unexpected, value, Parser};
 /*
 BNF
 <program>  := {<stmt>}
@@ -31,10 +31,11 @@ pub fn parse(
     program_parser().easy_parse(State::new(s))
 }
 
+type MyStream<'a> = easy::Stream<State<&'a str, <&'a str as DefaultPositioned>::Positioner>>;
+
 //<program>
 parser!{
-   fn program_parser[I]()(I) ->ast::ProgramAST
-   where[ I:Stream<Item=char>]
+   fn program_parser['a]()(MyStream<'a>) ->ast::ProgramAST
     {
         many(stmt_parser()).skip(eof().expected("statement or infix")).map(|x|ast::ProgramAST{stmt_list:x})
     }
@@ -42,8 +43,7 @@ parser!{
 
 //<stmt>
 parser!{
-   fn stmt_parser[I]()(I) ->ast::StmtAST
-   where[ I:Stream<Item=char>]
+   fn stmt_parser['a]()(MyStream<'a>) ->ast::StmtAST
     {
         skip_many_parser().
         with (
@@ -58,20 +58,21 @@ parser!{
 
 //<expr>
 parser!{
-    fn expr_parser[I]()(I)->ast::ExprAST
-   where[ I:Stream<Item=char>]
+    fn expr_parser['a]()(MyStream<'a>)->ast::ExprAST
 
     {
         (
            num_parser().skip(skip_many_parser()),
            many((
-                    op_parser().skip(skip_many_parser()),num_parser().skip(skip_many_parser())
+                    position(),
+                    op_parser().skip(skip_many_parser()),
+                    num_parser().skip(skip_many_parser())
                ))
         ).
-       map(|(x,y):(String,Vec<(String,String)>)|{
+       map(|(x,y):(String,Vec<(SourcePosition,String,String)>)|{
            let  e=ast::ExprAST::create_num_ast(x);
-            y.into_iter().fold(e,move|acc,(op,num)|{
-                ast::ExprAST::create_op_ast(op, acc, ast::ExprAST::create_num_ast(num))
+            y.into_iter().fold(e,move|acc,(pos,op,num)|{
+                ast::ExprAST::create_op_ast(op,pos, acc, ast::ExprAST::create_num_ast(num))
             })
        })
     }
@@ -79,9 +80,7 @@ parser!{
 
 //<infix>
 parser!{
-    fn infix_parser[I]()(I)->ast::InfixAST
-   where[ I:Stream<Item=char>]
-
+    fn infix_parser['a]()(MyStream<'a>)->ast::InfixAST
     {
         (try(string("infixr")).
         or(string("infixl")).
@@ -116,9 +115,7 @@ parser!{
 
 //<op>
 parser!{
-    fn op_parser[I]()(I)->String
-   where[ I:Stream<Item=char>]
-
+    fn op_parser['a]()(MyStream<'a>)->String
     {
         string("+").
         or(string("-")).
@@ -129,9 +126,7 @@ parser!{
 
 //<num>
 parser!{
-    fn num_parser[I]()(I)->String
-   where[ I:Stream<Item=char>]
-
+    fn num_parser['a]()(MyStream<'a>)->String
     {
         many1(digit())
     }
@@ -139,9 +134,7 @@ parser!{
 
 //<skip>
 parser!{
-    fn skip_parser[I]()(I)->()
-   where[ I:Stream<Item=char>]
-
+    fn skip_parser['a]()(MyStream<'a>)->()
     {
         newline().map(|_|()).or(space_parser())
     }
@@ -149,8 +142,7 @@ parser!{
 
 //<skip_many>
 parser!{
-    fn skip_many_parser[I]()(I)->()
-   where[ I:Stream<Item=char>]
+    fn skip_many_parser['a]()(MyStream<'a>)->()
 
     {
         many::<Vec<_>,_>(skip_parser()).map(|_|())
@@ -159,8 +151,7 @@ parser!{
 
 //<space>
 parser!{
-   fn space_parser[I]()(I) ->()
-   where[ I:Stream<Item=char>]
+   fn space_parser['a]()(MyStream<'a>) ->()
 
     {
         space().or(tab()).map(|_|())

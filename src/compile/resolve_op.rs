@@ -1,10 +1,12 @@
 use super::ast;
+use combine::stream::state::SourcePosition;
 use std::collections::HashMap;
 
 type InfixHash = HashMap<String, ast::InfixAST>;
+type ResolveResult<T> = Result<T, SourcePosition>;
 
 //RawExprをOpASTに置き換えたProgramASTを得る
-pub fn resolve_op(ast: ast::ProgramAST) -> Result<ast::ProgramAST, ()> {
+pub fn resolve_op(ast: ast::ProgramAST) -> ResolveResult<ast::ProgramAST> {
     let mut infix_hash: InfixHash = HashMap::new();
     let mut new_stmt_list = Vec::with_capacity(ast.stmt_list.len());
     for stmt in ast.stmt_list {
@@ -15,7 +17,7 @@ pub fn resolve_op(ast: ast::ProgramAST) -> Result<ast::ProgramAST, ()> {
     })
 }
 
-fn stmt_resolve_op(infix_hash: &mut InfixHash, stmt: ast::StmtAST) -> Result<ast::StmtAST, ()> {
+fn stmt_resolve_op(infix_hash: &mut InfixHash, stmt: ast::StmtAST) -> ResolveResult<ast::StmtAST> {
     let new_stmt = match stmt {
         ast::StmtAST::ExprAST(expr_ast) => {
             ast::StmtAST::ExprAST(expr_ast.resolve_op(infix_hash)?.get_expr_ast())
@@ -66,12 +68,12 @@ impl ast::InfixAST {
 }
 
 impl ast::ExprAST {
-    pub fn resolve_op(self, infix_hash: &InfixHash) -> Result<Resolved, ()> {
+    pub fn resolve_op(self, infix_hash: &InfixHash) -> ResolveResult<Resolved> {
         let resolved = match self {
             ast::ExprAST::OpAST(op_ast) => {
                 let mut op_ast = *op_ast;
                 let self_infix = match infix_hash.get(&op_ast.op) {
-                    None => return Result::Err(()),
+                    None => return Result::Err(op_ast.pos),
                     Some(x) => x.clone(),
                 };
 

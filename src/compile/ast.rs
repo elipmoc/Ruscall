@@ -1,3 +1,5 @@
+use combine::stream::state::SourcePosition;
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct ProgramAST {
     pub stmt_list: Vec<StmtAST>,
@@ -17,8 +19,13 @@ pub enum ExprAST {
 }
 
 impl ExprAST {
-    pub fn create_op_ast(op: String, l_expr: ExprAST, r_expr: ExprAST) -> ExprAST {
-        ExprAST::OpAST(Box::new(OpAST::new(op, l_expr, r_expr)))
+    pub fn create_op_ast(
+        op: String,
+        pos: SourcePosition,
+        l_expr: ExprAST,
+        r_expr: ExprAST,
+    ) -> ExprAST {
+        ExprAST::OpAST(Box::new(OpAST::new(op, pos, l_expr, r_expr)))
     }
     pub fn create_num_ast(num: String) -> ExprAST {
         ExprAST::NumAST(NumAST::new(num))
@@ -59,12 +66,14 @@ pub struct OpAST {
     pub op: String,
     pub l_expr: ExprAST,
     pub r_expr: ExprAST,
+    pub pos: SourcePosition,
 }
 
 impl OpAST {
-    pub fn new(op: String, l_expr: ExprAST, r_expr: ExprAST) -> OpAST {
+    pub fn new(op: String, pos: SourcePosition, l_expr: ExprAST, r_expr: ExprAST) -> OpAST {
         OpAST {
             op: op,
+            pos: pos,
             l_expr: l_expr,
             r_expr: r_expr,
         }
