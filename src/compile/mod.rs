@@ -1,8 +1,10 @@
 pub mod ast;
 pub mod code_gen;
+pub mod error;
 pub mod parser;
 pub mod resolve_op;
 
+use self::error::Error;
 use std::fs;
 use std::io::{BufReader, Read};
 
@@ -12,6 +14,13 @@ pub fn compile(file_name: &str) {
     let mut src_str: String = "".to_string();
     f.read_to_string(&mut src_str).unwrap();
     let src_str: &str = &src_str;
+    match parse(src_str) {
+        Ok(ast) => code_gen::code_gen(ast, "compiled"),
+        Err(err) => println!("{}", err),
+    };
+}
+
+fn parse(src_str: &str) -> Result<ast::ProgramAST, String> {
     match parser::parse(src_str) {
         Ok(ast) => {
             println!("\nparse\n{:?}\n", ast);
@@ -19,17 +28,11 @@ pub fn compile(file_name: &str) {
             match result_ast {
                 Ok(ast) => {
                     println!("resolve_op\n{:?}\n", ast);
-                    code_gen::code_gen(ast, "compiled");
+                    Result::Ok(ast)
                 }
-                Err(pos) => println!(
-                    "compile error!\nposition:\nline:{} column:{}\n\nmessage:\n{}\n",
-                    pos.line, pos.column, "no declare op"
-                ),
+                Err(err) => Result::Err(err.to_string()),
             }
         }
-        Err(err) => println!(
-            "compile error!\nposition:\nline:{} column:{}\n\nmessage:\n{:?}\n",
-            err.position.line, err.position.column, err.errors
-        ),
+        Err(err) => Result::Err(Error::from_parse_error(err).to_string()),
     }
 }

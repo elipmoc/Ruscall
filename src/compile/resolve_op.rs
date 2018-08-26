@@ -1,9 +1,10 @@
 use super::ast;
+use super::Error;
 use combine::stream::state::SourcePosition;
 use std::collections::HashMap;
 
 type InfixHash = HashMap<String, ast::InfixAST>;
-type ResolveResult<T> = Result<T, SourcePosition>;
+type ResolveResult<T> = Result<T, Error>;
 
 //RawExprをOpASTに置き換えたProgramASTを得る
 pub fn resolve_op(ast: ast::ProgramAST) -> ResolveResult<ast::ProgramAST> {
@@ -73,7 +74,7 @@ impl ast::ExprAST {
             ast::ExprAST::OpAST(op_ast) => {
                 let mut op_ast = *op_ast;
                 let self_infix = match infix_hash.get(&op_ast.op) {
-                    None => return Result::Err(op_ast.pos),
+                    None => return Result::Err(Error::new(op_ast.pos, "no declare op")),
                     Some(x) => x.clone(),
                 };
 
