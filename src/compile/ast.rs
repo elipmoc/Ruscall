@@ -79,3 +79,15 @@ impl OpAST {
         }
     }
 }
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct IdAST {
+    pub id: String,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct DefFuncAST {
+    pub func_name: String,
+    pub params: Vec<String>,
+    pub body: ExprAST,
+}

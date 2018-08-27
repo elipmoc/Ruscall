@@ -1,17 +1,22 @@
 use super::ast;
-use combine::char::{digit, newline, space, string, tab};
+use combine::char::{char, digit, newline, space, string, tab};
 use combine::easy;
 use combine::parser::combinator::try;
 use combine::stream;
 use combine::stream::state::{DefaultPositioned, SourcePosition, State};
-use combine::{eof, many, many1, position, unexpected, value, Parser};
+use combine::{eof, many, many1, optional, position, unexpected, value, Parser};
 /*
 BNF
 <program>  := {<stmt>}
-<stmt>     := <skip_many> ( <infix> | <expr> ) <skip_many>
-<expr>     := <num> <skip_many> { <op> <skip_many> <num> <skip_many> }
+<stmt>     := <skip_many> ( <infix> | <expr_app> | <def_func>) <skip_many> ';'
+<def_func> := <id> {<skip_many> <id>} <skip_many> '=' <skip_many> <expr_app>
+<id>       := [a-z]{ [a-z] | [0-9] | '_' }
+<expr_app> := <expr> { <expr> }
+<expr>     := <term> <skip_many> { <op> <skip_many> <term> <skip_many> } 
 <infix>    := ('infixr' | 'infixl') <space>+ <num> <space>+ <op>
 <op>       := '+' | '-' | '/' | '*'
+<term>     := <num> | <id> | <paren>
+<paren>    := '(' <expr_app> ')'
 <num>      := [0-9]+
 <skip>     := '\n' | <space>
 <skip_many>:= {<skip>}
@@ -52,14 +57,13 @@ parser!{
         ).
         skip(
             skip_many_parser()
-        )
+        ).skip(char(';'))
     }
 }
 
 //<expr>
 parser!{
     fn expr_parser['a]()(MyStream<'a>)->ast::ExprAST
-
     {
         (
            num_parser().skip(skip_many_parser()),
@@ -68,8 +72,8 @@ parser!{
                     op_parser().skip(skip_many_parser()),
                     num_parser().skip(skip_many_parser())
                ))
-        ).
-       map(|(x,y):(String,Vec<(SourcePosition,String,String)>)|{
+        )
+       .map(|(x,y):(String,Vec<(SourcePosition,String,String)>)|{
            let  e=ast::ExprAST::create_num_ast(x);
             y.into_iter().fold(e,move|acc,(pos,op,num)|{
                 ast::ExprAST::create_op_ast(op,pos, acc, ast::ExprAST::create_num_ast(num))
