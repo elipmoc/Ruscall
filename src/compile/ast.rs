@@ -16,6 +16,7 @@ pub enum StmtAST {
 pub enum ExprAST {
     OpAST(Box<OpAST>),
     NumAST(NumAST),
+    ParenAST(Box<ParenAST>),
 }
 
 impl ExprAST {
@@ -29,6 +30,9 @@ impl ExprAST {
     }
     pub fn create_num_ast(num: String) -> ExprAST {
         ExprAST::NumAST(NumAST::new(num))
+    }
+    pub fn create_paren_ast(expr_ast: ExprAST) -> ExprAST {
+        ExprAST::ParenAST(Box::new(ParenAST { expr: expr_ast }))
     }
 }
 
@@ -59,6 +63,11 @@ impl NumAST {
             num: num.parse().unwrap(),
         }
     }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ParenAST {
+    pub expr: ExprAST,
 }
 
 #[derive(Debug, Clone, PartialEq)]

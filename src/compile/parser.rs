@@ -4,7 +4,7 @@ use combine::easy;
 use combine::parser::combinator::try;
 use combine::stream;
 use combine::stream::state::{DefaultPositioned, SourcePosition, State};
-use combine::{eof, many, many1, optional, position, unexpected, value, Parser};
+use combine::{eof, many, many1, position, unexpected, value, Parser};
 /*
 BNF
 <program>  := {<stmt>}
@@ -66,17 +66,16 @@ parser!{
     fn expr_parser['a]()(MyStream<'a>)->ast::ExprAST
     {
         (
-           num_parser().skip(skip_many_parser()),
+           term_parser().skip(skip_many_parser()),
            many((
                     position(),
                     op_parser().skip(skip_many_parser()),
-                    num_parser().skip(skip_many_parser())
+                    term_parser().skip(skip_many_parser())
                ))
         )
-       .map(|(x,y):(String,Vec<(SourcePosition,String,String)>)|{
-           let  e=ast::ExprAST::create_num_ast(x);
-            y.into_iter().fold(e,move|acc,(pos,op,num)|{
-                ast::ExprAST::create_op_ast(op,pos, acc, ast::ExprAST::create_num_ast(num))
+       .map(|(e,y):(ast::ExprAST,Vec<(SourcePosition,String,ast::ExprAST)>)|{
+            y.into_iter().fold(e,move|acc,(pos,op,term)|{
+                ast::ExprAST::create_op_ast(op,pos, acc, term)
             })
        })
     }
@@ -125,6 +124,30 @@ parser!{
         or(string("-")).
         or(string("/")).
         or(string("*")).map(|s|s.to_string())
+    }
+}
+
+//<term>
+parser!{
+    fn term_parser['a]()(MyStream<'a>)->ast::ExprAST
+    {
+        paren_parser()
+        .or(
+            num_parser()
+            .map(ast::ExprAST::create_num_ast)
+            .map(ast::ExprAST::create_paren_ast)
+        )
+    }
+}
+
+//<paren>
+parser!{
+    fn paren_parser['a]()(MyStream<'a>)->ast::ExprAST
+    {
+        char('(')
+        .with(expr_parser())
+        .map(ast::ExprAST::create_paren_ast)
+        .skip(char(')'))
     }
 }
 

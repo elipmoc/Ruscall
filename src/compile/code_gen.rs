@@ -58,6 +58,7 @@ fn gen_expr(expr_ast: ast::ExprAST, module: &Module, codegen: &CodeGenerator) ->
                 _ => panic!("error"),
             }
         }
+        ast::ExprAST::ParenAST(paren_ast) => gen_expr(paren_ast.expr, module, codegen),
     }
 }
 

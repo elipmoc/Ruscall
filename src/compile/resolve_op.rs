@@ -1,6 +1,5 @@
 use super::ast;
 use super::Error;
-use combine::stream::state::SourcePosition;
 use std::collections::HashMap;
 
 type InfixHash = HashMap<String, ast::InfixAST>;
@@ -39,13 +38,15 @@ fn regist_infix(infix_hash: &mut InfixHash, infix: ast::InfixAST) {
 pub enum Resolved {
     NumAST(ast::NumAST),
     OpAST(ast::OpAST, ast::InfixAST),
+    ParenAST(ast::ParenAST),
 }
 
 impl Resolved {
     pub fn get_expr_ast(self) -> ast::ExprAST {
         match self {
-            Resolved::NumAST(x) => ast::ExprAST::NumAST(x),
             Resolved::OpAST(x, _) => ast::ExprAST::OpAST(Box::new(x)),
+            Resolved::NumAST(x) => ast::ExprAST::NumAST(x),
+            Resolved::ParenAST(x) => ast::ExprAST::ParenAST(Box::new(x)),
         }
     }
 }
@@ -56,48 +57,54 @@ impl ast::InfixAST {
         if self.priority > child.priority {
             return true;
         }
-        if self.priority == child.priority {
-            if self.ty == child.ty {
-                return match self.ty {
-                    ast::InfixType::Left => false,
-                    ast::InfixType::Right => true,
-                };
-            }
+        if self.priority == child.priority && self.ty == child.ty {
+            return match self.ty {
+                ast::InfixType::Left => false,
+                ast::InfixType::Right => true,
+            };
         }
         return false;
+    }
+}
+
+impl ast::OpAST {
+    fn swap_op(mut self, infix_hash: &InfixHash) -> ResolveResult<Resolved> {
+        let self_infix = match infix_hash.get(&self.op) {
+            None => return Result::Err(Error::new(self.pos, "no declare op")),
+            Some(x) => x.clone(),
+        };
+
+        let resolved = match self.l_expr.resolve_op(infix_hash)? {
+            Resolved::OpAST(mut child_op_ast, child_infix) => {
+                if self_infix.is_priority_greater(&child_infix) {
+                    self.l_expr = child_op_ast.r_expr;
+                    child_op_ast.r_expr = ast::ExprAST::OpAST(Box::new(self))
+                        .resolve_op(infix_hash)?
+                        .get_expr_ast();
+                    Resolved::OpAST(child_op_ast, child_infix)
+                } else {
+                    self.l_expr = ast::ExprAST::OpAST(Box::new(child_op_ast));
+                    Resolved::OpAST(self, self_infix)
+                }
+            }
+            x => {
+                self.l_expr = x.get_expr_ast();
+                self.r_expr = self.r_expr.resolve_op(infix_hash)?.get_expr_ast();
+                Resolved::OpAST(self, self_infix)
+            }
+        };
+        Result::Ok(resolved)
     }
 }
 
 impl ast::ExprAST {
     pub fn resolve_op(self, infix_hash: &InfixHash) -> ResolveResult<Resolved> {
         let resolved = match self {
-            ast::ExprAST::OpAST(op_ast) => {
-                let mut op_ast = *op_ast;
-                let self_infix = match infix_hash.get(&op_ast.op) {
-                    None => return Result::Err(Error::new(op_ast.pos, "no declare op")),
-                    Some(x) => x.clone(),
-                };
-
-                match op_ast.l_expr.resolve_op(infix_hash)? {
-                    Resolved::OpAST(mut child_op_ast, child_infix) => {
-                        if self_infix.is_priority_greater(&child_infix) {
-                            op_ast.l_expr = child_op_ast.r_expr;
-                            child_op_ast.r_expr = ast::ExprAST::OpAST(Box::new(op_ast))
-                                .resolve_op(infix_hash)?
-                                .get_expr_ast();
-                            Resolved::OpAST(child_op_ast, child_infix)
-                        } else {
-                            op_ast.l_expr = ast::ExprAST::OpAST(Box::new(child_op_ast));
-                            Resolved::OpAST(op_ast, self_infix)
-                        }
-                    }
-                    x => {
-                        op_ast.l_expr = x.get_expr_ast();
-                        Resolved::OpAST(op_ast, self_infix)
-                    }
-                }
-            }
+            ast::ExprAST::OpAST(op_ast) => op_ast.swap_op(infix_hash)?,
             ast::ExprAST::NumAST(num_ast) => Resolved::NumAST(num_ast),
+            ast::ExprAST::ParenAST(paren_ast) => Resolved::ParenAST(ast::ParenAST {
+                expr: paren_ast.expr.resolve_op(infix_hash)?.get_expr_ast(),
+            }),
         };
         Result::Ok(resolved)
     }
