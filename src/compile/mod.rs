@@ -4,6 +4,7 @@ pub mod error;
 pub mod parser;
 pub mod semantic_analysis;
 pub mod types;
+pub mod ir_tree;
 
 use self::error::Error;
 use std::fs;
