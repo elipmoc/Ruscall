@@ -2,7 +2,7 @@ pub mod ast;
 pub mod code_gen;
 pub mod error;
 pub mod parser;
-pub mod resolve_op;
+pub mod semantic_analysis;
 pub mod types;
 
 use self::error::Error;
@@ -25,7 +25,7 @@ fn parse(src_str: &str) -> Result<ast::ProgramAST, String> {
     match parser::parse(src_str) {
         Ok(ast) => {
             println!("\nparse\n{:?}\n", ast);
-            let result_ast = resolve_op::resolve_op(ast.0);
+            let result_ast = semantic_analysis::analysis(ast.0);
             match result_ast {
                 Ok(ast) => {
                     println!("resolve_op\n{:?}\n", ast);

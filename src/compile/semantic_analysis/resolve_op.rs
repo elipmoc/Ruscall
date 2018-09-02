@@ -1,9 +1,10 @@
-use super::ast;
-use super::Error;
+use super::super::ast;
+use super::super::Error;
 use std::collections::HashMap;
 
 type InfixHash = HashMap<String, ast::InfixAST>;
 type ResolveResult<T> = Result<T, Error>;
+pub type ResolveOpResult = ResolveResult<ast::ProgramAST>;
 
 //RawExprをOpASTに置き換えたProgramASTを得る
 pub fn resolve_op(ast: ast::ProgramAST) -> ResolveResult<ast::ProgramAST> {
@@ -18,7 +19,7 @@ pub fn resolve_op(ast: ast::ProgramAST) -> ResolveResult<ast::ProgramAST> {
 }
 
 impl ast::StmtAST {
-    pub fn resolve_op(self, infix_hash: &mut InfixHash) -> ResolveResult<ast::StmtAST> {
+    fn resolve_op(self, infix_hash: &mut InfixHash) -> ResolveResult<ast::StmtAST> {
         let new_stmt = match self {
             ast::StmtAST::DefFuncAST(def_func_ast) => {
                 ast::StmtAST::DefFuncAST(def_func_ast.resolve_op(infix_hash)?)
@@ -34,7 +35,7 @@ impl ast::StmtAST {
 }
 
 impl ast::DefFuncAST {
-    pub fn resolve_op(self, infix_hash: &InfixHash) -> ResolveResult<ast::DefFuncAST> {
+    fn resolve_op(self, infix_hash: &InfixHash) -> ResolveResult<ast::DefFuncAST> {
         Result::Ok(ast::DefFuncAST {
             body: self.body.resolve_op(infix_hash)?.get_expr_ast(),
             ..self
@@ -46,13 +47,13 @@ fn regist_infix(infix_hash: &mut InfixHash, infix: ast::InfixAST) {
     infix_hash.insert(infix.op.clone(), infix);
 }
 
-pub enum Resolved {
+ enum Resolved {
     OtherExprAST(ast::ExprAST),
     OpAST(ast::OpAST, ast::InfixAST),
 }
 
 impl Resolved {
-    pub fn get_expr_ast(self) -> ast::ExprAST {
+     fn get_expr_ast(self) -> ast::ExprAST {
         match self {
             Resolved::OpAST(x, _) => ast::ExprAST::OpAST(Box::new(x)),
             Resolved::OtherExprAST(x) => x,
@@ -107,7 +108,7 @@ impl ast::OpAST {
 }
 
 impl ast::ExprAST {
-    pub fn resolve_op(self, infix_hash: &InfixHash) -> ResolveResult<Resolved> {
+     fn resolve_op(self, infix_hash: &InfixHash) -> ResolveResult<Resolved> {
         let resolved = match self {
             ast::ExprAST::OpAST(op_ast) => op_ast.swap_op(infix_hash)?,
             ast::ExprAST::ParenAST(paren_ast) => {
