@@ -3,6 +3,7 @@ pub mod code_gen;
 pub mod error;
 pub mod parser;
 pub mod resolve_op;
+pub mod types;
 
 use self::error::Error;
 use std::fs;
@@ -15,7 +16,7 @@ pub fn compile(file_name: &str) {
     f.read_to_string(&mut src_str).unwrap();
     let src_str: &str = &src_str;
     match parse(src_str) {
-        Ok(ast) => code_gen::code_gen(ast, "compiled"),
+        Ok(ast) => ast.code_gen("compiled"),
         Err(err) => println!("{}", err),
     };
 }

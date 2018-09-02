@@ -9,33 +9,55 @@ fn extern_test_func(module: &Module) -> Function {
 }
 
 //コード生成する関数
-pub fn code_gen(ast: ast::ProgramAST, file_name: &str) {
-    //llvm初期化
-    init_llvm_all_target();
-    let codegen = CodeGenerator::new();
-    let module = Module::new("my_module");
+impl ast::ProgramAST {
+    pub fn code_gen(self, file_name: &str) {
+        //llvm初期化
+        init_llvm_all_target();
+        let codegen = CodeGenerator::new();
+        let module = Module::new("my_module");
 
-    let print_func = extern_test_func(&module);
+        let print_func = extern_test_func(&module);
 
-    //main関数生成して、内部のブロックにポジション設定
-    let function_type = function_type(int32_type(), vec![]);
-    let function = Function::new("main", &module, function_type);
+        self.stmt_list.into_iter().for_each(|stmt| match stmt {
+            ast::StmtAST::DefFuncAST(def_func_ast) => {
+                gen_def_func(def_func_ast, &print_func, &module, &codegen)
+            }
+            _ => (),
+        });
+        if let Some(err_msg) = module.verify_module() {
+            panic!("llvm error:{}", err_msg);
+        }
+        module.dump_module();
+
+        output_file(file_name, module, codegen);
+    }
+}
+
+fn gen_def_func(
+    def_func_ast: ast::DefFuncAST,
+    print_func: &Function,
+    module: &Module,
+    codegen: &CodeGenerator,
+) {
+    let function_type = function_type(
+        int32_type(),
+        def_func_ast
+            .params
+            .iter()
+            .map(|_| int32_type())
+            .collect(),
+    );
+    let function = Function::new(&def_func_ast.func_name, &module, function_type);
+    function.get_params(def_func_ast.params.len()).
+        into_iter().
+        zip(def_func_ast.params.into_iter()).
+        for_each(|(val_ref, variable_ast)|
+            set_value_name(val_ref, &variable_ast.id));
     let entry_block = function.append_basic_block("entry");
     codegen.position_builder_at_end(entry_block);
-
-    ast.stmt_list.into_iter().for_each(|stmt| match stmt {
-        ast::StmtAST::ExprAST(expr_ast) => {
-            let value = gen_expr(expr_ast, &module, &codegen);
-            codegen.build_call(print_func.llvm_function, vec![value], "");
-        }
-        _ => (),
-    });
+    let value = gen_expr(def_func_ast.body, &module, &codegen);
+    codegen.build_call(print_func.llvm_function, vec![value], "");
     codegen.build_ret(const_int(int32_type(), 0, false));
-    if let Some(err_msg) = module.verify_module() {
-        panic!("llvm error:{}", err_msg);
-    }
-    module.dump_module();
-    output_file(file_name, module, codegen);
 }
 
 //四則演算のコード生成
@@ -59,6 +81,7 @@ fn gen_expr(expr_ast: ast::ExprAST, module: &Module, codegen: &CodeGenerator) ->
             }
         }
         ast::ExprAST::ParenAST(paren_ast) => gen_expr(paren_ast.expr, module, codegen),
+        _ => const_int(int32_type(), 0, true),
     }
 }
 

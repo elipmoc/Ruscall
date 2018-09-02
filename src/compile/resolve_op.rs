@@ -10,25 +10,36 @@ pub fn resolve_op(ast: ast::ProgramAST) -> ResolveResult<ast::ProgramAST> {
     let mut infix_hash: InfixHash = HashMap::new();
     let mut new_stmt_list = Vec::with_capacity(ast.stmt_list.len());
     for stmt in ast.stmt_list {
-        new_stmt_list.push(stmt_resolve_op(&mut infix_hash, stmt)?);
+        new_stmt_list.push(stmt.resolve_op(&mut infix_hash)?);
     }
     Result::Ok(ast::ProgramAST {
         stmt_list: new_stmt_list,
     })
 }
 
-fn stmt_resolve_op(infix_hash: &mut InfixHash, stmt: ast::StmtAST) -> ResolveResult<ast::StmtAST> {
-    let new_stmt = match stmt {
-        ast::StmtAST::ExprAST(expr_ast) => {
-            ast::StmtAST::ExprAST(expr_ast.resolve_op(infix_hash)?.get_expr_ast())
-        }
-        ast::StmtAST::InfixAST(infix) => {
-            regist_infix(infix_hash, infix);
-            ast::StmtAST::NoneAST
-        }
-        _ => panic!("bug!!!"),
-    };
-    Result::Ok(new_stmt)
+impl ast::StmtAST {
+    pub fn resolve_op(self, infix_hash: &mut InfixHash) -> ResolveResult<ast::StmtAST> {
+        let new_stmt = match self {
+            ast::StmtAST::DefFuncAST(def_func_ast) => {
+                ast::StmtAST::DefFuncAST(def_func_ast.resolve_op(infix_hash)?)
+            }
+            ast::StmtAST::InfixAST(infix) => {
+                regist_infix(infix_hash, infix);
+                ast::StmtAST::NoneAST
+            }
+            x => x,
+        };
+        Result::Ok(new_stmt)
+    }
+}
+
+impl ast::DefFuncAST {
+    pub fn resolve_op(self, infix_hash: &InfixHash) -> ResolveResult<ast::DefFuncAST> {
+        Result::Ok(ast::DefFuncAST {
+            body: self.body.resolve_op(infix_hash)?.get_expr_ast(),
+            ..self
+        })
+    }
 }
 
 fn regist_infix(infix_hash: &mut InfixHash, infix: ast::InfixAST) {
@@ -36,17 +47,15 @@ fn regist_infix(infix_hash: &mut InfixHash, infix: ast::InfixAST) {
 }
 
 pub enum Resolved {
-    NumAST(ast::NumAST),
+    OtherExprAST(ast::ExprAST),
     OpAST(ast::OpAST, ast::InfixAST),
-    ParenAST(ast::ParenAST),
 }
 
 impl Resolved {
     pub fn get_expr_ast(self) -> ast::ExprAST {
         match self {
             Resolved::OpAST(x, _) => ast::ExprAST::OpAST(Box::new(x)),
-            Resolved::NumAST(x) => ast::ExprAST::NumAST(x),
-            Resolved::ParenAST(x) => ast::ExprAST::ParenAST(Box::new(x)),
+            Resolved::OtherExprAST(x) => x,
         }
     }
 }
@@ -101,10 +110,12 @@ impl ast::ExprAST {
     pub fn resolve_op(self, infix_hash: &InfixHash) -> ResolveResult<Resolved> {
         let resolved = match self {
             ast::ExprAST::OpAST(op_ast) => op_ast.swap_op(infix_hash)?,
-            ast::ExprAST::NumAST(num_ast) => Resolved::NumAST(num_ast),
-            ast::ExprAST::ParenAST(paren_ast) => Resolved::ParenAST(ast::ParenAST {
-                expr: paren_ast.expr.resolve_op(infix_hash)?.get_expr_ast(),
-            }),
+            ast::ExprAST::ParenAST(paren_ast) => {
+                Resolved::OtherExprAST(ast::ExprAST::create_paren_ast(
+                    paren_ast.expr.resolve_op(infix_hash)?.get_expr_ast(),
+                ))
+            }
+            x => Resolved::OtherExprAST(x),
         };
         Result::Ok(resolved)
     }

@@ -1,5 +1,5 @@
 use super::ast;
-use combine::char::{char, digit, newline, space, string, tab};
+use combine::char::{alpha_num, char, digit, letter, newline, space, string, tab};
 use combine::easy;
 use combine::parser::combinator::try;
 use combine::stream;
@@ -8,7 +8,7 @@ use combine::{eof, many, many1, position, unexpected, value, Parser};
 /*
 BNF
 <program>  := {<stmt>}
-<stmt>     := <skip_many> ( <infix> | <expr_app> | <def_func>) <skip_many> ';'
+<stmt>     := <skip_many> ( <infix> | <def_func>) <skip_many> ';'
 <def_func> := <id> {<skip_many> <id>} <skip_many> '=' <skip_many> <expr_app>
 <id>       := [a-z]{ [a-z] | [0-9] | '_' }
 <expr_app> := <expr> { <expr> }
@@ -53,11 +53,31 @@ parser!{
         skip_many_parser().
         with (
             infix_parser().map(|x|ast::StmtAST::InfixAST(x)).
-            or(expr_parser().map(|x|ast::StmtAST::ExprAST(x)))
+            or(def_func_parser().map(|x|ast::StmtAST::DefFuncAST(x)))
         ).
         skip(
             skip_many_parser()
         ).skip(char(';'))
+    }
+}
+
+//<def_func>
+parser!{
+   fn def_func_parser['a]()(MyStream<'a>) ->ast::DefFuncAST
+    {
+        (
+            id_parser().skip(skip_many_parser()),
+            many(id_parser().skip(skip_many_parser()).map(ast::VariableAST::new)),
+            char('=').with(skip_many_parser()).with(expr_parser())
+        ).map(|(func_name,params,body)|{ast::DefFuncAST::new(func_name,params,body)})
+    }
+}
+
+//<id>
+parser!{
+   fn id_parser['a]()(MyStream<'a>) ->String
+    {
+        (letter(),many(alpha_num().or(char('_')))).map(|(x,y):(char,String)|x.to_string()+&y)
     }
 }
 
@@ -135,7 +155,8 @@ parser!{
         .or(
             num_parser()
             .map(ast::ExprAST::create_num_ast)
-            .map(ast::ExprAST::create_paren_ast)
+        ).or(
+            id_parser().skip(skip_many_parser()).map(|id|ast::ExprAST::VariableAST(ast::VariableAST::new(id)))
         )
     }
 }
@@ -179,7 +200,6 @@ parser!{
 //<space>
 parser!{
    fn space_parser['a]()(MyStream<'a>) ->()
-
     {
         space().or(tab()).map(|_|())
     }

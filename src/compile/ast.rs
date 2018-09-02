@@ -7,8 +7,9 @@ pub struct ProgramAST {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum StmtAST {
-    ExprAST(ExprAST),
+    //   ExprAST(ExprAST),
     InfixAST(InfixAST),
+    DefFuncAST(DefFuncAST),
     NoneAST,
 }
 
@@ -16,6 +17,7 @@ pub enum StmtAST {
 pub enum ExprAST {
     OpAST(Box<OpAST>),
     NumAST(NumAST),
+    VariableAST(VariableAST),
     ParenAST(Box<ParenAST>),
 }
 
@@ -90,13 +92,29 @@ impl OpAST {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct IdAST {
+pub struct VariableAST {
     pub id: String,
+}
+
+impl VariableAST {
+    pub fn new(id: String) -> VariableAST {
+        VariableAST { id: id }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct DefFuncAST {
     pub func_name: String,
-    pub params: Vec<String>,
+    pub params: Vec<VariableAST>,
     pub body: ExprAST,
+}
+
+impl DefFuncAST {
+    pub fn new(func_name: String, params: Vec<VariableAST>, body: ExprAST) -> DefFuncAST {
+        DefFuncAST {
+            func_name: func_name,
+            params: params,
+            body: body,
+        }
+    }
 }
