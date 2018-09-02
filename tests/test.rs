@@ -55,19 +55,19 @@ fn create_infixr_ast(op: &str, priority: i8) -> ast::StmtAST {
 fn infix_parse_test() {
     use ruscall::compile::parser::parse;
     assert_eq!(
-        parse("infixl 4 +").unwrap().0,
+        parse("infixl 4 +;").unwrap().0,
         ast::ProgramAST {
             stmt_list: vec![create_infixl_ast("+", 4)],
         }
     );
     assert_eq!(
-        parse("infixr 7 /").unwrap().0,
+        parse("infixr 7 /;").unwrap().0,
         ast::ProgramAST {
             stmt_list: vec![create_infixr_ast("/", 7)],
         }
     );
     assert_eq!(
-        parse("  infixr 7 / \n infixl 9 * \tinfixr 1 -").unwrap().0,
+        parse("  infixr 7 / \n; infixl 9 * ;\tinfixr 1 -;").unwrap().0,
         ast::ProgramAST {
             stmt_list: vec![
                 create_infixr_ast("/", 7),
