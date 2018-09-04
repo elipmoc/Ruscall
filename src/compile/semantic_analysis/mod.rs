@@ -1,6 +1,8 @@
-pub use super::ast::ProgramAST;
+mod resolve_op;
+mod ast_to_ir;
+pub mod ir_tree;
 
-pub mod resolve_op;
+pub use super::ast::ProgramAST;
 
 use self::resolve_op::{resolve_op, ResolveOpResult};
 
