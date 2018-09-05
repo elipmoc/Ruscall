@@ -34,7 +34,7 @@ impl ast::StmtAST {
             ast::StmtAST::DefFuncAST(def_func_ast) => {
                 let var_table = VariableTable(def_func_ast.params.into_iter().map(|x| x.id).collect());
                 let body_ir = def_func_ast.body.to_ir(&var_table);
-                Option::Some(ir::FuncIr::new(var_table.id_list(), body_ir))
+                Option::Some(ir::FuncIr::new(def_func_ast.func_name,var_table.id_list(), body_ir))
             }
             x => Option::None
         }
@@ -74,7 +74,7 @@ fn ast_to_ir_test() {
     };
     let ir = ir::ProgramIr {
         func_list: vec![
-            ir::FuncIr::new(vec![1, 0], ir::ExprIr::create_variableir(0))
+            ir::FuncIr::new("hoge".to_string(),vec![1, 0], ir::ExprIr::create_variableir(0))
         ]
     };
     assert_eq!(ast.to_ir(),ir);

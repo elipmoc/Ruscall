@@ -5,13 +5,14 @@ pub struct ProgramIr {
 
 #[derive(Debug, PartialEq)]
 pub struct FuncIr {
-    params: Vec<usize>,
-    body: ExprIr,
+    pub name:String,
+    pub params: Vec<usize>,
+    pub body: ExprIr,
 }
 
 impl FuncIr {
-    pub fn new(params: Vec<usize>, body: ExprIr) -> FuncIr {
-        FuncIr { params, body }
+    pub fn new(name:String,params: Vec<usize>, body: ExprIr) -> FuncIr {
+        FuncIr { name,params, body }
     }
 }
 
@@ -48,5 +49,5 @@ pub struct NumIr {
 
 #[derive(Debug, PartialEq)]
 pub struct VariableIr {
-    id: usize
+    pub id: usize
 }

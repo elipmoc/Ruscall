@@ -16,7 +16,7 @@ pub fn compile(file_name: &str) {
     f.read_to_string(&mut src_str).unwrap();
     let src_str: &str = &src_str;
     match parse(src_str) {
-        Ok(ast) => ast.code_gen("compiled"),
+        Ok(ast) => ast.to_ir().code_gen("compiled"),
         Err(err) => println!("{}", err),
     };
 }
