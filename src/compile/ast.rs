@@ -36,8 +36,8 @@ impl ExprAST {
     pub fn create_paren_ast(expr_ast: ExprAST) -> ExprAST {
         ExprAST::ParenAST(Box::new(ParenAST { expr: expr_ast }))
     }
-    pub fn create_variable_ast(id: String) -> ExprAST {
-        ExprAST::VariableAST(VariableAST { id })
+    pub fn create_variable_ast(id: String,pos:SourcePosition) -> ExprAST {
+        ExprAST::VariableAST(VariableAST { id ,pos})
     }
 }
 
@@ -97,11 +97,12 @@ impl OpAST {
 #[derive(Debug, Clone, PartialEq)]
 pub struct VariableAST {
     pub id: String,
+    pub pos:SourcePosition
 }
 
 impl VariableAST {
-    pub fn new(id: String) -> VariableAST {
-        VariableAST { id: id }
+    pub fn new(id: String,pos:SourcePosition) -> VariableAST {
+        VariableAST { id,pos}
     }
 }
 

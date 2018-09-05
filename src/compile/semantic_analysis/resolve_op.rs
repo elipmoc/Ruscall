@@ -4,7 +4,6 @@ use std::collections::HashMap;
 
 type InfixHash = HashMap<String, ast::InfixAST>;
 type ResolveResult<T> = Result<T, Error>;
-pub type ResolveOpResult = ResolveResult<ast::ProgramAST>;
 
 //RawExprをOpASTに置き換えたProgramASTを得る
 pub fn resolve_op(ast: ast::ProgramAST) -> ResolveResult<ast::ProgramAST> {

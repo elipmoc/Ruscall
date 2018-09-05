@@ -1,6 +1,7 @@
 use combine::easy;
 use combine::stream::state::SourcePosition;
 
+#[derive(Debug)]
 pub struct Error {
     pos: SourcePosition,
     msg: String,

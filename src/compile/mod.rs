@@ -8,6 +8,7 @@ pub mod types;
 use self::error::Error;
 use std::fs;
 use std::io::{BufReader, Read};
+use self::semantic_analysis::ir_tree as ir;
 
 pub fn compile(file_name: &str) {
     println!("input:{}", file_name);
@@ -16,20 +17,20 @@ pub fn compile(file_name: &str) {
     f.read_to_string(&mut src_str).unwrap();
     let src_str: &str = &src_str;
     match parse(src_str) {
-        Ok(ast) => ast.to_ir().code_gen("compiled"),
+        Ok(ir) => ir.code_gen("compiled"),
         Err(err) => println!("{}", err),
     };
 }
 
-fn parse(src_str: &str) -> Result<ast::ProgramAST, String> {
+fn parse(src_str: &str) -> Result<ir::ProgramIr, String> {
     match parser::parse(src_str) {
         Ok(ast) => {
             println!("\nparse\n{:?}\n", ast);
-            let result_ast = semantic_analysis::analysis(ast.0);
-            match result_ast {
-                Ok(ast) => {
-                    println!("resolve_op\n{:?}\n", ast);
-                    Result::Ok(ast)
+            let result_ir = semantic_analysis::analysis(ast.0);
+            match result_ir{
+                Ok(ir) => {
+                    println!("resolve_op\n{:?}\n", ir);
+                    Result::Ok(ir)
                 }
                 Err(err) => Result::Err(err.to_string()),
             }

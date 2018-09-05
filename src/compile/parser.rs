@@ -39,7 +39,7 @@ pub fn parse(
 type MyStream<'a> = easy::Stream<State<&'a str, <&'a str as DefaultPositioned>::Positioner>>;
 
 //<program>
-parser!{
+parser! {
    fn program_parser['a]()(MyStream<'a>) ->ast::ProgramAST
     {
         many(stmt_parser()).skip(eof().expected("statement or infix")).map(|x|ast::ProgramAST{stmt_list:x})
@@ -47,7 +47,7 @@ parser!{
 }
 
 //<stmt>
-parser!{
+parser! {
    fn stmt_parser['a]()(MyStream<'a>) ->ast::StmtAST
     {
         skip_many_parser().
@@ -62,19 +62,19 @@ parser!{
 }
 
 //<def_func>
-parser!{
+parser! {
    fn def_func_parser['a]()(MyStream<'a>) ->ast::DefFuncAST
     {
         (
             id_parser().skip(skip_many_parser()),
-            many(id_parser().skip(skip_many_parser()).map(ast::VariableAST::new)),
+            many((position(),id_parser()).skip(skip_many_parser()).map(|(pos,id)|ast::VariableAST::new(id,pos))),
             char('=').with(skip_many_parser()).with(expr_parser())
         ).map(|(func_name,params,body)|{ast::DefFuncAST::new(func_name,params,body)})
     }
 }
 
 //<id>
-parser!{
+parser! {
    fn id_parser['a]()(MyStream<'a>) ->String
     {
         (letter(),many(alpha_num().or(char('_')))).map(|(x,y):(char,String)|x.to_string()+&y)
@@ -82,7 +82,7 @@ parser!{
 }
 
 //<expr>
-parser!{
+parser! {
     fn expr_parser['a]()(MyStream<'a>)->ast::ExprAST
     {
         (
@@ -102,7 +102,7 @@ parser!{
 }
 
 //<infix>
-parser!{
+parser! {
     fn infix_parser['a]()(MyStream<'a>)->ast::InfixAST
     {
         (try(string("infixr")).
@@ -137,7 +137,7 @@ parser!{
 }
 
 //<op>
-parser!{
+parser! {
     fn op_parser['a]()(MyStream<'a>)->String
     {
         string("+").
@@ -148,7 +148,7 @@ parser!{
 }
 
 //<term>
-parser!{
+parser! {
     fn term_parser['a]()(MyStream<'a>)->ast::ExprAST
     {
         paren_parser()
@@ -156,13 +156,15 @@ parser!{
             num_parser()
             .map(ast::ExprAST::create_num_ast)
         ).or(
-            id_parser().skip(skip_many_parser()).map(|id|ast::ExprAST::VariableAST(ast::VariableAST::new(id)))
+            (position(),id_parser())
+            .skip(skip_many_parser())
+            .map(|(pos,id)|ast::ExprAST::VariableAST(ast::VariableAST::new(id,pos)))
         )
     }
 }
 
 //<paren>
-parser!{
+parser! {
     fn paren_parser['a]()(MyStream<'a>)->ast::ExprAST
     {
         char('(')
@@ -173,7 +175,7 @@ parser!{
 }
 
 //<num>
-parser!{
+parser! {
     fn num_parser['a]()(MyStream<'a>)->String
     {
         many1(digit())
@@ -181,7 +183,7 @@ parser!{
 }
 
 //<skip>
-parser!{
+parser! {
     fn skip_parser['a]()(MyStream<'a>)->()
     {
         newline().map(|_|()).or(space_parser())
@@ -189,7 +191,7 @@ parser!{
 }
 
 //<skip_many>
-parser!{
+parser! {
     fn skip_many_parser['a]()(MyStream<'a>)->()
 
     {
@@ -198,7 +200,7 @@ parser!{
 }
 
 //<space>
-parser!{
+parser! {
    fn space_parser['a]()(MyStream<'a>) ->()
     {
         space().or(tab()).map(|_|())
