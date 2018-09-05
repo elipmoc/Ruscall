@@ -36,6 +36,9 @@ impl ExprAST {
     pub fn create_paren_ast(expr_ast: ExprAST) -> ExprAST {
         ExprAST::ParenAST(Box::new(ParenAST { expr: expr_ast }))
     }
+    pub fn create_variable_ast(id: String) -> ExprAST {
+        ExprAST::VariableAST(VariableAST { id })
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, PartialOrd)]

@@ -1,7 +1,9 @@
+#[derive(Debug, PartialEq)]
 pub struct ProgramIr {
-    func_list: Vec<FuncIr>
+    pub func_list: Vec<FuncIr>
 }
 
+#[derive(Debug, PartialEq)]
 pub struct FuncIr {
     params: Vec<usize>,
     body: ExprIr,
@@ -13,6 +15,7 @@ impl FuncIr {
     }
 }
 
+#[derive(Debug, PartialEq)]
 pub enum ExprIr {
     OpIr(Box<OpIr>),
     NumIr(NumIr),
@@ -31,16 +34,19 @@ impl ExprIr {
     }
 }
 
+#[derive(Debug, PartialEq)]
 pub struct OpIr {
     pub op: String,
     pub l_expr: ExprIr,
     pub r_expr: ExprIr,
 }
 
+#[derive(Debug, PartialEq)]
 pub struct NumIr {
     pub num: i32
 }
 
+#[derive(Debug, PartialEq)]
 pub struct VariableIr {
     id: usize
 }

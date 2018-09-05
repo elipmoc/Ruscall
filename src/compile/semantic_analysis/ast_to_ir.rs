@@ -2,7 +2,7 @@ use super::super::ast;
 use super::ir_tree as ir;
 
 impl ast::ProgramAST {
-    pub fn to_ir(self) {
+    pub fn to_ir(self) -> ir::ProgramIr {
         let mut func_list: Vec<ir::FuncIr> = vec![];
         self.stmt_list
             .into_iter()
@@ -11,6 +11,7 @@ impl ast::ProgramAST {
                     func_list.push(func_ir)
                 }
             });
+        ir::ProgramIr { func_list }
     }
 }
 
@@ -23,7 +24,7 @@ impl VariableTable {
         }).map(|(id, _)| id)
     }
     fn id_list(&self) -> Vec<usize> {
-        (0..self.0.len()).collect()
+        (0..self.0.len()).rev().collect()
     }
 }
 
@@ -55,3 +56,26 @@ impl ast::ExprAST {
     }
 }
 
+#[test]
+fn ast_to_ir_test() {
+    let ast = ast::ProgramAST {
+        stmt_list: vec![
+            ast::StmtAST::DefFuncAST(
+                ast::DefFuncAST::new(
+                    "hoge".to_string(),
+                    vec![
+                        ast::VariableAST::new("a".to_string()),
+                        ast::VariableAST::new("b".to_string())
+                    ],
+                    ast::ExprAST::create_variable_ast("b".to_string()),
+                )
+            )
+        ]
+    };
+    let ir = ir::ProgramIr {
+        func_list: vec![
+            ir::FuncIr::new(vec![1, 0], ir::ExprIr::create_variableir(0))
+        ]
+    };
+    assert_eq!(ast.to_ir(),ir);
+}
