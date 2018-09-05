@@ -19,7 +19,7 @@ impl ir::ProgramIr {
         let print_func = extern_test_func(&module);
 
         self.func_list.into_iter().for_each(|func|
-            func.gen_def_func(&print_func, &module, &codegen)
+            func.code_gen(&print_func, &module, &codegen)
         );
         if let Some(err_msg) = module.verify_module() {
             panic!("llvm error:{}", err_msg);
@@ -31,7 +31,7 @@ impl ir::ProgramIr {
 }
 
 impl ir::FuncIr {
-    fn gen_def_func(
+    fn code_gen(
         self,
         print_func: &Function,
         module: &Module,
@@ -46,42 +46,45 @@ impl ir::FuncIr {
                 .collect(),
         );
         let function = Function::new(&self.name, &module, function_type);
-        let params=function.get_params(self.params.len());
-            /*params.iter().
-            zip(self.params.into_iter().rev()).
-            for_each(|(val_ref, id)|
-                set_value_name(*val_ref, &format!("{}", id)));*/
+        let params = function.get_params(self.params.len());
+        /*params.iter().
+        zip(self.params.into_iter().rev()).
+        for_each(|(val_ref, id)|
+            set_value_name(*val_ref, &format!("{}", id)));*/
 
         let entry_block = function.append_basic_block("entry");
         codegen.position_builder_at_end(entry_block);
-        let value = self.body.gen_expr(&module, &codegen,&params);
+        let value = self.body.code_gen(&module, &codegen, &params);
         codegen.build_call(print_func.llvm_function, vec![value], "");
         codegen.build_ret(const_int(int32_type(), 0, false));
     }
 }
 
-//四則演算のコード生成
 impl ir::ExprIr {
-    fn gen_expr(self, module: &Module, codegen: &CodeGenerator,params:&Vec<LLVMValueRef>) -> LLVMValueRef {
+    fn code_gen(self, module: &Module, codegen: &CodeGenerator, params: &Vec<LLVMValueRef>) -> LLVMValueRef {
         match self {
             ir::ExprIr::NumIr(num_ir) => const_int(int32_type(), num_ir.num as u64, true),
-            ir::ExprIr::OpIr(op_ir) => {
-                let op_ir = *op_ir;
-                let lhs = op_ir.l_expr.gen_expr(module, codegen,params);
-                let rhs = op_ir.r_expr.gen_expr(module, codegen,params);
-                match &op_ir.op as &str {
-                    "+" => codegen.build_add(lhs, rhs, ""),
-                    "-" => codegen.build_sub(lhs, rhs, ""),
-                    "*" => codegen.build_mul(lhs, rhs, ""),
-                    "/" => {
-                        let lhs = codegen.build_si_to_fp(lhs, double_type(), "");
-                        let rhs = codegen.build_si_to_fp(rhs, double_type(), "");
-                        codegen.build_fp_to_si(codegen.build_fdiv(lhs, rhs, ""), int32_type(), "")
-                    }
-                    _ => panic!("error"),
-                }
+            ir::ExprIr::OpIr(op_ir) =>op_ir.code_gen(module, codegen, params),
+            ir::ExprIr::VariableIr(var_ir) => params[params.len() - var_ir.id - 1],
+        }
+    }
+}
+
+
+impl ir::OpIr {
+    fn code_gen(self, module: &Module, codegen: &CodeGenerator, params: &Vec<LLVMValueRef>) -> LLVMValueRef {
+        let lhs = self.l_expr.code_gen(module, codegen, params);
+        let rhs = self.r_expr.code_gen(module, codegen, params);
+        match &self.op as &str {
+            "+" => codegen.build_add(lhs, rhs, ""),
+            "-" => codegen.build_sub(lhs, rhs, ""),
+            "*" => codegen.build_mul(lhs, rhs, ""),
+            "/" => {
+                let lhs = codegen.build_si_to_fp(lhs, double_type(), "");
+                let rhs = codegen.build_si_to_fp(rhs, double_type(), "");
+                codegen.build_fp_to_si(codegen.build_fdiv(lhs, rhs, ""), int32_type(), "")
             }
-            ir::ExprIr::VariableIr(var_ir) =>  params[params.len()-var_ir.id-1],
+            _ => panic!("error"),
         }
     }
 }
