@@ -1,9 +1,11 @@
 extern crate llvm_sys as llvm;
+
 use self::llvm::analysis::*;
 use self::llvm::core::*;
 use self::llvm::prelude::*;
 use super::helper::*;
 use super::types::{TargetDataRef, TargetTriple};
+use super::function::Function;
 use std::os::raw::c_char;
 
 #[derive(Clone)]
@@ -37,8 +39,9 @@ impl Module {
         }
     }
 
-    pub fn get_named_function(&self, f_name: &str) -> LLVMValueRef {
-        unsafe { LLVMGetNamedFunction(self.llvm_module, string_cast(f_name).as_ptr()) }
+    pub fn get_named_function(&self, f_name: &str) -> Function {
+        let llvm_func = unsafe { LLVMGetNamedFunction(self.llvm_module, string_cast(f_name).as_ptr()) };
+        Function { llvm_function: llvm_func }
     }
 
     pub fn dump_module(&self) {
