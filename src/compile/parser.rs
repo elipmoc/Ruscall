@@ -68,7 +68,7 @@ parser! {
         (
             id_parser().skip(skip_many_parser()),
             many((position(),id_parser()).skip(skip_many_parser()).map(|(pos,id)|ast::VariableAST::new(id,pos))),
-            char('=').with(skip_many_parser()).with(expr_parser())
+            char('=').with(skip_many_parser()).with(expr_app_parser())
         ).map(|(func_name,params,body)|{ast::DefFuncAST::new(func_name,params,body)})
     }
 }
@@ -78,6 +78,15 @@ parser! {
    fn id_parser['a]()(MyStream<'a>) ->String
     {
         (letter(),many(alpha_num().or(char('_')))).map(|(x,y):(char,String)|x.to_string()+&y)
+    }
+}
+
+//<expr_app>
+parser!{
+    fn expr_app_parser['a]()(MyStream<'a>)->ast::ExprAST{
+        (expr_parser(),many(expr_parser())).map(|(x,xs):(ast::ExprAST,Vec<ast::ExprAST>)|{
+            ast::ExprAST::create_func_call_ast(x,xs)
+        })
     }
 }
 
@@ -168,7 +177,7 @@ parser! {
     fn paren_parser['a]()(MyStream<'a>)->ast::ExprAST
     {
         char('(')
-        .with(expr_parser())
+        .with(expr_app_parser())
         .map(ast::ExprAST::create_paren_ast)
         .skip(char(')'))
     }

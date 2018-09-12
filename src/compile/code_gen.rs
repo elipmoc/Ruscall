@@ -21,10 +21,10 @@ impl ir::ProgramIr {
         let print_func = extern_test_func(&module);
 
         //関数宣言のコード化
-        self.g_var_table.0.into_iter().for_each(|(k,v)|{
-            let func_type= function_type(int32_type(),vec![]);
-            let func=Function::new(&k,&module,func_type);
-            set_linkage(func.llvm_function,LLVMLinkage::LLVMExternalLinkage);
+        self.g_var_table.0.into_iter().for_each(|(k, v)| {
+            let func_type = function_type(int32_type(), (0..v).map(|_| int32_type()).collect());
+            let func = Function::new(&k, &module, func_type);
+            set_linkage(func.llvm_function, LLVMLinkage::LLVMExternalLinkage);
         });
 
         //関数定義のコード化
@@ -47,7 +47,7 @@ impl ir::FuncIr {
         module: &Module,
         codegen: &CodeGenerator,
     ) {
-        let function=module.get_named_function(&self.name);
+        let function = module.get_named_function(&self.name);
         let params = function.get_params(self.params.len());
 
         let entry_block = function.append_basic_block("entry");
@@ -62,17 +62,28 @@ impl ir::ExprIr {
     fn code_gen(self, module: &Module, codegen: &CodeGenerator, params: &Vec<LLVMValueRef>) -> LLVMValueRef {
         match self {
             ir::ExprIr::NumIr(num_ir) => const_int(int32_type(), num_ir.num as u64, true),
-            ir::ExprIr::OpIr(op_ir) =>op_ir.code_gen(module, codegen, params),
+            ir::ExprIr::OpIr(op_ir) => op_ir.code_gen(module, codegen, params),
             ir::ExprIr::VariableIr(var_ir) => params[params.len() - var_ir.id - 1],
-            ir::ExprIr::CallGlobalVariableIr(x)=>x.code_gen(module,codegen)
+            ir::ExprIr::GlobalVariableIr(x) => x.code_gen(module, codegen),
+            ir::ExprIr::CallIr(x) => x.code_gen(module, codegen, params)
         }
     }
 }
 
-impl ir::CallGlobalVariableIr{
-    fn code_gen(self,module:&Module,codegen:&CodeGenerator)->LLVMValueRef{
-       let func =module.get_named_function(&self.id);
-        codegen.build_call(func.llvm_function,vec![],"")
+impl ir::GlobalVariableIr {
+    fn code_gen(self, module: &Module, codegen: &CodeGenerator) -> LLVMValueRef {
+        let func = module.get_named_function(&self.id);
+        func.llvm_function
+    }
+}
+
+impl ir::CallIr {
+    fn code_gen(self, module: &Module, codegen: &CodeGenerator, params: &Vec<LLVMValueRef>) -> LLVMValueRef {
+        let func = self.func.code_gen(module, codegen, params);
+        let params =
+            self.params.into_iter()
+                .map(|x| x.code_gen(module, codegen, params)).collect();
+        codegen.build_call(func, params, "")
     }
 }
 

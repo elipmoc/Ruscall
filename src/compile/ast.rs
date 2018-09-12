@@ -13,34 +13,6 @@ pub enum StmtAST {
     NoneAST,
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub enum ExprAST {
-    OpAST(Box<OpAST>),
-    NumAST(NumAST),
-    VariableAST(VariableAST),
-    ParenAST(Box<ParenAST>),
-}
-
-impl ExprAST {
-    pub fn create_op_ast(
-        op: String,
-        pos: SourcePosition,
-        l_expr: ExprAST,
-        r_expr: ExprAST,
-    ) -> ExprAST {
-        ExprAST::OpAST(Box::new(OpAST::new(op, pos, l_expr, r_expr)))
-    }
-    pub fn create_num_ast(num: String) -> ExprAST {
-        ExprAST::NumAST(NumAST::new(num))
-    }
-    pub fn create_paren_ast(expr_ast: ExprAST) -> ExprAST {
-        ExprAST::ParenAST(Box::new(ParenAST { expr: expr_ast }))
-    }
-    pub fn create_variable_ast(id: String,pos:SourcePosition) -> ExprAST {
-        ExprAST::VariableAST(VariableAST { id ,pos})
-    }
-}
-
 #[derive(Debug, Copy, Clone, PartialEq, PartialOrd)]
 pub struct Priority(pub i8);
 
@@ -58,6 +30,38 @@ pub enum InfixType {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub enum ExprAST {
+    OpAST(Box<OpAST>),
+    NumAST(NumAST),
+    VariableAST(VariableAST),
+    ParenAST(Box<ParenAST>),
+    FuncCallAST(Box<FuncCallAST>),
+}
+
+impl ExprAST {
+    pub fn create_op_ast(
+        op: String,
+        pos: SourcePosition,
+        l_expr: ExprAST,
+        r_expr: ExprAST,
+    ) -> ExprAST {
+        ExprAST::OpAST(Box::new(OpAST::new(op, pos, l_expr, r_expr)))
+    }
+    pub fn create_num_ast(num: String) -> ExprAST {
+        ExprAST::NumAST(NumAST::new(num))
+    }
+    pub fn create_paren_ast(expr_ast: ExprAST) -> ExprAST {
+        ExprAST::ParenAST(Box::new(ParenAST { expr: expr_ast }))
+    }
+    pub fn create_variable_ast(id: String, pos: SourcePosition) -> ExprAST {
+        ExprAST::VariableAST(VariableAST { id, pos })
+    }
+    pub fn create_func_call_ast(func: ExprAST, params: Vec<ExprAST>) -> ExprAST {
+        ExprAST::FuncCallAST(Box::new(FuncCallAST { func, params }))
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct NumAST {
     pub num: i32,
 }
@@ -68,11 +72,6 @@ impl NumAST {
             num: num.parse().unwrap(),
         }
     }
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct ParenAST {
-    pub expr: ExprAST,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -97,13 +96,24 @@ impl OpAST {
 #[derive(Debug, Clone, PartialEq)]
 pub struct VariableAST {
     pub id: String,
-    pub pos:SourcePosition
+    pub pos: SourcePosition,
 }
 
 impl VariableAST {
-    pub fn new(id: String,pos:SourcePosition) -> VariableAST {
-        VariableAST { id,pos}
+    pub fn new(id: String, pos: SourcePosition) -> VariableAST {
+        VariableAST { id, pos }
     }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ParenAST {
+    pub expr: ExprAST,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct FuncCallAST {
+    pub func: ExprAST,
+    pub params: Vec<ExprAST>,
 }
 
 #[derive(Debug, Clone, PartialEq)]

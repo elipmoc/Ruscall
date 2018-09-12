@@ -63,11 +63,23 @@ impl ast::ExprAST {
                         Some(x) => ir::ExprIr::create_variableir(x),
                         _ => {
                             g_var_table.register_func_name(x.id.clone());
-                            ir::ExprIr::create_call_global_variableir(x.id)
+                            ir::ExprIr::create_global_variableir(x.id)
                         }
                         //return Result::Err(Error::new(x.pos, &("not found param ".to_owned() + &x.id)))
                     },
-                ast::ExprAST::ParenAST(x) => x.expr.to_ir(var_table, g_var_table)?
+                ast::ExprAST::ParenAST(x) => x.expr.to_ir(var_table, g_var_table)?,
+                ast::ExprAST::FuncCallAST(x) => {
+                    let x = *x;
+                    let func = x.func.to_ir(var_table, g_var_table)?;
+                    if (x.params.len() == 0) {
+                        func
+                    } else {
+                        let params: ResultIr<Vec<ir::ExprIr>> =
+                            x.params.into_iter()
+                                .map(|x| x.to_ir(var_table, g_var_table)).collect();
+                        ir::ExprIr::create_callir(func, params?)
+                    }
+                }
             };
         Result::Ok(ir)
     }
