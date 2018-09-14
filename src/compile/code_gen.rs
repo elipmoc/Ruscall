@@ -1,7 +1,6 @@
 use super::super::my_llvm::easy::*;
 use super::semantic_analysis::ir_tree as ir;
 
-use super::semantic_analysis::global_variable_table::ConfirmGlobalVariableTable;
 
 fn extern_test_func(module: &Module) -> Function {
     let function_type = function_type(void_type(), vec![int32_type()]);
@@ -64,14 +63,14 @@ impl ir::ExprIr {
             ir::ExprIr::NumIr(num_ir) => const_int(int32_type(), num_ir.num as u64, true),
             ir::ExprIr::OpIr(op_ir) => op_ir.code_gen(module, codegen, params),
             ir::ExprIr::VariableIr(var_ir) => params[params.len() - var_ir.id - 1],
-            ir::ExprIr::GlobalVariableIr(x) => x.code_gen(module, codegen),
+            ir::ExprIr::GlobalVariableIr(x) => x.code_gen(module),
             ir::ExprIr::CallIr(x) => x.code_gen(module, codegen, params)
         }
     }
 }
 
 impl ir::GlobalVariableIr {
-    fn code_gen(self, module: &Module, codegen: &CodeGenerator) -> LLVMValueRef {
+    fn code_gen(self, module: &Module) -> LLVMValueRef {
         let func = module.get_named_function(&self.id);
         func.llvm_function
     }

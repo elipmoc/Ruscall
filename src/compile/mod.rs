@@ -9,7 +9,6 @@ use self::error::Error;
 use std::fs;
 use std::io::{BufReader, Read};
 use self::semantic_analysis::ir_tree as ir;
-use self::semantic_analysis::global_variable_table::ConfirmGlobalVariableTable;
 
 pub fn compile(file_name: &str) {
     println!("input:{}", file_name);

@@ -1,7 +1,7 @@
 use super::super::ast;
 use super::ir_tree as ir;
 use super::super::error::Error;
-use super::global_variable_table::{GlobalVariableTable, ConfirmGlobalVariableTable};
+use super::global_variable_table::GlobalVariableTable;
 
 type ResultIr<T> = Result<T, Error>;
 
@@ -16,7 +16,7 @@ impl ast::ProgramAST {
         }
         match g_var_table.get_confirm() {
             None => Result::Err(Error::new(SourcePosition { line: 0, column: 0 }, "undefined function")),
-            Some(g_var_table) => Result::Ok((ir::ProgramIr { func_list, g_var_table }))
+            Some(g_var_table) => Result::Ok(ir::ProgramIr { func_list, g_var_table })
         }
     }
 }
@@ -25,7 +25,7 @@ struct VariableTable(Vec<String>);
 
 impl VariableTable {
     fn find_variable_id(&self, name: &String) -> Option<usize> {
-        self.0.iter().rev().enumerate().find(|(id, name2)| {
+        self.0.iter().rev().enumerate().find(|(_, name2)| {
             *name2 == name
         }).map(|(id, _)| id)
     }
@@ -43,7 +43,7 @@ impl ast::StmtAST {
                 let body_ir = def_func_ast.body.to_ir(&var_table, g_var_table);
                 Option::Some(ir::FuncIr::new(def_func_ast.func_name, var_table.id_list(), body_ir?))
             }
-            x => Option::None
+            _ => Option::None
         };
         Result::Ok(option)
     }
@@ -71,7 +71,7 @@ impl ast::ExprAST {
                 ast::ExprAST::FuncCallAST(x) => {
                     let x = *x;
                     let func = x.func.to_ir(var_table, g_var_table)?;
-                    if (x.params.len() == 0) {
+                    if x.params.len() == 0 {
                         func
                     } else {
                         let params: ResultIr<Vec<ir::ExprIr>> =
