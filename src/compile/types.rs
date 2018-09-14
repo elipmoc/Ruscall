@@ -2,6 +2,7 @@
 pub enum Type {
     Int32,
     FuncType(Box<FuncType>),
+    Unknown
 }
 
 impl Type {

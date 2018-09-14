@@ -1,7 +1,6 @@
 mod resolve_op;
 pub mod ast_to_ir;
 pub mod ir_tree;
-pub mod global_variable_table;
 
 pub use super::ast::ProgramAST;
 pub use self::ir_tree as ir;

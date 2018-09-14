@@ -1,24 +1,18 @@
 use super::super::ast;
 use super::ir_tree as ir;
 use super::super::error::Error;
-use super::global_variable_table::GlobalVariableTable;
-use super::super::types::{Type,FuncType};
+use super::super::types::{Type, FuncType};
+use std::collections::HashMap;
 
 type ResultIr<T> = Result<T, Error>;
 
 impl ast::ProgramAST {
     pub fn to_ir(self) -> ResultIr<(ir::ProgramIr)> {
-        let mut func_list: Vec<ir::FuncIr> = vec![];
-        let mut g_var_table = GlobalVariableTable::new();
+        let mut func_list: HashMap<String, ir::FuncIr> = HashMap::new();
         for stmt in self.stmt_list {
-            if let Some(func_ir) = stmt.to_ir(&mut g_var_table)? {
-                func_list.push(func_ir)
-            }
+            stmt.to_ir(&mut func_list)?;
         }
-        match g_var_table.get_confirm() {
-            None => Result::Err(Error::new(SourcePosition { line: 0, column: 0 }, "undefined function")),
-            Some(g_var_table) => Result::Ok(ir::ProgramIr { func_list, g_var_table })
-        }
+        Result::Ok(ir::ProgramIr { func_list })
     }
 }
 
@@ -36,19 +30,23 @@ impl VariableTable {
 }
 
 impl ast::StmtAST {
-    fn to_ir(self, g_var_table: &mut GlobalVariableTable) -> ResultIr<Option<ir::FuncIr>> {
+    fn to_ir(self, func_list: &mut HashMap<String, ir::FuncIr>) -> ResultIr<Option<ir::FuncIr>> {
         let option = match self {
             ast::StmtAST::DefFuncAST(def_func_ast) => {
-                g_var_table.register_func(
-                    def_func_ast.func_name.clone(),
-                    FuncType{
-                        param_types:(0..def_func_ast.params.len()).map(|_|Type::Int32).collect(),
-                        ret_type: Type::Int32
-                    }
-                );
+                let func_type = FuncType {
+                    param_types: (0..def_func_ast.params.len()).map(|_| Type::Int32).collect(),
+                    ret_type: Type::Int32,
+                };
                 let var_table = VariableTable(def_func_ast.params.into_iter().map(|x| x.id).collect());
-                let body_ir = def_func_ast.body.to_ir(&var_table, g_var_table);
-                Option::Some(ir::FuncIr::new(def_func_ast.func_name, var_table.id_list(), body_ir?))
+                let body_ir = def_func_ast.body.to_ir(&var_table);
+                let func_ir = ir::FuncIr::new(
+                    def_func_ast.func_name,
+                    var_table.id_list(),
+                    body_ir?,
+                    Type::FuncType(Box::new(func_type)),
+                );
+                func_list.insert(func_ir.name.clone(), func_ir);
+                Option::None
             }
             _ => Option::None
         };
@@ -57,33 +55,29 @@ impl ast::StmtAST {
 }
 
 impl ast::ExprAST {
-    fn to_ir(self, var_table: &VariableTable, g_var_table: &mut GlobalVariableTable) -> ResultIr<ir::ExprIr> {
+    fn to_ir(self, var_table: &VariableTable) -> ResultIr<ir::ExprIr> {
         let ir =
             match self {
                 ast::ExprAST::NumAST(x) => ir::ExprIr::create_numir(x.num),
                 ast::ExprAST::OpAST(x) => {
                     let x = *x;
-                    ir::ExprIr::create_opir(x.op, x.l_expr.to_ir(var_table, g_var_table)?, x.r_expr.to_ir(var_table, g_var_table)?)
+                    ir::ExprIr::create_opir(x.op, x.l_expr.to_ir(var_table)?, x.r_expr.to_ir(var_table)?)
                 }
                 ast::ExprAST::VariableAST(x) =>
                     match var_table.find_variable_id(&x.id) {
                         Some(x) => ir::ExprIr::create_variableir(x),
-                        _ => {
-                            g_var_table.register_func_name(x.id.clone());
-                            ir::ExprIr::create_global_variableir(x.id)
-                        }
-                        //return Result::Err(Error::new(x.pos, &("not found param ".to_owned() + &x.id)))
+                        _ => ir::ExprIr::create_global_variableir(x.id)
                     },
-                ast::ExprAST::ParenAST(x) => x.expr.to_ir(var_table, g_var_table)?,
+                ast::ExprAST::ParenAST(x) => x.expr.to_ir(var_table)?,
                 ast::ExprAST::FuncCallAST(x) => {
                     let x = *x;
-                    let func = x.func.to_ir(var_table, g_var_table)?;
+                    let func = x.func.to_ir(var_table)?;
                     if x.params.len() == 0 {
                         func
                     } else {
                         let params: ResultIr<Vec<ir::ExprIr>> =
                             x.params.into_iter()
-                                .map(|x| x.to_ir(var_table, g_var_table)).collect();
+                                .map(|x| x.to_ir(var_table)).collect();
                         ir::ExprIr::create_callir(func, params?)
                     }
                 }
@@ -93,8 +87,6 @@ impl ast::ExprAST {
 }
 
 pub use combine::stream::state::SourcePosition;
-pub use std::collections::HashMap;
-use super::global_variable_table::ConfirmGlobalVariableTable;
 
 #[test]
 fn ast_to_ir_test() {
@@ -112,13 +104,13 @@ fn ast_to_ir_test() {
             )
         ]
     };
-    let mut g_var_table = HashMap::new();
-    g_var_table.insert("hoge".to_string(), FuncType{ret_type:Type::Int32,param_types:vec![Type::Int32,Type::Int32]});
-    let ir = ir::ProgramIr {
-        func_list: vec![
-            ir::FuncIr::new("hoge".to_string(), vec![1, 0], ir::ExprIr::create_variableir(0))
-        ],
-        g_var_table: ConfirmGlobalVariableTable(g_var_table),
-    };
+    let mut func_list = HashMap::new();
+    func_list.insert(
+        "hoge".to_string(),
+        ir::FuncIr::new("hoge".to_string(), vec![1, 0], ir::ExprIr::create_variableir(0),
+                        Type::FuncType(Box::new(FuncType { ret_type: Type::Int32, param_types: vec![Type::Int32, Type::Int32] })),
+        ),
+    );
+    let ir = ir::ProgramIr { func_list };
     assert_eq!(ast.to_ir().unwrap(), ir);
 }

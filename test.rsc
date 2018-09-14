@@ -1,5 +1,8 @@
 infixl 1 +;
+infixl 1 -;
 
 add x y= x+y;
 
-main= add 0 5;
+main= sub(add 0 5) 1;
+
+sub x y  = x-y;

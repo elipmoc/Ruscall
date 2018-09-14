@@ -20,14 +20,14 @@ impl ir::ProgramIr {
         let print_func = extern_test_func(&module);
 
         //関数宣言のコード化
-        self.g_var_table.0.into_iter().for_each(|(k, v)| {
-            let func_type = v.to_llvm_type();
+        self.func_list.iter().for_each(|(k, v)| {
+            let func_type = v.ty.to_llvm_type();
             let func = Function::new(&k, &module, func_type);
             set_linkage(func.llvm_function, LLVMLinkage::LLVMExternalLinkage);
         });
 
         //関数定義のコード化
-        self.func_list.into_iter().for_each(|func|
+        self.func_list.into_iter().for_each(|(_, func)|
             func.code_gen(&print_func, &module, &codegen)
         );
         if let Some(err_msg) = module.verify_module() {
@@ -39,20 +39,21 @@ impl ir::ProgramIr {
     }
 }
 
-impl types::Type{
-    fn to_llvm_type(self)->LLVMTypeRef{
+impl types::Type {
+    fn to_llvm_type(&self) -> LLVMTypeRef {
         match self {
-            types::Type::Int32=>int32_type(),
-            types::Type::FuncType(x)=>x.to_llvm_type()
+            types::Type::Int32 => int32_type(),
+            types::Type::FuncType(x) => x.to_llvm_type(),
+            types::Type::Unknown => panic!("unknown type!")
         }
     }
 }
 
-impl types::FuncType{
-    fn to_llvm_type(self)->LLVMTypeRef{
+impl types::FuncType {
+    fn to_llvm_type(&self) -> LLVMTypeRef {
         function_type(
             self.ret_type.to_llvm_type(),
-            self.param_types.into_iter().map(|x|x.to_llvm_type()).collect()
+            self.param_types.iter().map(|x| x.to_llvm_type()).collect(),
         )
     }
 }
