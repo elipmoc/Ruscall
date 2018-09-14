@@ -1,7 +1,7 @@
 use std::collections::HashMap;
+use super::super::types::FuncType;
 
-
-pub struct GlobalVariableTable(HashMap<String, Option<usize>>);
+pub struct GlobalVariableTable(HashMap<String, Option<FuncType>>);
 
 impl GlobalVariableTable {
     pub fn new() -> GlobalVariableTable {
@@ -14,12 +14,12 @@ impl GlobalVariableTable {
         };
     }
 
-    pub fn register_func(&mut self, name: String, param_size: usize) {
-        self.0.insert(name, Some(param_size));
+    pub fn register_func(&mut self, name: String, func_type: FuncType) {
+        self.0.insert(name, Some(func_type));
     }
 
     pub fn get_confirm(self) -> Option<ConfirmGlobalVariableTable> {
-        let mut confirm_list: Vec<(String, usize)> = Vec::with_capacity(self.0.len());
+        let mut confirm_list: Vec<(String, FuncType)> = Vec::with_capacity(self.0.len());
         for (k, v) in self.0 {
             match v {
                 None => return None,
@@ -31,4 +31,4 @@ impl GlobalVariableTable {
 }
 
 #[derive(Debug, PartialEq)]
-pub struct ConfirmGlobalVariableTable(pub HashMap<String, usize>);
+pub struct ConfirmGlobalVariableTable(pub HashMap<String, FuncType>);

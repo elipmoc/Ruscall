@@ -2,6 +2,7 @@ use super::super::ast;
 use super::ir_tree as ir;
 use super::super::error::Error;
 use super::global_variable_table::GlobalVariableTable;
+use super::super::types::{Type,FuncType};
 
 type ResultIr<T> = Result<T, Error>;
 
@@ -38,7 +39,13 @@ impl ast::StmtAST {
     fn to_ir(self, g_var_table: &mut GlobalVariableTable) -> ResultIr<Option<ir::FuncIr>> {
         let option = match self {
             ast::StmtAST::DefFuncAST(def_func_ast) => {
-                g_var_table.register_func(def_func_ast.func_name.clone(), def_func_ast.params.len());
+                g_var_table.register_func(
+                    def_func_ast.func_name.clone(),
+                    FuncType{
+                        param_types:(0..def_func_ast.params.len()).map(|_|Type::Int32).collect(),
+                        ret_type: Type::Int32
+                    }
+                );
                 let var_table = VariableTable(def_func_ast.params.into_iter().map(|x| x.id).collect());
                 let body_ir = def_func_ast.body.to_ir(&var_table, g_var_table);
                 Option::Some(ir::FuncIr::new(def_func_ast.func_name, var_table.id_list(), body_ir?))
@@ -87,6 +94,7 @@ impl ast::ExprAST {
 
 pub use combine::stream::state::SourcePosition;
 pub use std::collections::HashMap;
+use super::global_variable_table::ConfirmGlobalVariableTable;
 
 #[test]
 fn ast_to_ir_test() {
@@ -105,7 +113,7 @@ fn ast_to_ir_test() {
         ]
     };
     let mut g_var_table = HashMap::new();
-    g_var_table.insert("hoge".to_string(), 2);
+    g_var_table.insert("hoge".to_string(), FuncType{ret_type:Type::Int32,param_types:vec![Type::Int32,Type::Int32]});
     let ir = ir::ProgramIr {
         func_list: vec![
             ir::FuncIr::new("hoge".to_string(), vec![1, 0], ir::ExprIr::create_variableir(0))

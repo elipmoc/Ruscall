@@ -1,6 +1,6 @@
 use super::super::my_llvm::easy::*;
 use super::semantic_analysis::ir_tree as ir;
-
+use super::types;
 
 fn extern_test_func(module: &Module) -> Function {
     let function_type = function_type(void_type(), vec![int32_type()]);
@@ -21,7 +21,7 @@ impl ir::ProgramIr {
 
         //関数宣言のコード化
         self.g_var_table.0.into_iter().for_each(|(k, v)| {
-            let func_type = function_type(int32_type(), (0..v).map(|_| int32_type()).collect());
+            let func_type = v.to_llvm_type();
             let func = Function::new(&k, &module, func_type);
             set_linkage(func.llvm_function, LLVMLinkage::LLVMExternalLinkage);
         });
@@ -36,6 +36,24 @@ impl ir::ProgramIr {
         module.dump_module();
 
         output_file(file_name, module, codegen);
+    }
+}
+
+impl types::Type{
+    fn to_llvm_type(self)->LLVMTypeRef{
+        match self {
+            types::Type::Int32=>int32_type(),
+            types::Type::FuncType(x)=>x.to_llvm_type()
+        }
+    }
+}
+
+impl types::FuncType{
+    fn to_llvm_type(self)->LLVMTypeRef{
+        function_type(
+            self.ret_type.to_llvm_type(),
+            self.param_types.into_iter().map(|x|x.to_llvm_type()).collect()
+        )
     }
 }
 

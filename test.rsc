@@ -1,5 +1,5 @@
 infixl 1 +;
 
-add x = add (x+1);
+add x y= x+y;
 
-main= add 0;
+main= add 0 5;
