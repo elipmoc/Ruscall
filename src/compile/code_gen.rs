@@ -27,9 +27,9 @@ impl ir::ProgramIr {
         });
 
         //関数定義のコード化
-        self.func_list.into_iter().for_each(|(_, func)|
-            func.code_gen(&print_func, &module, &codegen)
-        );
+        self.func_list
+            .into_iter()
+            .for_each(|(_, func)| func.code_gen(&print_func, &module, &codegen));
         if let Some(err_msg) = module.verify_module() {
             panic!("llvm error:{}", err_msg);
         }
@@ -44,7 +44,7 @@ impl types::Type {
         match self {
             types::Type::Int32 => int32_type(),
             types::Type::FuncType(x) => x.to_llvm_type(),
-            types::Type::Unknown => panic!("unknown type!")
+            types::Type::Unknown => panic!("unknown type!"),
         }
     }
 }
@@ -59,12 +59,7 @@ impl types::FuncType {
 }
 
 impl ir::FuncIr {
-    fn code_gen(
-        self,
-        print_func: &Function,
-        module: &Module,
-        codegen: &CodeGenerator,
-    ) {
+    fn code_gen(self, print_func: &Function, module: &Module, codegen: &CodeGenerator) {
         let function = module.get_named_function(&self.name);
         let params = function.get_params(self.params.len());
 
@@ -77,13 +72,18 @@ impl ir::FuncIr {
 }
 
 impl ir::ExprIr {
-    fn code_gen(self, module: &Module, codegen: &CodeGenerator, params: &Vec<LLVMValueRef>) -> LLVMValueRef {
+    fn code_gen(
+        self,
+        module: &Module,
+        codegen: &CodeGenerator,
+        params: &Vec<LLVMValueRef>,
+    ) -> LLVMValueRef {
         match self {
             ir::ExprIr::NumIr(num_ir) => const_int(int32_type(), num_ir.num as u64, true),
             ir::ExprIr::OpIr(op_ir) => op_ir.code_gen(module, codegen, params),
             ir::ExprIr::VariableIr(var_ir) => params[params.len() - var_ir.id - 1],
             ir::ExprIr::GlobalVariableIr(x) => x.code_gen(module),
-            ir::ExprIr::CallIr(x) => x.code_gen(module, codegen, params)
+            ir::ExprIr::CallIr(x) => x.code_gen(module, codegen, params),
         }
     }
 }
@@ -96,18 +96,29 @@ impl ir::GlobalVariableIr {
 }
 
 impl ir::CallIr {
-    fn code_gen(self, module: &Module, codegen: &CodeGenerator, params: &Vec<LLVMValueRef>) -> LLVMValueRef {
+    fn code_gen(
+        self,
+        module: &Module,
+        codegen: &CodeGenerator,
+        params: &Vec<LLVMValueRef>,
+    ) -> LLVMValueRef {
         let func = self.func.code_gen(module, codegen, params);
-        let params =
-            self.params.into_iter()
-                .map(|x| x.code_gen(module, codegen, params)).collect();
+        let params = self
+            .params
+            .into_iter()
+            .map(|x| x.code_gen(module, codegen, params))
+            .collect();
         codegen.build_call(func, params, "")
     }
 }
 
-
 impl ir::OpIr {
-    fn code_gen(self, module: &Module, codegen: &CodeGenerator, params: &Vec<LLVMValueRef>) -> LLVMValueRef {
+    fn code_gen(
+        self,
+        module: &Module,
+        codegen: &CodeGenerator,
+        params: &Vec<LLVMValueRef>,
+    ) -> LLVMValueRef {
         let lhs = self.l_expr.code_gen(module, codegen, params);
         let rhs = self.r_expr.code_gen(module, codegen, params);
         match &self.op as &str {
@@ -124,7 +135,7 @@ impl ir::OpIr {
     }
 }
 
-//コードをexeで出力
+//コードを実行形式で出力
 fn output_file(file_name: &str, module: Module, codegen: CodeGenerator) {
     use std::env;
     use std::process::Command;
@@ -149,28 +160,49 @@ fn output_file(file_name: &str, module: Module, codegen: CodeGenerator) {
 
     let current_dir = env::current_dir().unwrap().to_str().unwrap().to_string();
     if cfg!(target_os = "windows") {
-        Command::new("cmd")
-            .args(&[
+        command_exec(
+            "cmd",
+            &[
                 "/C",
                 &(current_dir.clone() + "\\compile.bat"),
                 &(current_dir + "\\" + file_name + ".obj"),
-            ])
-            .output()
-            .expect("failed to execute process");
+            ],
+        );
     } else {
-         let output = Command::new("sh")
-            .args(&[
+        command_exec(
+            "sh",
+            &[
                 "-c",
-                &("g++ ".to_owned()+
-                &(current_dir.clone()+ "/"+file_name + ".obj ")+
-                &(current_dir.clone() + "/"+"libtest.a ")+
-                "-o "+
-                &(current_dir + "/"+file_name + ".out"))
-            ])
-            .output()
-            .expect("failed to execute process");
-        println!("status: {}", output.status);
-        println!("stdout: {}", String::from_utf8_lossy(&output.stdout));
-        println!("stderr: {}", String::from_utf8_lossy(&output.stderr));
+                &("g++ ".to_owned()
+                    + &(current_dir.clone() + "/" + file_name + ".obj ")
+                    + &(current_dir.clone() + "/" + "libtest.a ")
+                    + "-o "
+                    + &(current_dir + "/" + file_name + ".out")),
+            ],
+        );
     };
+}
+
+use std::ffi::OsStr;
+fn command_exec<I, S>(terminal: &str, args: I)
+where
+    I: IntoIterator<Item = S> + Clone,
+    S: AsRef<OsStr>,
+{
+    use std::process::Command;
+
+    let output = Command::new(terminal)
+        .args(args.clone())
+        .output()
+        .expect("failed to execute process");
+    println!("status: {}", output.status);
+    println!("stdout: {}", String::from_utf8_lossy(&output.stdout));
+    println!("stderr: {}", String::from_utf8_lossy(&output.stderr));
+    println!(
+        "command: {}",
+        args.into_iter()
+            .fold("".to_string(), |acc, x| acc.to_owned()
+                + " "
+                + x.as_ref().to_str().unwrap())
+    );
 }
