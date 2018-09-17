@@ -1,3 +1,6 @@
+#[cfg(not(windows))]
+extern crate rustc_llvm_proxy;
+
 pub mod codegen;
 pub mod execution_engine;
 pub mod function;
