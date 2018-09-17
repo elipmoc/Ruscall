@@ -156,8 +156,21 @@ fn output_file(file_name: &str, module: Module, codegen: CodeGenerator) {
                 &(current_dir + "\\" + file_name + ".obj"),
             ])
             .output()
-            .expect("failed to execute process")
+            .expect("failed to execute process");
     } else {
-        panic!("support windows only!!")
+         let output = Command::new("sh")
+            .args(&[
+                "-c",
+                &("g++ ".to_owned()+
+                &(current_dir.clone()+ "/"+file_name + ".obj ")+
+                &(current_dir.clone() + "/"+"libtest.a ")+
+                "-o "+
+                &(current_dir + "/"+file_name + ".out"))
+            ])
+            .output()
+            .expect("failed to execute process");
+        println!("status: {}", output.status);
+        println!("stdout: {}", String::from_utf8_lossy(&output.stdout));
+        println!("stderr: {}", String::from_utf8_lossy(&output.stderr));
     };
 }
