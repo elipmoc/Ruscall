@@ -30,10 +30,11 @@ impl ir::ProgramIr {
         self.func_list
             .into_iter()
             .for_each(|(_, func)| func.code_gen(&print_func, &module, &codegen));
+
+        module.dump_module();
         if let Some(err_msg) = module.verify_module() {
             panic!("llvm error:{}", err_msg);
         }
-        module.dump_module();
 
         output_file(file_name, module, codegen);
     }
@@ -45,6 +46,11 @@ impl types::Type {
             types::Type::Int32 => int32_type(),
             types::Type::FuncType(x) => x.to_llvm_type(),
             types::Type::Unknown => panic!("unknown type!"),
+            types::Type::Fn(x) =>
+                match &**x {
+                    types::Type::FuncType(y) => pointer_type(y.to_llvm_type()),
+                    _ => panic!("Fn error type!")
+                }
         }
     }
 }
@@ -62,11 +68,12 @@ impl ir::FuncIr {
     fn code_gen(self, print_func: &Function, module: &Module, codegen: &CodeGenerator) {
         let function = module.get_named_function(&self.name);
         let params = function.get_params(self.params.len());
-
         let entry_block = function.append_basic_block("entry");
         codegen.position_builder_at_end(entry_block);
         let value = self.body.code_gen(&module, &codegen, &params);
-        codegen.build_call(print_func.llvm_function, vec![value], "");
+        if self.name=="main" {
+            codegen.build_call(print_func.llvm_function, vec![value], "");
+        }
         codegen.build_ret(value);
     }
 }
@@ -106,8 +113,11 @@ impl ir::CallIr {
         let params = self
             .params
             .into_iter()
-            .map(|x| x.code_gen(module, codegen, params))
+            .map(|x| {
+                x.code_gen(module, codegen, params)
+            })
             .collect();
+
         codegen.build_call(func, params, "")
     }
 }
@@ -184,10 +194,11 @@ fn output_file(file_name: &str, module: Module, codegen: CodeGenerator) {
 }
 
 use std::ffi::OsStr;
+
 fn command_exec<I, S>(terminal: &str, args: I)
-where
-    I: IntoIterator<Item = S> + Clone,
-    S: AsRef<OsStr>,
+    where
+        I: IntoIterator<Item=S> + Clone,
+        S: AsRef<OsStr>,
 {
     use std::process::Command;
 

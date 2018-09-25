@@ -34,14 +34,14 @@ impl ast::StmtAST {
         let option = match self {
             ast::StmtAST::DefFuncAST(def_func_ast) => {
                 let func_type = FuncType {
-                    param_types: (0..def_func_ast.params.len()).map(|_| Type::Int32).collect(),
-                    ret_type: Type::Int32,
+                    param_types: (0..def_func_ast.params.len()).map(|_| Type::Unknown).collect(),
+                    ret_type: Type::Unknown,
                 };
                 let var_table = VariableTable(def_func_ast.params.into_iter().map(|x| x.id).collect());
                 let body_ir = def_func_ast.body.to_ir(&var_table);
                 let func_ir = ir::FuncIr::new(
                     def_func_ast.func_name,
-                    var_table.id_list(),
+                    var_table.id_list().into_iter().map(|x| (x, Type::Unknown)).collect(),
                     body_ir?,
                     Type::FuncType(Box::new(func_type)),
                 );
@@ -107,8 +107,8 @@ fn ast_to_ir_test() {
     let mut func_list = HashMap::new();
     func_list.insert(
         "hoge".to_string(),
-        ir::FuncIr::new("hoge".to_string(), vec![1, 0], ir::ExprIr::create_variableir(0),
-                        Type::FuncType(Box::new(FuncType { ret_type: Type::Int32, param_types: vec![Type::Int32, Type::Int32] })),
+        ir::FuncIr::new("hoge".to_string(), vec![(1,Type::Unknown), (0,Type::Unknown)], ir::ExprIr::create_variableir(0),
+                        Type::FuncType(Box::new(FuncType { ret_type: Type::Unknown, param_types: vec![Type::Unknown, Type::Unknown] })),
         ),
     );
     let ir = ir::ProgramIr { func_list };

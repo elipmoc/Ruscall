@@ -9,13 +9,13 @@ pub struct ProgramIr {
 #[derive(Debug, PartialEq)]
 pub struct FuncIr {
     pub name: String,
-    pub params: Vec<usize>,
+    pub params: Vec<(usize, Type)>,
     pub body: ExprIr,
     pub ty: Type,
 }
 
 impl FuncIr {
-    pub fn new(name: String, params: Vec<usize>, body: ExprIr, ty: Type) -> FuncIr {
+    pub fn new(name: String, params: Vec<(usize, Type)>, body: ExprIr, ty: Type) -> FuncIr {
         FuncIr { name, params, body, ty }
     }
 }
@@ -44,6 +44,16 @@ impl ExprIr {
     }
     pub fn create_callir(func: ExprIr, params: Vec<ExprIr>) -> ExprIr {
         ExprIr::CallIr(Box::new(CallIr { func, params, ty: Type::Unknown }))
+    }
+
+    pub fn get_ty(&self) -> &Type {
+        match self {
+            ExprIr::VariableIr(x) => &x.ty,
+            ExprIr::OpIr(x) => &x.ty,
+            ExprIr::NumIr(x) => &x.ty,
+            ExprIr::CallIr(x) => &x.ty,
+            ExprIr::GlobalVariableIr(x) => &x.ty
+        }
     }
 }
 

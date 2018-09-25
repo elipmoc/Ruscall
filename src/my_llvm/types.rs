@@ -17,6 +17,12 @@ pub fn void_type() -> LLVMTypeRef {
     unsafe { llvm::core::LLVMVoidType() }
 }
 
+pub fn pointer_type(ty:LLVMTypeRef)->LLVMTypeRef{
+    unsafe{
+        llvm::core::LLVMPointerType(ty,0)
+    }
+}
+
 pub fn function_type(ret_type: LLVMTypeRef, mut param_types: Vec<LLVMTypeRef>) -> LLVMTypeRef {
     unsafe {
         let function_type = llvm::core::LLVMFunctionType(
