@@ -52,18 +52,12 @@ pub struct FuncType {
 }
 
 fn partial_cmp_merge(left: &Option<Ordering>, right: &Option<Ordering>) -> Option<Ordering> {
-    if let Option::Some(left) = left {
-        if let Option::Some(right) = right {
-            return
-                match left.clone() {
-                    Ordering::Equal => Option::Some(*right),
-                    Ordering::Greater if *right != Ordering::Less => Option::Some(*left),
-                    Ordering::Less if *right != Ordering::Greater => Option::Some(*left),
-                    _ => Option::None
-                };
-        }
+    match (left,right){
+        (Option::Some(Ordering::Equal),Option::Some(right))=>Option::Some(*right),
+        (Option::Some(Ordering::Greater),Option::Some(Ordering::Less))=>Option::None,
+        (Option::Some(Ordering::Less),Option::Some(Ordering::Greater))=>Option::None,
+        (left,_)=>*left,
     }
-    Option::None
 }
 
 impl PartialOrd for FuncType {
