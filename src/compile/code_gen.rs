@@ -148,7 +148,6 @@ impl ir::OpIr {
 //コードを実行形式で出力
 fn output_file(file_name: &str, module: Module, codegen: CodeGenerator) {
     use std::env;
-    use std::process::Command;
     let target_machine = TargetMachine::create(
         "generic",
         "",
