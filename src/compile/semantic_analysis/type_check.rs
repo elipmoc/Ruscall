@@ -36,11 +36,9 @@ impl ir::FuncIr {
                             if expect_ty == types::Type::Unknown {
                                 return (id, ty);
                             }
-                            if ty == types::Type::Unknown || ty.type_equal(&expect_ty) {
+                            if ty == types::Type::Unknown || ty.partial_cmp(&expect_ty).is_some() {
                                 return (id, ty.merge(expect_ty));
                             }
-                            println!("expect_ty{:?}", expect_ty);
-                            println!("ty{:?}", ty);
                             panic!("type error!");
                         }).collect();
                 }
@@ -109,7 +107,7 @@ impl ir::CallIr {
                 types::Type::FuncType(x) => self.ty = x.ret_type.clone(),
                 _ => panic!("type error!")
             },
-            x => panic!("type error!")
+            _ => panic!("type error!")
         };
 
         self.ty.clone()
@@ -133,9 +131,12 @@ impl ir::VariableIr {
     fn ty_check(&mut self, params: &mut Vec<(usize, types::Type)>, expect_ty: types::Type) -> types::Type {
         let mut param = params[params.len() - self.id - 1].clone();
         if expect_ty != types::Type::Unknown {
-            if param.1 == types::Type::Unknown || param.1.type_equal(&expect_ty) {
+            if param.1 == types::Type::Unknown || param.1.partial_cmp(&expect_ty).is_some(){
                 param = (param.0, param.1.merge(expect_ty));
-            } else { panic!("type error!"); }
+            } else {
+                println!("{:?}",param);
+                println!("{:?}",expect_ty);
+                panic!("type error!"); }
         }
         let len = params.len();
         params[len - self.id - 1] = param.clone();
