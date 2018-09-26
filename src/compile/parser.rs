@@ -52,7 +52,7 @@ parser! {
     {
         skip_many_parser().
         with (
-            infix_parser().map(|x|ast::StmtAST::InfixAST(x)).
+            try(infix_parser().map(|x|ast::StmtAST::InfixAST(x))).
             or(def_func_parser().map(|x|ast::StmtAST::DefFuncAST(x)))
         ).
         skip(
