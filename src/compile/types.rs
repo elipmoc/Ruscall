@@ -24,7 +24,6 @@ impl PartialOrd for Type {
 }
 
 impl Type {
-
     pub fn create_func_type(param_types: Vec<Type>, ret_type: Type) -> Type {
         Type::FuncType(Box::new(FuncType { param_types, ret_type }))
     }
@@ -32,15 +31,14 @@ impl Type {
         Type::Fn(Box::new(Type::FuncType(Box::new(FuncType { param_types, ret_type }))))
     }
 
-    pub fn merge(self, other: Type) -> Type {
-        match self {
-            Type::Unknown => other,
-            Type::FuncType(x) => x.merge(other),
-            Type::Fn(x) => match other {
-                Type::Fn(y) => Type::Fn(Box::new(x.merge(*y))),
-                _ => Type::Fn(Box::new(*x))
-            }
-            x => x
+    pub fn merge(self, other: Type) -> Option<Type> {
+        match (self, other) {
+            (Type::Unknown, other) => Option::Some(other),
+            (x, Type::Unknown) => Option::Some(x),
+            (Type::FuncType(x), other) => x.merge(other),
+            (Type::Fn(x), Type::Fn(y)) => Option::Some(Type::Fn(Box::new(x.merge(*y)?))),
+            ref x if x.0==x.1=> Option::Some(x.0.clone()),
+            _ => Option::None
         }
     }
 }
@@ -52,11 +50,11 @@ pub struct FuncType {
 }
 
 fn partial_cmp_merge(left: &Option<Ordering>, right: &Option<Ordering>) -> Option<Ordering> {
-    match (left,right){
-        (Option::Some(Ordering::Equal),Option::Some(right))=>Option::Some(*right),
-        (Option::Some(Ordering::Greater),Option::Some(Ordering::Less))=>Option::None,
-        (Option::Some(Ordering::Less),Option::Some(Ordering::Greater))=>Option::None,
-        (left,_)=>*left,
+    match (left, right) {
+        (Option::Some(Ordering::Equal), Option::Some(right)) => Option::Some(*right),
+        (Option::Some(Ordering::Greater), Option::Some(Ordering::Less)) => Option::None,
+        (Option::Some(Ordering::Less), Option::Some(Ordering::Greater)) => Option::None,
+        (left, _) => *left,
     }
 }
 
@@ -78,17 +76,20 @@ impl PartialOrd for FuncType {
 }
 
 impl FuncType {
-    pub fn merge(self, other: Type) -> Type {
+    pub fn merge(self, other: Type) -> Option<Type> {
         match other {
             Type::FuncType(x) => {
                 let x = *x;
-                Type::create_func_type(
-                    self.param_types.into_iter().zip(x.param_types)
-                        .map(|(a, b)| a.merge(b)).collect(),
-                    self.ret_type.merge(x.ret_type),
+                Option::Some(
+                    Type::create_func_type(
+                        self.param_types.into_iter().zip(x.param_types)
+                            .map(|(a, b)| a.merge(b)).collect::<Option<Vec<Type>>>()?,
+                        self.ret_type.merge(x.ret_type)?,
+                    )
                 )
             }
-            _ => Type::FuncType(Box::new(self))
+            Type::Unknown => Option::Some(Type::FuncType(Box::new(self))),
+            _ => Option::None
         }
     }
 }

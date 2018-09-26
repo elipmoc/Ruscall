@@ -33,13 +33,10 @@ impl ir::FuncIr {
                         .into_iter()
                         .zip(x.param_types)
                         .map(move |((id, ty), expect_ty)| {
-                            if expect_ty == types::Type::Unknown {
-                                return (id, ty);
+                            match ty.merge(expect_ty) {
+                                Option::Some(ty) => (id, ty),
+                                _ => panic!("type error!")
                             }
-                            if ty == types::Type::Unknown || ty.partial_cmp(&expect_ty).is_some() {
-                                return (id, ty.merge(expect_ty));
-                            }
-                            panic!("type error!");
                         }).collect();
                 }
                 _ => panic!("type error!")
@@ -130,13 +127,9 @@ impl ir::OpIr {
 impl ir::VariableIr {
     fn ty_check(&mut self, params: &mut Vec<(usize, types::Type)>, expect_ty: types::Type) -> types::Type {
         let mut param = params[params.len() - self.id - 1].clone();
-        if expect_ty != types::Type::Unknown {
-            if param.1 == types::Type::Unknown || param.1.partial_cmp(&expect_ty).is_some(){
-                param = (param.0, param.1.merge(expect_ty));
-            } else {
-                println!("{:?}",param);
-                println!("{:?}",expect_ty);
-                panic!("type error!"); }
+        match param.1.merge(expect_ty) {
+            Option::Some(ty) => param = (param.0, ty),
+            _ => panic!("type error!")
         }
         let len = params.len();
         params[len - self.id - 1] = param.clone();
