@@ -1,5 +1,3 @@
 infixl 1 +;
 
-main= (id add ) 1 2;
-id f = f;
-add x y = x+y;
+main= print(scan 0+scan 0);

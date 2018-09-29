@@ -4,6 +4,7 @@ use std::collections::HashMap;
 #[derive(Debug, PartialEq)]
 pub struct ProgramIr {
     pub func_list: HashMap<String, FuncIr>,
+    pub extern_func_list: HashMap<String, DecFuncIr>
 }
 
 #[derive(Debug, PartialEq)]
@@ -91,11 +92,7 @@ pub struct CallIr {
 }
 
 #[derive(Debug, PartialEq)]
-pub struct FuncProtoIr {
-    pub param_size: i32
-}
-
-#[derive(Debug, PartialEq)]
-pub enum DefGlobalVariableIr {
-    Proto(FuncProtoIr)
+pub struct DecFuncIr {
+    pub ty: Type,
+    pub name: String,
 }

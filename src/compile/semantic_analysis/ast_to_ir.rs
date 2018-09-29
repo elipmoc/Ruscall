@@ -7,12 +7,12 @@ use std::collections::HashMap;
 type ResultIr<T> = Result<T, Error>;
 
 impl ast::ProgramAST {
-    pub fn to_ir(self) -> ResultIr<(ir::ProgramIr)> {
+    pub fn to_ir(self, extern_func_list: HashMap<String, ir::DecFuncIr>) -> ResultIr<(ir::ProgramIr)> {
         let mut func_list: HashMap<String, ir::FuncIr> = HashMap::new();
         for stmt in self.stmt_list {
             stmt.to_ir(&mut func_list)?;
         }
-        Result::Ok(ir::ProgramIr { func_list })
+        Result::Ok(ir::ProgramIr { func_list, extern_func_list })
     }
 }
 
@@ -107,7 +107,7 @@ fn ast_to_ir_test() {
     let mut func_list = HashMap::new();
     func_list.insert(
         "hoge".to_string(),
-        ir::FuncIr::new("hoge".to_string(), vec![(1,Type::Unknown), (0,Type::Unknown)], ir::ExprIr::create_variableir(0),
+        ir::FuncIr::new("hoge".to_string(), vec![(1, Type::Unknown), (0, Type::Unknown)], ir::ExprIr::create_variableir(0),
                         Type::FuncType(Box::new(FuncType { ret_type: Type::Unknown, param_types: vec![Type::Unknown, Type::Unknown] })),
         ),
     );

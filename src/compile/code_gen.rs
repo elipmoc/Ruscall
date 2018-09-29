@@ -2,11 +2,10 @@ use super::super::my_llvm::easy::*;
 use super::semantic_analysis::ir_tree as ir;
 use super::types;
 
-fn extern_test_func(module: &Module) -> Function {
-    let function_type = function_type(void_type(), vec![int32_type()]);
-    let function = Function::new("print", &module, function_type);
+fn extern_func_gen(dec_func_ir: ir::DecFuncIr,module:&Module)  {
+    let function_type=dec_func_ir.ty.to_llvm_type();
+    let function = Function::new(&dec_func_ir.name, &module, function_type);
     set_linkage(function.llvm_function, LLVMLinkage::LLVMExternalLinkage);
-    function
 }
 
 //コード生成する関数
@@ -17,7 +16,9 @@ impl ir::ProgramIr {
         let codegen = CodeGenerator::new();
         let module = Module::new("my_module");
 
-        let print_func = extern_test_func(&module);
+        //外部関数宣言のコード化
+        self.extern_func_list.into_iter()
+            .for_each(|(_,v)|extern_func_gen(v,&module));
 
         //関数宣言のコード化
         self.func_list.iter().for_each(|(k, v)| {
@@ -29,7 +30,7 @@ impl ir::ProgramIr {
         //関数定義のコード化
         self.func_list
             .into_iter()
-            .for_each(|(_, func)| func.code_gen(&print_func, &module, &codegen));
+            .for_each(|(_, func)| func.code_gen(&module, &codegen));
 
         module.dump_module();
         if let Some(err_msg) = module.verify_module() {
@@ -65,15 +66,12 @@ impl types::FuncType {
 }
 
 impl ir::FuncIr {
-    fn code_gen(self, print_func: &Function, module: &Module, codegen: &CodeGenerator) {
+    fn code_gen(self, module: &Module, codegen: &CodeGenerator) {
         let function = module.get_named_function(&self.name);
         let params = function.get_params(self.params.len());
         let entry_block = function.append_basic_block("entry");
         codegen.position_builder_at_end(entry_block);
         let value = self.body.code_gen(&module, &codegen, &params);
-        if self.name=="main" {
-            codegen.build_call(print_func.llvm_function, vec![value], "");
-        }
         codegen.build_ret(value);
     }
 }
