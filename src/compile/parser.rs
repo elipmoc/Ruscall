@@ -9,10 +9,10 @@ use combine::{eof, many, many1, position, unexpected, value, Parser};
 BNF
 <program>  := {<stmt>}
 <stmt>     := <skip_many> ( <infix> | <def_func>) <skip_many> ';'
-<def_func> := <id> {<skip_many> <id>} <skip_many> '=' <skip_many> <expr_app>
+<def_func> := <id> {<skip_many> <id>} <skip_many> '=' <skip_many> <expr>
 <id>       := [a-z]{ [a-z] | [0-9] | '_' }
-<expr_app> := <expr> { <expr> }
-<expr>     := <term> <skip_many> { <op> <skip_many> <term> <skip_many> } 
+<expr>     := <expr_app> <skip_many> { <op> <skip_many> <expr_app> <skip_many> }
+<expr_app> := <term> {<skip_many> <term> }
 <infix>    := ('infixr' | 'infixl') <space>+ <num> <space>+ <op>
 <op>       := '+' | '-' | '/' | '*'
 <term>     := <num> | <id> | <paren>
@@ -68,7 +68,7 @@ parser! {
         (
             id_parser().skip(skip_many_parser()),
             many((position(),id_parser()).skip(skip_many_parser()).map(|(pos,id)|ast::VariableAST::new(id,pos))),
-            char('=').with(skip_many_parser()).with(expr_app_parser())
+            char('=').with(skip_many_parser()).with(expr_parser())
         ).map(|(func_name,params,body)|{ast::DefFuncAST::new(func_name,params,body)})
     }
 }
@@ -84,7 +84,7 @@ parser! {
 //<expr_app>
 parser!{
     fn expr_app_parser['a]()(MyStream<'a>)->ast::ExprAST{
-        (expr_parser(),many(expr_parser())).map(|(x,xs):(ast::ExprAST,Vec<ast::ExprAST>)|{
+        (term_parser(),many(skip_many_parser().with(term_parser()))).map(|(x,xs):(ast::ExprAST,Vec<ast::ExprAST>)|{
             ast::ExprAST::create_func_call_ast(x,xs)
         })
     }
@@ -95,11 +95,11 @@ parser! {
     fn expr_parser['a]()(MyStream<'a>)->ast::ExprAST
     {
         (
-           term_parser().skip(skip_many_parser()),
+           expr_app_parser().skip(skip_many_parser()),
            many((
                     position(),
                     op_parser().skip(skip_many_parser()),
-                    term_parser().skip(skip_many_parser())
+                    expr_app_parser().skip(skip_many_parser())
                ))
         )
        .map(|(e,y):(ast::ExprAST,Vec<(SourcePosition,String,ast::ExprAST)>)|{
@@ -177,7 +177,7 @@ parser! {
     fn paren_parser['a]()(MyStream<'a>)->ast::ExprAST
     {
         char('(')
-        .with(expr_app_parser())
+        .with(expr_parser())
         .map(ast::ExprAST::create_paren_ast)
         .skip(char(')'))
     }
