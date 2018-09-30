@@ -4,11 +4,13 @@ pub mod error;
 pub mod parser;
 pub mod semantic_analysis;
 pub mod types;
+pub mod output_file;
 
 use self::error::Error;
 use std::fs;
 use std::io::{BufReader, Read};
 use self::semantic_analysis::ir_tree as ir;
+use self::output_file::output_file;
 
 pub fn compile(file_name: &str) {
     println!("input:{}", file_name);
@@ -17,7 +19,7 @@ pub fn compile(file_name: &str) {
     f.read_to_string(&mut src_str).unwrap();
     let src_str: &str = &src_str;
     match parse(src_str) {
-        Ok(x) => x.code_gen("compiled"),
+        Ok(x) => output_file(x.code_gen("compiled")),
         Err(err) => println!("{}", err),
     };
 }
