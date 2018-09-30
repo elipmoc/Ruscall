@@ -12,7 +12,7 @@ pub fn output_file(code_gen_result:CodeGenResult) {
         "generic",
         "",
         LLVMCodeGenOptLevel::LLVMCodeGenLevelDefault,
-        LLVMRelocMode::LLVMRelocDefault,
+        LLVMRelocMode::LLVMRelocPIC,
         LLVMCodeModel::LLVMCodeModelDefault,
     ).unwrap();
     module.set_data_layout(target_machine.create_data_layout());
