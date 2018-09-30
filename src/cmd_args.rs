@@ -27,7 +27,7 @@ impl CmdArgsKind {
                 println!("-hello                hello world build");
                 println!("-build [SOURCE_FILE]  build source file");
             }
-            CmdArgsKind::Version => println!("\nRuscall version 0.1.0\n"),
+            CmdArgsKind::Version => println!("\nRuscall version 0.2.1\n"),
             CmdArgsKind::Hello => hello::hello(),
             CmdArgsKind::Compile(ref file_name) => compile::compile(file_name),
             CmdArgsKind::Error => println!("\nerror cmd args\n"),
