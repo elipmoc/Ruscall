@@ -14,22 +14,25 @@ use self::output_file::output_file;
 
 pub fn compile(file_name: &str) {
     println!("input:{}", file_name);
-    let mut f = BufReader::new(fs::File::open(file_name).unwrap());
-    let mut src_str: String = "".to_string();
-    f.read_to_string(&mut src_str).unwrap();
-    let src_str: &str = &src_str;
-    match parse(src_str) {
+    match parse(&src_file_to_str(file_name)) {
         Ok(x) => output_file(x.code_gen("compiled")),
         Err(err) => println!("{}", err),
     };
 }
 
-fn parse(src_str: &str) -> Result<(ir::ProgramIr), String> {
+pub fn src_file_to_str(file_name: &str) -> String {
+    let mut f = BufReader::new(fs::File::open(file_name).unwrap());
+    let mut src_str: String = "".to_string();
+    f.read_to_string(&mut src_str).unwrap();
+    src_str
+}
+
+pub fn parse(src_str: &str) -> Result<(ir::ProgramIr), String> {
     match parser::parse(src_str) {
         Ok(ast) => {
             println!("\nparse\n{:?}\n", ast);
             let result = semantic_analysis::analysis(ast.0);
-            match result{
+            match result {
                 Ok(x) => {
                     println!("resolve_op\n{:?}\n", x);
                     Result::Ok(x)
