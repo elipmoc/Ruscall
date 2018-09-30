@@ -111,6 +111,6 @@ fn ast_to_ir_test() {
                         Type::FuncType(Box::new(FuncType { ret_type: Type::Unknown, param_types: vec![Type::Unknown, Type::Unknown] })),
         ),
     );
-    let ir = ir::ProgramIr { func_list };
-    assert_eq!(ast.to_ir().unwrap(), ir);
+    let ir = ir::ProgramIr { func_list,extern_func_list: HashMap::new() };
+    assert_eq!(ast.to_ir(HashMap::new()).unwrap(), ir);
 }
