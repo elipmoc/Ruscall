@@ -18,4 +18,3 @@ add x y =x+y;
 
 print2 p x = p x;
 
-    
