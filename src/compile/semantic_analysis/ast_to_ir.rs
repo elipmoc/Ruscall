@@ -41,9 +41,8 @@ impl ast::StmtAST {
                 let body_ir = def_func_ast.body.to_ir(&var_table);
                 let func_ir = ir::FuncIr::new(
                     def_func_ast.func_name,
-                    var_table.id_list().into_iter().map(|x| (x, Type::Unknown)).collect(),
                     body_ir?,
-                    Type::FuncType(Box::new(func_type)),
+                    func_type,
                 );
                 func_list.insert(func_ir.name.clone(), func_ir);
                 Option::None
@@ -107,10 +106,12 @@ fn ast_to_ir_test() {
     let mut func_list = HashMap::new();
     func_list.insert(
         "hoge".to_string(),
-        ir::FuncIr::new("hoge".to_string(), vec![(1, Type::Unknown), (0, Type::Unknown)], ir::ExprIr::create_variableir(0),
-                        Type::FuncType(Box::new(FuncType { ret_type: Type::Unknown, param_types: vec![Type::Unknown, Type::Unknown] })),
+        ir::FuncIr::new(
+            "hoge".to_string(),
+            ir::ExprIr::create_variableir(0),
+            FuncType { ret_type: Type::Unknown, param_types: vec![Type::Unknown, Type::Unknown] },
         ),
     );
-    let ir = ir::ProgramIr { func_list,extern_func_list: HashMap::new() };
+    let ir = ir::ProgramIr { func_list, extern_func_list: HashMap::new() };
     assert_eq!(ast.to_ir(HashMap::new()).unwrap(), ir);
 }

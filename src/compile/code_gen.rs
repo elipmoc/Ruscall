@@ -47,11 +47,7 @@ impl types::Type {
             types::Type::Int32 => int32_type(),
             types::Type::FuncType(x) => x.to_llvm_type(),
             types::Type::Unknown => panic!("unknown type!"),
-            types::Type::Fn(x) =>
-                match &**x {
-                    types::Type::FuncType(y) => pointer_type(y.to_llvm_type()),
-                    _ => panic!("Fn error type!")
-                }
+            types::Type::Fn(x) =>pointer_type(x.to_llvm_type()),
         }
     }
 }
@@ -68,7 +64,7 @@ impl types::FuncType {
 impl ir::FuncIr {
     fn code_gen(self, module: &Module, codegen: &CodeGenerator) {
         let function = module.get_named_function(&self.name);
-        let params = function.get_params(self.params.len());
+        let params = function.get_params(self.ty.param_types.len());
         let entry_block = function.append_basic_block("entry");
         codegen.position_builder_at_end(entry_block);
         let value = self.body.code_gen(&module, &codegen, &params);

@@ -1,4 +1,4 @@
-use self::super::super::types::Type;
+use self::super::super::types::{Type,FuncType};
 use std::collections::HashMap;
 
 #[derive(Debug, PartialEq)]
@@ -10,14 +10,13 @@ pub struct ProgramIr {
 #[derive(Debug, PartialEq)]
 pub struct FuncIr {
     pub name: String,
-    pub params: Vec<(usize, Type)>,
     pub body: ExprIr,
-    pub ty: Type,
+    pub ty: FuncType,
 }
 
 impl FuncIr {
-    pub fn new(name: String, params: Vec<(usize, Type)>, body: ExprIr, ty: Type) -> FuncIr {
-        FuncIr { name, params, body, ty }
+    pub fn new(name: String, body: ExprIr, ty: FuncType) -> FuncIr {
+        FuncIr { name,  body, ty }
     }
 }
 
@@ -93,6 +92,6 @@ pub struct CallIr {
 
 #[derive(Debug, PartialEq)]
 pub struct DecFuncIr {
-    pub ty: Type,
+    pub ty: FuncType,
     pub name: String,
 }

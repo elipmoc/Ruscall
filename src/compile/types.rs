@@ -5,7 +5,7 @@ pub enum Type {
     Int32,
     FuncType(Box<FuncType>),
     Unknown,
-    Fn(Box<Type>),
+    Fn(Box<FuncType>),
 }
 
 impl PartialOrd for Type {
@@ -28,16 +28,16 @@ impl Type {
         Type::FuncType(Box::new(FuncType { param_types, ret_type }))
     }
     pub fn create_fn_func_type(param_types: Vec<Type>, ret_type: Type) -> Type {
-        Type::Fn(Box::new(Type::FuncType(Box::new(FuncType { param_types, ret_type }))))
+        Type::Fn(Box::new(FuncType { param_types, ret_type }))
     }
 
     pub fn merge(self, other: Type) -> Option<Type> {
         match (self, other) {
             (Type::Unknown, other) => Option::Some(other),
             (x, Type::Unknown) => Option::Some(x),
-            (Type::FuncType(x), other) => x.merge(other),
-            (Type::Fn(x), Type::Fn(y)) => Option::Some(Type::Fn(Box::new(x.merge(*y)?))),
-            ref x if x.0==x.1=> Option::Some(x.0.clone()),
+            (Type::FuncType(x), other) => Option::Some(Type::FuncType(Box::new(x.merge(other)?))),
+            (Type::Fn(x), Type::Fn(y)) => Option::Some(Type::Fn(Box::new(x.merge(Type::FuncType(Box::new(*y)))?))),
+            ref x if x.0 == x.1 => Option::Some(x.0.clone()),
             _ => Option::None
         }
     }
@@ -76,19 +76,19 @@ impl PartialOrd for FuncType {
 }
 
 impl FuncType {
-    pub fn merge(self, other: Type) -> Option<Type> {
+    pub fn merge(self, other: Type) -> Option<FuncType> {
         match other {
             Type::FuncType(x) => {
                 let x = *x;
                 Option::Some(
-                    Type::create_func_type(
-                        self.param_types.into_iter().zip(x.param_types)
+                    FuncType {
+                        param_types: self.param_types.into_iter().zip(x.param_types)
                             .map(|(a, b)| a.merge(b)).collect::<Option<Vec<Type>>>()?,
-                        self.ret_type.merge(x.ret_type)?,
-                    )
+                        ret_type: self.ret_type.merge(x.ret_type)?,
+                    }
                 )
             }
-            Type::Unknown => Option::Some(Type::FuncType(Box::new(self))),
+            Type::Unknown => Option::Some(self),
             _ => Option::None
         }
     }

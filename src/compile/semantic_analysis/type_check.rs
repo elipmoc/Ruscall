@@ -21,8 +21,8 @@ type FuncList = HashMap<String, ir::FuncIr>;
 type ExternFuncList = HashMap<String, ir::DecFuncIr>;
 
 impl ir::DecFuncIr {
-    fn ty_check(&self, expect_ty: types::Type) -> types::Type {
-        match (expect_ty) {
+    fn ty_check(&self, expect_ty: types::Type) -> types::FuncType {
+        match expect_ty {
             types::Type::Unknown => self.ty.clone(),
             types::Type::Fn(x) =>
                 if self.ty >= *x {
@@ -36,37 +36,17 @@ impl ir::DecFuncIr {
 }
 
 impl ir::FuncIr {
-    fn ty_check(mut self, func_list: &mut FuncList, extern_func_list: &ExternFuncList, expect_ty: types::Type) -> types::Type {
-        let mut expect_ret_ty = types::Type::Unknown;
-        match expect_ty {
-            types::Type::Unknown => (),
-            types::Type::Fn(x) => match *x {
-                types::Type::FuncType(x) => {
-                    let x = *x;
-                    expect_ret_ty = x.ret_type;
-                    if x.param_types.len() != self.params.len() {
-                        panic!("type error!");
-                    }
-                    self.params = self.params
-                        .into_iter()
-                        .zip(x.param_types)
-                        .map(move |((id, ty), expect_ty)| {
-                            match ty.merge(expect_ty) {
-                                Option::Some(ty) => (id, ty),
-                                _ => panic!("type error!")
-                            }
-                        }).collect();
-                }
-                _ => panic!("type error!")
-            }
-            _ => panic!("type error!")
+    fn ty_check(mut self, func_list: &mut FuncList, extern_func_list: &ExternFuncList, expect_ty: types::Type) -> types::FuncType {
+        match match expect_ty {
+            types::Type::Fn(x) => self.ty.merge(types::Type::FuncType(Box::new(*x))),
+            x => self.ty.merge(x)
         }
-        self.body.ty_check(func_list, extern_func_list, &mut self.params, expect_ret_ty);
-        self.ty =
-            types::Type::create_func_type(
-                self.params.iter().map(|x| x.1.clone()).collect(),
-                self.body.get_ty().clone(),
-            );
+            {
+                Some(x) => self.ty = x,
+                _ => panic!("type error!")
+            };
+        self.body.ty_check(func_list, extern_func_list, &mut self.ty.param_types, self.ty.ret_type);
+        self.ty.ret_type = self.body.get_ty().clone();
         let ty = self.ty.clone();
         func_list.insert(self.name.clone(), self);
         ty
@@ -79,7 +59,7 @@ impl ir::ExprIr {
         &mut self,
         func_list: &mut HashMap<String, ir::FuncIr>,
         extern_func_list: &ExternFuncList,
-        params: &mut Vec<(usize, types::Type)>,
+        params: &mut Vec<types::Type>,
         expect_ty: types::Type,
     ) -> types::Type {
         match self {
@@ -106,7 +86,7 @@ impl ir::CallIr {
         &mut self,
         func_list: &mut FuncList,
         extern_func_list: &ExternFuncList,
-        params: &mut Vec<(usize, types::Type)>,
+        params: &mut Vec<types::Type>,
         expect_ty: types::Type,
     ) -> types::Type {
         for i in 0..self.params.len() {
@@ -120,10 +100,7 @@ impl ir::CallIr {
         self.func.ty_check(func_list, extern_func_list, params, expect_func_ty);
 
         match self.func.get_ty() {
-            types::Type::Fn(x) => match &**x {
-                types::Type::FuncType(x) => self.ty = x.ret_type.clone(),
-                _ => panic!("type error!")
-            },
+            types::Type::Fn(x) => self.ty = x.ret_type.clone(),
             _ => panic!("type error!")
         };
 
@@ -132,7 +109,7 @@ impl ir::CallIr {
 }
 
 impl ir::OpIr {
-    fn ty_check(&mut self, func_list: &mut FuncList, extern_func_list: &ExternFuncList, params: &mut Vec<(usize, types::Type)>) -> types::Type {
+    fn ty_check(&mut self, func_list: &mut FuncList, extern_func_list: &ExternFuncList, params: &mut Vec<types::Type>) -> types::Type {
         if self.ty != types::Type::Unknown {
             return self.ty.clone();
         }
@@ -145,15 +122,15 @@ impl ir::OpIr {
 }
 
 impl ir::VariableIr {
-    fn ty_check(&mut self, params: &mut Vec<(usize, types::Type)>, expect_ty: types::Type) -> types::Type {
+    fn ty_check(&mut self, params: &mut Vec<types::Type>, expect_ty: types::Type) -> types::Type {
         let mut param = params[params.len() - self.id - 1].clone();
-        match param.1.merge(expect_ty) {
-            Option::Some(ty) => param = (param.0, ty),
+        match param.merge(expect_ty) {
+            Option::Some(ty) => param = ty,
             _ => panic!("type error!")
         }
         let len = params.len();
         params[len - self.id - 1] = param.clone();
-        self.ty = param.1;
+        self.ty = param;
         self.ty.clone()
     }
 }
