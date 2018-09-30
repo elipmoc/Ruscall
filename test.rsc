@@ -1,3 +1,15 @@
-infixl 1 +;
+ infixl
+    1
+    +
+    ;
 
-main= print(scan 0+scan 0);
+ main
+    = 
+        print( 
+            scan 0
+            +
+            scan 0
+        ) 
+;
+
+    

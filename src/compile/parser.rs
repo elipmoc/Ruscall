@@ -7,7 +7,7 @@ use combine::stream::state::{DefaultPositioned, SourcePosition, State};
 use combine::{eof, many, many1, position, unexpected, value, Parser};
 /*
 BNF
-<program>  := {<stmt>}
+<program>  := {<stmt>} <skip_many>
 <stmt>     := <skip_many> ( <infix> | <def_func>) <skip_many> ';'
 <def_func> := <id> {<skip_many> <id>} <skip_many> '=' <skip_many> <expr>
 <id>       := [a-z]{ [a-z] | [0-9] | '_' }
@@ -16,7 +16,7 @@ BNF
 <infix>    := ('infixr' | 'infixl') <space>+ <num> <space>+ <op>
 <op>       := '+' | '-' | '/' | '*'
 <term>     := <num> | <id> | <paren>
-<paren>    := '(' <expr_app> ')'
+<paren>    := '(' <skip_many> <expr_app> ')'
 <num>      := [0-9]+
 <skip>     := '\n' | <space>
 <skip_many>:= {<skip>}
@@ -42,7 +42,7 @@ type MyStream<'a> = easy::Stream<State<&'a str, <&'a str as DefaultPositioned>::
 parser! {
    fn program_parser['a]()(MyStream<'a>) ->ast::ProgramAST
     {
-        many(stmt_parser()).skip(eof().expected("statement or infix")).map(|x|ast::ProgramAST{stmt_list:x})
+        many(stmt_parser()).skip(skip_many_parser()).skip(eof().expected("statement or infix")).map(|x|ast::ProgramAST{stmt_list:x})
     }
 }
 
@@ -50,14 +50,16 @@ parser! {
 parser! {
    fn stmt_parser['a]()(MyStream<'a>) ->ast::StmtAST
     {
-        skip_many_parser().
-        with (
-            try(infix_parser().map(|x|ast::StmtAST::InfixAST(x))).
-            or(def_func_parser().map(|x|ast::StmtAST::DefFuncAST(x)))
-        ).
-        skip(
-            skip_many_parser()
-        ).skip(char(';'))
+        try(
+            skip_many_parser().
+            with (
+                try(infix_parser().map(|x|ast::StmtAST::InfixAST(x))).
+                or(def_func_parser().map(|x|ast::StmtAST::DefFuncAST(x)))
+            ).
+            skip(
+                skip_many_parser()
+            ).skip(char(';'))
+        )
     }
 }
 
@@ -82,9 +84,12 @@ parser! {
 }
 
 //<expr_app>
-parser!{
+parser! {
     fn expr_app_parser['a]()(MyStream<'a>)->ast::ExprAST{
-        (term_parser(),many(skip_many_parser().with(term_parser()))).map(|(x,xs):(ast::ExprAST,Vec<ast::ExprAST>)|{
+        (term_parser(),many(
+            try(skip_many_parser().with(term_parser()))
+        ))
+        .map(|(x,xs):(ast::ExprAST,Vec<ast::ExprAST>)|{
             ast::ExprAST::create_func_call_ast(x,xs)
         })
     }
@@ -177,6 +182,7 @@ parser! {
     fn paren_parser['a]()(MyStream<'a>)->ast::ExprAST
     {
         char('(')
+        .with(skip_many_parser())
         .with(expr_parser())
         .map(ast::ExprAST::create_paren_ast)
         .skip(char(')'))
