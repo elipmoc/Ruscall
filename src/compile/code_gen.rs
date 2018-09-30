@@ -14,7 +14,7 @@ impl ir::ProgramIr {
         //llvm初期化
         init_llvm_all_target();
         let code_gen = CodeGenerator::new();
-        let module = Module::new("my_module");
+        let module = Module::new(file_name);
 
         //外部関数宣言のコード化
         self.extern_func_list.into_iter()
