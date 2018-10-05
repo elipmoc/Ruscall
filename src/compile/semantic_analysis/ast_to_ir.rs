@@ -24,9 +24,6 @@ impl VariableTable {
             *name2 == name
         }).map(|(id, _)| id)
     }
-    fn id_list(&self) -> Vec<usize> {
-        (0..self.0.len()).rev().collect()
-    }
 }
 
 impl ast::StmtAST {
@@ -85,10 +82,10 @@ impl ast::ExprAST {
     }
 }
 
-pub use combine::stream::state::SourcePosition;
 
 #[test]
 fn ast_to_ir_test() {
+    use combine::stream::state::SourcePosition;
     let ast = ast::ProgramAST {
         stmt_list: vec![
             ast::StmtAST::DefFuncAST(
