@@ -17,8 +17,8 @@ impl ir::ProgramIr {
         let module = Module::new(file_name);
 
         //外部関数宣言のコード化
-        self.extern_func_list.into_iter()
-            .for_each(|(_, v)| extern_func_gen(v, &module));
+        self.ex_func_list.into_iter()
+            .for_each(|(_, v)| ex_func_gen(v, &module));
 
         //関数宣言のコード化
         self.func_list.iter().for_each(|(k, v)| {
@@ -41,7 +41,7 @@ impl ir::ProgramIr {
     }
 }
 
-fn extern_func_gen(dec_func_ir: ir::DecFuncIr, module: &Module) {
+fn ex_func_gen(dec_func_ir: ir::DecFuncIr, module: &Module) {
     let function_type = dec_func_ir.ty.to_llvm_type();
     let function = Function::new(&dec_func_ir.name, &module, function_type);
     set_linkage(function.llvm_function, LLVMLinkage::LLVMExternalLinkage);

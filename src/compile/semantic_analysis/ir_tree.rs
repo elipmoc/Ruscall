@@ -4,7 +4,8 @@ use std::collections::HashMap;
 #[derive(Debug, PartialEq)]
 pub struct ProgramIr {
     pub func_list: HashMap<String, FuncIr>,
-    pub extern_func_list: HashMap<String, DecFuncIr>
+    //extern　宣言された関数のリスト
+    pub ex_func_list: HashMap<String, DecFuncIr>
 }
 
 #[derive(Debug, PartialEq)]

@@ -11,14 +11,14 @@ impl ir::ProgramIr {
             }).collect();
         for func_name in func_name_list {
             let func_ir = self.func_list.remove(&func_name).unwrap();
-            func_ir.ty_check(&mut self.func_list, &self.extern_func_list, types::Type::Unknown);
+            func_ir.ty_check(&mut self.func_list, &self.ex_func_list, types::Type::Unknown);
         }
         self
     }
 }
 
 type FuncList = HashMap<String, ir::FuncIr>;
-type ExternFuncList = HashMap<String, ir::DecFuncIr>;
+type ExFuncList = HashMap<String, ir::DecFuncIr>;
 
 impl ir::DecFuncIr {
     fn ty_check(&self, expect_ty: types::Type) -> types::FuncType {
@@ -36,7 +36,7 @@ impl ir::DecFuncIr {
 }
 
 impl ir::FuncIr {
-    fn ty_check(mut self, func_list: &mut FuncList, extern_func_list: &ExternFuncList, expect_ty: types::Type) -> types::FuncType {
+    fn ty_check(mut self, func_list: &mut FuncList, ex_func_list: &ExFuncList, expect_ty: types::Type) -> types::FuncType {
         match match expect_ty {
             types::Type::Fn(x) => self.ty.merge(types::Type::FuncType(Box::new(*x))),
             x => self.ty.merge(x)
@@ -45,7 +45,7 @@ impl ir::FuncIr {
                 Some(x) => self.ty = x,
                 _ => panic!("type error!")
             };
-        self.body.ty_check(func_list, extern_func_list, &mut self.ty.param_types, self.ty.ret_type);
+        self.body.ty_check(func_list, ex_func_list, &mut self.ty.param_types, self.ty.ret_type);
         self.ty.ret_type = self.body.get_ty().clone();
         let ty = self.ty.clone();
         func_list.insert(self.name.clone(), self);
@@ -58,16 +58,16 @@ impl ir::ExprIr {
     fn ty_check(
         &mut self,
         func_list: &mut HashMap<String, ir::FuncIr>,
-        extern_func_list: &ExternFuncList,
+        ex_func_list: &ExFuncList,
         params: &mut Vec<types::Type>,
         expect_ty: types::Type,
     ) -> types::Type {
         match self {
             ir::ExprIr::NumIr(x) => x.ty_check(),
-            ir::ExprIr::CallIr(x) => x.ty_check(func_list, extern_func_list, params, expect_ty),
-            ir::ExprIr::OpIr(x) => x.ty_check(func_list, extern_func_list, params),
+            ir::ExprIr::CallIr(x) => x.ty_check(func_list, ex_func_list, params, expect_ty),
+            ir::ExprIr::OpIr(x) => x.ty_check(func_list, ex_func_list, params),
             ir::ExprIr::VariableIr(x) => x.ty_check(params, expect_ty),
-            ir::ExprIr::GlobalVariableIr(x) => x.ty_check(func_list, extern_func_list, expect_ty),
+            ir::ExprIr::GlobalVariableIr(x) => x.ty_check(func_list, ex_func_list, expect_ty),
         }
     }
 }
@@ -85,19 +85,19 @@ impl ir::CallIr {
     fn ty_check(
         &mut self,
         func_list: &mut FuncList,
-        extern_func_list: &ExternFuncList,
+        ex_func_list: &ExFuncList,
         params: &mut Vec<types::Type>,
         expect_ty: types::Type,
     ) -> types::Type {
         for i in 0..self.params.len() {
-            self.params[i].ty_check(func_list, extern_func_list, params, types::Type::Unknown);
+            self.params[i].ty_check(func_list, ex_func_list, params, types::Type::Unknown);
         }
         let expect_func_ty = types::Type::create_fn_func_type(
             self.params.iter().map(|x| x.get_ty().clone()).collect(),
             expect_ty.clone(),
         );
 
-        self.func.ty_check(func_list, extern_func_list, params, expect_func_ty);
+        self.func.ty_check(func_list, ex_func_list, params, expect_func_ty);
 
         match self.func.get_ty() {
             types::Type::Fn(x) => self.ty = x.ret_type.clone(),
@@ -109,12 +109,12 @@ impl ir::CallIr {
 }
 
 impl ir::OpIr {
-    fn ty_check(&mut self, func_list: &mut FuncList, extern_func_list: &ExternFuncList, params: &mut Vec<types::Type>) -> types::Type {
+    fn ty_check(&mut self, func_list: &mut FuncList, ex_func_list: &ExFuncList, params: &mut Vec<types::Type>) -> types::Type {
         if self.ty != types::Type::Unknown {
             return self.ty.clone();
         }
-        if self.l_expr.ty_check(func_list, extern_func_list, params, types::Type::Int32) == types::Type::Int32
-            && self.r_expr.ty_check(func_list, extern_func_list, params, types::Type::Int32) == types::Type::Int32 {
+        if self.l_expr.ty_check(func_list, ex_func_list, params, types::Type::Int32) == types::Type::Int32
+            && self.r_expr.ty_check(func_list, ex_func_list, params, types::Type::Int32) == types::Type::Int32 {
             self.ty = types::Type::Int32;
         } else { panic!("type error!"); }
         self.ty.clone()
@@ -136,12 +136,12 @@ impl ir::VariableIr {
 }
 
 impl ir::GlobalVariableIr {
-    fn ty_check(&mut self, func_list: &mut FuncList, extern_func_list: &ExternFuncList, expect_ty: types::Type) -> types::Type {
+    fn ty_check(&mut self, func_list: &mut FuncList, ex_func_list: &ExFuncList, expect_ty: types::Type) -> types::Type {
         let func_ty =
             match func_list.remove(&self.id) {
-                Some(x) => x.ty_check(func_list, extern_func_list, expect_ty),
+                Some(x) => x.ty_check(func_list, ex_func_list, expect_ty),
                 _ =>
-                    match extern_func_list.get(&self.id) {
+                    match ex_func_list.get(&self.id) {
                         Some(x) => x.ty_check(expect_ty),
                         _ => panic!("call not found function")
                     }

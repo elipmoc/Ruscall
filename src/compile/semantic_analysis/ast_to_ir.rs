@@ -7,12 +7,12 @@ use std::collections::HashMap;
 type ResultIr<T> = Result<T, Error>;
 
 impl ast::ProgramAST {
-    pub fn to_ir(self, extern_func_list: HashMap<String, ir::DecFuncIr>) -> ResultIr<(ir::ProgramIr)> {
+    pub fn to_ir(self, ex_func_list: HashMap<String, ir::DecFuncIr>) -> ResultIr<(ir::ProgramIr)> {
         let mut func_list: HashMap<String, ir::FuncIr> = HashMap::new();
         for stmt in self.stmt_list {
             stmt.to_ir(&mut func_list)?;
         }
-        Result::Ok(ir::ProgramIr { func_list, extern_func_list })
+        Result::Ok(ir::ProgramIr { func_list, ex_func_list })
     }
 }
 
