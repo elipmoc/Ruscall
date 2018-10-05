@@ -8,5 +8,9 @@
 
 ![ラスカル](https://raw.githubusercontent.com/elipmoc/Ruscall/develop/image.jpg "ラスカル")
 
+## 目的
+Rust、Scala、Haskellのいいところを結集した言語を作る。
+
+
 ## DFD
 ![dfd](https://raw.githubusercontent.com/elipmoc/Ruscall/develop/DFD.png "dfd")
