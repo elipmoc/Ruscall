@@ -102,7 +102,7 @@ impl CallIr {
             }).collect::<TyCheckResult<Vec<ExprIr>>>()?;
         let expect_func_ty = Type::create_fn_func_type(
             self.params.iter().map(|x| x.get_ty().clone()).collect(),
-            expect_ty.clone(),
+            expect_ty,
         );
 
         self.func = self.func.ty_check(func_list, ex_func_list, params, expect_func_ty)?;
