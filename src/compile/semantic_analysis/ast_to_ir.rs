@@ -90,26 +90,28 @@ fn ast_to_ir_test() {
     let ast = ast::ProgramAST {
         stmt_list: vec![
             ast::StmtAST::DefFuncAST(
-                ast::DefFuncAST::new(
-                    "hoge".to_string(),
-                    vec![
+                ast::DefFuncAST {
+                    func_name: "hoge".to_string(),
+                    params: vec![
                         ast::VariableAST::new("a".to_string(), SourcePosition { column: 0, line: 0 }),
                         ast::VariableAST::new("b".to_string(), SourcePosition { column: 0, line: 0 })
                     ],
-                    ast::ExprAST::create_variable_ast("b".to_string(), SourcePosition { column: 0, line: 0 }),
-                )
+                    body: ast::ExprAST::create_variable_ast("b".to_string(), SourcePosition { column: 0, line: 0 }),
+                    pos: SourcePosition { column: 0, line: 0 },
+                }
             )
         ]
     };
     let mut func_list = HashMap::new();
     func_list.insert(
         "hoge".to_string(),
-        ir::FuncIr::new(
-            "hoge".to_string(),
-            ir::ExprIr::create_variableir(0),
-            FuncType { ret_type: Type::Unknown, param_types: vec![Type::Unknown, Type::Unknown] },
-        ),
+        ir::FuncIr {
+            name: "hoge".to_string(),
+            body: ir::ExprIr::create_variableir(0, SourcePosition { line: 0, column: 0 }),
+            ty: FuncType { ret_type: Type::Unknown, param_types: vec![Type::Unknown, Type::Unknown] },
+            pos: SourcePosition { column: 0, line: 0 },
+        },
     );
-    let ir = ir::ProgramIr { func_list, extern_func_list: HashMap::new() };
+    let ir = ir::ProgramIr { func_list, ex_func_list: HashMap::new() };
     assert_eq!(ast.to_ir(HashMap::new()).unwrap(), ir);
 }
