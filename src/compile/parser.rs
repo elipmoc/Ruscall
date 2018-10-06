@@ -7,21 +7,26 @@ use combine::stream::state::{DefaultPositioned, SourcePosition, State};
 use combine::{eof, many, many1, position, unexpected, value, Parser};
 /*
 BNF
-<program>  := {<stmt>} <skip_many>
-<stmt>     := <skip_many> ( <infix> | <def_func>) <skip_many> ';'
-<def_func> := <id> {<skip_many> <id>} <skip_many> '=' <skip_many> <expr>
-<id>       := [a-z]{ [a-z] | [0-9] | '_' }
-<expr>     := <expr_app> <skip_many> { <op> <skip_many> <expr_app> <skip_many> }
-<expr_app> := <term> {<skip_many> <term> }
-<infix>    := ('infixr' | 'infixl') <space>+ <num> <space>+ <op>
-<op>       := '+' | '-' | '/' | '*'
-<term>     := <num> | <id> | <paren>
-<paren>    := '(' <skip_many> <expr_app> ')'
-<num>      := [0-9]+
-<skip>     := '\n' | <space>
-<skip_many>:= {<skip>}
-<space>    := ' ' | '\t'
-
+<program>       := {<stmt>} <skip_many>
+<stmt>          := <skip_many> ( <infix> | <def_func> | <dec_func>) <skip_many> ';'
+<def_func>      := <id> {<skip_many> <id>} <skip_many> '=' <skip_many> <expr>
+<id>            := [a-z]{ [a-z] | [0-9] | '_' }
+<expr>          := <expr_app> <skip_many> { <op> <skip_many> <expr_app> <skip_many> }
+<expr_app>      := <term> {<skip_many> <term> }
+<infix>         := ('infixr' | 'infixl') <space>+ <num> <space>+ <op>
+<op>            := '+' | '-' | '/' | '*'
+<term>          := <num> | <id> | <paren>
+<paren>         := '(' <skip_many> <expr_app> ')'
+<num>           := [0-9]+
+<skip>          := '\n' | <space>
+<skip_many>     := {<skip>}
+<space>         := ' ' | '\t'
+<ty_term>       := 'Int32'| <ty_paren> | <ty_func_pointer>
+<ty_func_pointer>
+                := 'Fn' <ty_func>
+<ty_paren>      := '(' <ty_term> ')'
+<ty_func>       := <ty_term> ( '->' <ty_term> )+
+<dec_func>      := <id> <skip_many> '::' <skip_many> <ty_func>
 */
 
 pub fn parse(
