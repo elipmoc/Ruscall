@@ -15,6 +15,6 @@ pub fn analysis(ast: ProgramAST) -> Result<(ir::ProgramIr), Error> {
     Result::Ok(
         resolve_op(ast)?
             .to_ir(get_buildin_func_list())?
-            .ty_check()
+            .ty_check()?
     )
 }

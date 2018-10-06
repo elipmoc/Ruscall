@@ -1,11 +1,12 @@
-use self::super::super::types::{Type,FuncType};
+use self::super::super::types::{Type, FuncType};
 use std::collections::HashMap;
+use combine::stream::state::SourcePosition;
 
 #[derive(Debug, PartialEq)]
 pub struct ProgramIr {
     pub func_list: HashMap<String, FuncIr>,
     //extern　宣言された関数のリスト
-    pub ex_func_list: HashMap<String, DecFuncIr>
+    pub ex_func_list: HashMap<String, DecFuncIr>,
 }
 
 #[derive(Debug, PartialEq)]
@@ -13,12 +14,7 @@ pub struct FuncIr {
     pub name: String,
     pub body: ExprIr,
     pub ty: FuncType,
-}
-
-impl FuncIr {
-    pub fn new(name: String, body: ExprIr, ty: FuncType) -> FuncIr {
-        FuncIr { name,  body, ty }
-    }
+    pub pos: SourcePosition,
 }
 
 #[derive(Debug, PartialEq)]
@@ -34,11 +30,11 @@ impl ExprIr {
     pub fn create_opir(op: String, l_expr: ExprIr, r_expr: ExprIr) -> ExprIr {
         ExprIr::OpIr(Box::new(OpIr { op, l_expr, r_expr, ty: Type::Unknown }))
     }
-    pub fn create_variableir(id: usize) -> ExprIr {
-        ExprIr::VariableIr(VariableIr { id, ty: Type::Unknown })
+    pub fn create_variableir(id: usize,pos:SourcePosition) -> ExprIr {
+        ExprIr::VariableIr(VariableIr { id, ty: Type::Unknown ,pos})
     }
-    pub fn create_global_variableir(id: String) -> ExprIr {
-        ExprIr::GlobalVariableIr(GlobalVariableIr { id, ty: Type::Unknown })
+    pub fn create_global_variableir(id: String, pos: SourcePosition) -> ExprIr {
+        ExprIr::GlobalVariableIr(GlobalVariableIr { id, ty: Type::Unknown, pos })
     }
     pub fn create_numir(num: i32) -> ExprIr {
         ExprIr::NumIr(NumIr { num, ty: Type::Unknown })
@@ -76,12 +72,14 @@ pub struct NumIr {
 pub struct VariableIr {
     pub id: usize,
     pub ty: Type,
+    pub pos: SourcePosition,
 }
 
 #[derive(Debug, PartialEq)]
 pub struct GlobalVariableIr {
     pub id: String,
     pub ty: Type,
+    pub pos: SourcePosition,
 }
 
 #[derive(Debug, PartialEq)]

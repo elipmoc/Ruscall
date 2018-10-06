@@ -85,10 +85,10 @@ pub struct OpAST {
 impl OpAST {
     pub fn new(op: String, pos: SourcePosition, l_expr: ExprAST, r_expr: ExprAST) -> OpAST {
         OpAST {
-            op: op,
-            pos: pos,
-            l_expr: l_expr,
-            r_expr: r_expr,
+            op,
+            pos,
+            l_expr,
+            r_expr,
         }
     }
 }
@@ -121,14 +121,5 @@ pub struct DefFuncAST {
     pub func_name: String,
     pub params: Vec<VariableAST>,
     pub body: ExprAST,
-}
-
-impl DefFuncAST {
-    pub fn new(func_name: String, params: Vec<VariableAST>, body: ExprAST) -> DefFuncAST {
-        DefFuncAST {
-            func_name: func_name,
-            params: params,
-            body: body,
-        }
-    }
+    pub pos:SourcePosition
 }

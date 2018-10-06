@@ -1,4 +1,5 @@
 use std::cmp::Ordering;
+use super::error::Error;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Type {
@@ -7,6 +8,8 @@ pub enum Type {
     Unknown,
     Fn(Box<FuncType>),
 }
+
+type MergeResult<T> = Result<T, String>;
 
 impl PartialOrd for Type {
     fn partial_cmp(&self, other: &Type) -> Option<Ordering> {
@@ -24,6 +27,14 @@ impl PartialOrd for Type {
 }
 
 impl Type {
+    pub fn show(&self) -> String {
+        match self {
+            Type::Int32 => "Int32".to_string(),
+            Type::Unknown => "Unknown".to_string(),
+            Type::FuncType(x) => x.show(),
+            Type::Fn(x) => "Fn(".to_string() + &x.show() + ")"
+        }
+    }
     pub fn create_func_type(param_types: Vec<Type>, ret_type: Type) -> Type {
         Type::FuncType(Box::new(FuncType { param_types, ret_type }))
     }
@@ -31,14 +42,14 @@ impl Type {
         Type::Fn(Box::new(FuncType { param_types, ret_type }))
     }
 
-    pub fn merge(self, other: Type) -> Option<Type> {
+    pub fn merge(self, other: Type) -> MergeResult<Type> {
         match (self, other) {
-            (Type::Unknown, other) => Option::Some(other),
-            (x, Type::Unknown) => Option::Some(x),
-            (Type::FuncType(x), other) => Option::Some(Type::FuncType(Box::new(x.merge(other)?))),
-            (Type::Fn(x), Type::Fn(y)) => Option::Some(Type::Fn(Box::new(x.merge(Type::FuncType(Box::new(*y)))?))),
-            ref x if x.0 == x.1 => Option::Some(x.0.clone()),
-            _ => Option::None
+            (Type::Unknown, other) => Ok(other),
+            (x, Type::Unknown) => Ok(x),
+            (Type::FuncType(x), other) => Ok(Type::FuncType(Box::new(x.merge(other)?))),
+            (Type::Fn(x), Type::Fn(y)) => Ok(Type::Fn(Box::new(x.merge(Type::FuncType(Box::new(*y)))?))),
+            ref x if x.0 == x.1 => Ok(x.0.clone()),
+            (x, y) => Err(format!("type error!\nexpect: {}\nactual: {}", y.show(), x.show()))
         }
     }
 }
@@ -76,20 +87,30 @@ impl PartialOrd for FuncType {
 }
 
 impl FuncType {
-    pub fn merge(self, other: Type) -> Option<FuncType> {
+    pub fn show(&self)->String{
+        self.param_types
+            .iter()
+            .fold("".to_string(),|acc,x|acc+&x.show()+"->")
+        +&self.ret_type.show()
+    }
+
+    pub fn merge(self, other: Type) -> MergeResult<FuncType> {
         match other {
             Type::FuncType(x) => {
                 let x = *x;
-                Option::Some(
+                if x.param_types.len() != self.param_types.len() {
+                    return Err(format!("type error! \nexpect: {}\nactual: {}", x.show(), self.show()));
+                }
+                Ok(
                     FuncType {
                         param_types: self.param_types.into_iter().zip(x.param_types)
-                            .map(|(a, b)| a.merge(b)).collect::<Option<Vec<Type>>>()?,
+                            .map(|(a, b)| a.merge(b)).collect::<MergeResult<Vec<Type>>>()?,
                         ret_type: self.ret_type.merge(x.ret_type)?,
                     }
                 )
             }
-            Type::Unknown => Option::Some(self),
-            _ => Option::None
+            Type::Unknown => Ok(self),
+            _ => Err(format!("type error!\nexpect: {}\nactual: {}", other.show(), self.show()))
         }
     }
 }

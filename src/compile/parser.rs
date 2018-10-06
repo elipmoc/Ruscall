@@ -68,10 +68,11 @@ parser! {
    fn def_func_parser['a]()(MyStream<'a>) ->ast::DefFuncAST
     {
         (
+            position(),
             id_parser().skip(skip_many_parser()),
             many((position(),id_parser()).skip(skip_many_parser()).map(|(pos,id)|ast::VariableAST::new(id,pos))),
             char('=').with(skip_many_parser()).with(expr_parser())
-        ).map(|(func_name,params,body)|{ast::DefFuncAST::new(func_name,params,body)})
+        ).map(|(pos,func_name,params,body)|{ast::DefFuncAST{func_name,params,body,pos}})
     }
 }
 

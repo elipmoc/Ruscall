@@ -36,11 +36,12 @@ impl ast::StmtAST {
                 };
                 let var_table = VariableTable(def_func_ast.params.into_iter().map(|x| x.id).collect());
                 let body_ir = def_func_ast.body.to_ir(&var_table);
-                let func_ir = ir::FuncIr::new(
-                    def_func_ast.func_name,
-                    body_ir?,
-                    func_type,
-                );
+                let func_ir = ir::FuncIr {
+                    name: def_func_ast.func_name,
+                    body: body_ir?,
+                    ty: func_type,
+                    pos: def_func_ast.pos,
+                };
                 func_list.insert(func_ir.name.clone(), func_ir);
                 Option::None
             }
@@ -61,8 +62,8 @@ impl ast::ExprAST {
                 }
                 ast::ExprAST::VariableAST(x) =>
                     match var_table.find_variable_id(&x.id) {
-                        Some(x) => ir::ExprIr::create_variableir(x),
-                        _ => ir::ExprIr::create_global_variableir(x.id)
+                        Some(id) => ir::ExprIr::create_variableir(id,x.pos),
+                        _ => ir::ExprIr::create_global_variableir(x.id,x.pos)
                     },
                 ast::ExprAST::ParenAST(x) => x.expr.to_ir(var_table)?,
                 ast::ExprAST::FuncCallAST(x) => {
