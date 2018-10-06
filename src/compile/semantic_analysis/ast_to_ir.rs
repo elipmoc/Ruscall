@@ -12,7 +12,10 @@ impl ast::ProgramAST {
         for stmt in self.stmt_list {
             stmt.to_ir(&mut func_list)?;
         }
-        Result::Ok(ir::ProgramIr { func_list, ex_func_list })
+        Result::Ok(ir::ProgramIr {
+            func_list,
+            ex_func_list,
+        })
     }
 }
 
@@ -62,8 +65,8 @@ impl ast::ExprAST {
                 }
                 ast::ExprAST::VariableAST(x) =>
                     match var_table.find_variable_id(&x.id) {
-                        Some(id) => ir::ExprIr::create_variableir(id,x.pos),
-                        _ => ir::ExprIr::create_global_variableir(x.id,x.pos)
+                        Some(id) => ir::ExprIr::create_variableir(id, x.pos),
+                        _ => ir::ExprIr::create_global_variableir(x.id, x.pos)
                     },
                 ast::ExprAST::ParenAST(x) => x.expr.to_ir(var_table)?,
                 ast::ExprAST::FuncCallAST(x) => {
