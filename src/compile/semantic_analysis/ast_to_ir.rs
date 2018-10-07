@@ -9,10 +9,12 @@ type ResultIr<T> = Result<T, Error>;
 impl ast::ProgramAST {
     pub fn to_ir(self, ex_func_list: HashMap<String, ir::DecFuncIr>) -> ResultIr<(ir::ProgramIr)> {
         let mut func_list: HashMap<String, ir::FuncIr> = HashMap::new();
+        let mut dec_func_list: Vec<ir::DecFuncIr> = vec![];
         for stmt in self.stmt_list {
             stmt.to_ir(&mut func_list)?;
         }
         Result::Ok(ir::ProgramIr {
+            dec_func_list,
             func_list,
             ex_func_list,
         })
@@ -46,11 +48,13 @@ impl ast::StmtAST {
                     pos: def_func_ast.pos,
                 };
                 func_list.insert(func_ir.name.clone(), func_ir);
-                Option::None
+                None
             }
-            _ => Option::None
+            ast::StmtAST::DecFuncAST(x) => None,
+
+            _ => None
         };
-        Result::Ok(option)
+        Ok(option)
     }
 }
 
@@ -82,7 +86,7 @@ impl ast::ExprAST {
                     }
                 }
             };
-        Result::Ok(ir)
+        Ok(ir)
     }
 }
 
@@ -115,6 +119,6 @@ fn ast_to_ir_test() {
             pos: SourcePosition { column: 0, line: 0 },
         },
     );
-    let ir = ir::ProgramIr { func_list, ex_func_list: HashMap::new() };
+    let ir = ir::ProgramIr { dec_func_list: vec![], func_list, ex_func_list: HashMap::new() };
     assert_eq!(ast.to_ir(HashMap::new()).unwrap(), ir);
 }

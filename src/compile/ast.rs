@@ -1,4 +1,5 @@
 use combine::stream::state::SourcePosition;
+use super::types::FuncType;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ProgramAST {
@@ -10,6 +11,7 @@ pub enum StmtAST {
     //   ExprAST(ExprAST),
     InfixAST(InfixAST),
     DefFuncAST(DefFuncAST),
+    DecFuncAST(DecFuncAST),
     NoneAST,
 }
 
@@ -122,4 +124,10 @@ pub struct DefFuncAST {
     pub params: Vec<VariableAST>,
     pub body: ExprAST,
     pub pos:SourcePosition
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct DecFuncAST{
+    pub name:String,
+    pub ty: FuncType
 }

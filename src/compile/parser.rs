@@ -16,16 +16,16 @@ BNF
 <infix>         := ('infixr' | 'infixl') <space>+ <num> <space>+ <op>
 <op>            := '+' | '-' | '/' | '*'
 <term>          := <num> | <id> | <paren>
-<paren>         := '(' <skip_many> <expr_app> ')'
+<paren>         := '(' <skip_many> <expr> ')'
 <num>           := [0-9]+
 <skip>          := '\n' | <space>
 <skip_many>     := {<skip>}
 <space>         := ' ' | '\t'
 <ty_term>       := 'Int32'| <ty_paren> | <ty_func_pointer>
 <ty_func_pointer>
-                := 'Fn' <ty_func>
-<ty_paren>      := '(' <ty_term> ')'
-<ty_func>       := <ty_term> ( '->' <ty_term> )+
+                := 'Fn' <skip_many> <ty_func>
+<ty_paren>      := '(' <skip_many> <ty_term> <skip_many> ')'
+<ty_func>       := <ty_term> ( <skip_many> '->' <skip_many> <ty_term> )+
 <dec_func>      := <id> <skip_many> '::' <skip_many> <ty_func>
 */
 
@@ -58,8 +58,9 @@ parser! {
         try(
             skip_many_parser().
             with (
-                try(infix_parser().map(|x|ast::StmtAST::InfixAST(x))).
-                or(def_func_parser().map(|x|ast::StmtAST::DefFuncAST(x)))
+                try(infix_parser().map(|x|ast::StmtAST::InfixAST(x)))
+                .or(try(def_func_parser().map(|x|ast::StmtAST::DefFuncAST(x))))
+                .or(dec_func_parser().map(|x|ast::StmtAST::DecFuncAST(x)))
             ).
             skip(
                 skip_many_parser()
@@ -225,5 +226,85 @@ parser! {
    fn space_parser['a]()(MyStream<'a>) ->()
     {
         space().or(tab()).map(|_|())
+    }
+}
+
+use super::types::*;
+use combine::parser::combinator::lazy;
+
+//<ty_term>
+parser! {
+   fn ty_term_parser['a]()(MyStream<'a>) ->Type
+    {
+       string("Int32").map(|_|Type::Int32)
+       .or(ty_paren_parser())
+       .or(ty_func_pointer_parser())
+    }
+}
+//<ty_func_pointer>
+parser! {
+   fn ty_func_pointer_parser['a]()(MyStream<'a>) ->Type
+    {
+        string("Fn")
+        .with(skip_many_parser())
+        .with(ty_func_parser())
+        .map(|x|Type::Fn(Box::new(x)))
+    }
+}
+
+//<ty_paren>
+parser! {
+   fn ty_paren_parser['a]()(MyStream<'a>) ->Type
+    {
+        char('(')
+        .with(skip_many_parser())
+        .with(ty_term_parser())
+        .skip(skip_many_parser())
+        .skip(char(')'))
+    }
+}
+
+//<ty_func>
+parser! {
+   fn ty_func_parser['a]()(MyStream<'a>) ->FuncType
+    {
+        (
+            ty_term_parser(),
+            many1(
+                (
+                    skip_many_parser(),
+                    string("->"),
+                    skip_many_parser(),
+                    ty_term_parser()
+                ).map(|(_,_,_,x)|x)
+            )
+        )
+        .map(|(x,mut xs):(Type,Vec<Type>)|{
+            let ret_type = xs.pop().unwrap();
+            let mut param_types=vec![x];
+            param_types.append(&mut xs);
+            FuncType{
+                ret_type: ret_type,
+                param_types: param_types
+            }
+        })
+    }
+}
+
+//<dec_func>
+parser! {
+   fn dec_func_parser['a]()(MyStream<'a>) ->ast::DecFuncAST
+    {
+        id_parser()
+        .skip(skip_many_parser())
+        .skip(string("::"))
+        .skip(skip_many_parser())
+        .and(ty_func_parser())
+        .map(|(name,ty)|{
+            ast::DecFuncAST{
+                name: name,
+                ty: ty
+            }
+        })
     }
 }

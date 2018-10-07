@@ -4,6 +4,9 @@ use combine::stream::state::SourcePosition;
 
 #[derive(Debug, PartialEq)]
 pub struct ProgramIr {
+
+    pub dec_func_list: Vec<DecFuncIr>,
+
     pub func_list: HashMap<String, FuncIr>,
     //extern　宣言された関数のリスト
     pub ex_func_list: HashMap<String, DecFuncIr>,
