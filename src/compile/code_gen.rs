@@ -10,14 +10,15 @@ pub struct CodeGenResult<'a> {
 
 //コード生成する関数
 impl ir::ProgramIr {
-    pub fn code_gen(self, file_name: &str) ->CodeGenResult{
+    pub fn code_gen(self, file_name: &str) -> CodeGenResult {
         //llvm初期化
         init_llvm_all_target();
         let code_gen = CodeGenerator::new();
         let module = Module::new(file_name);
 
         //外部関数宣言のコード化
-        self.ex_func_list.into_iter()
+        self.ex_dec_func_list
+            .into_iter()
             .for_each(|(_, v)| ex_func_gen(v, &module));
 
         //関数宣言のコード化
@@ -37,7 +38,11 @@ impl ir::ProgramIr {
             panic!("llvm error:{}", err_msg);
         }
 
-        CodeGenResult{file_name, module, code_gen}
+        CodeGenResult {
+            file_name,
+            module,
+            code_gen,
+        }
     }
 }
 
@@ -113,9 +118,7 @@ impl ir::CallIr {
         let params = self
             .params
             .into_iter()
-            .map(|x| {
-                x.code_gen(module, codegen, params)
-            })
+            .map(|x| x.code_gen(module, codegen, params))
             .collect();
 
         codegen.build_call(func, params, "")

@@ -1,15 +1,14 @@
-use self::super::super::types::{Type, FuncType};
-use std::collections::HashMap;
+use self::super::super::types::{FuncType, Type};
 use combine::stream::state::SourcePosition;
+use std::collections::HashMap;
 
 #[derive(Debug, PartialEq)]
 pub struct ProgramIr {
-
     pub dec_func_list: Vec<DecFuncIr>,
 
     pub func_list: HashMap<String, FuncIr>,
     //extern　宣言された関数のリスト
-    pub ex_func_list: HashMap<String, DecFuncIr>,
+    pub ex_dec_func_list: HashMap<String, DecFuncIr>,
 }
 
 #[derive(Debug, PartialEq)]
@@ -31,19 +30,39 @@ pub enum ExprIr {
 
 impl ExprIr {
     pub fn create_opir(op: String, l_expr: ExprIr, r_expr: ExprIr) -> ExprIr {
-        ExprIr::OpIr(Box::new(OpIr { op, l_expr, r_expr, ty: Type::Unknown }))
+        ExprIr::OpIr(Box::new(OpIr {
+            op,
+            l_expr,
+            r_expr,
+            ty: Type::Unknown,
+        }))
     }
-    pub fn create_variableir(id: usize,pos:SourcePosition) -> ExprIr {
-        ExprIr::VariableIr(VariableIr { id, ty: Type::Unknown ,pos})
+    pub fn create_variableir(id: usize, pos: SourcePosition) -> ExprIr {
+        ExprIr::VariableIr(VariableIr {
+            id,
+            ty: Type::Unknown,
+            pos,
+        })
     }
     pub fn create_global_variableir(id: String, pos: SourcePosition) -> ExprIr {
-        ExprIr::GlobalVariableIr(GlobalVariableIr { id, ty: Type::Unknown, pos })
+        ExprIr::GlobalVariableIr(GlobalVariableIr {
+            id,
+            ty: Type::Unknown,
+            pos,
+        })
     }
     pub fn create_numir(num: i32) -> ExprIr {
-        ExprIr::NumIr(NumIr { num, ty: Type::Unknown })
+        ExprIr::NumIr(NumIr {
+            num,
+            ty: Type::Unknown,
+        })
     }
     pub fn create_callir(func: ExprIr, params: Vec<ExprIr>) -> ExprIr {
-        ExprIr::CallIr(Box::new(CallIr { func, params, ty: Type::Unknown }))
+        ExprIr::CallIr(Box::new(CallIr {
+            func,
+            params,
+            ty: Type::Unknown,
+        }))
     }
 
     pub fn get_ty(&self) -> &Type {
@@ -52,7 +71,7 @@ impl ExprIr {
             ExprIr::OpIr(x) => &x.ty,
             ExprIr::NumIr(x) => &x.ty,
             ExprIr::CallIr(x) => &x.ty,
-            ExprIr::GlobalVariableIr(x) => &x.ty
+            ExprIr::GlobalVariableIr(x) => &x.ty,
         }
     }
 }

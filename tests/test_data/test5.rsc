@@ -3,6 +3,9 @@
     +
     ;
 
+ex print::Int32->Int32;
+ex scan::Int32->Int32;
+
  main
     =
         print2

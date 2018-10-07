@@ -8,7 +8,12 @@ use combine::{eof, many, many1, position, unexpected, value, Parser};
 /*
 BNF
 <program>       := {<stmt>} <skip_many>
-<stmt>          := <skip_many> ( <infix> | <def_func> | <dec_func>) <skip_many> ';'
+<stmt>          := <skip_many> (
+                        <infix> |
+                        <def_func> |
+                        <dec_func> |
+                        <exturn_dec_func>
+                   ) <skip_many> ';'
 <def_func>      := <id> {<skip_many> <id>} <skip_many> '=' <skip_many> <expr>
 <id>            := [a-z]{ [a-z] | [0-9] | '_' }
 <expr>          := <expr_app> <skip_many> { <op> <skip_many> <expr_app> <skip_many> }
@@ -27,6 +32,8 @@ BNF
 <ty_paren>      := '(' <skip_many> <ty_term> <skip_many> ')'
 <ty_func>       := <ty_term> ( <skip_many> '->' <skip_many> <ty_term> )+
 <dec_func>      := <id> <skip_many> '::' <skip_many> <ty_func>
+<exturn_dec_func>
+                := 'ex' <skip_many> <dec_func>
 */
 
 pub fn parse(
@@ -60,7 +67,8 @@ parser! {
             with (
                 try(infix_parser().map(|x|ast::StmtAST::InfixAST(x)))
                 .or(try(def_func_parser().map(|x|ast::StmtAST::DefFuncAST(x))))
-                .or(dec_func_parser().map(|x|ast::StmtAST::DecFuncAST(x)))
+                .or(try(dec_func_parser().map(|x|ast::StmtAST::DecFuncAST(x))))
+                .or(extern_dec_func_parser().map(|x|ast::StmtAST::DecFuncAST(x)))
             ).
             skip(
                 skip_many_parser()
@@ -230,7 +238,6 @@ parser! {
 }
 
 use super::types::*;
-use combine::parser::combinator::lazy;
 
 //<ty_term>
 parser! {
@@ -271,12 +278,10 @@ parser! {
         (
             ty_term_parser(),
             many1(
-                (
-                    skip_many_parser(),
-                    string("->"),
-                    skip_many_parser(),
-                    ty_term_parser()
-                ).map(|(_,_,_,x)|x)
+                skip_many_parser()
+                .with(string("->"))
+                .with(skip_many_parser())
+                .with(ty_term_parser())
             )
         )
         .map(|(x,mut xs):(Type,Vec<Type>)|{
@@ -303,8 +308,23 @@ parser! {
         .map(|(name,ty)|{
             ast::DecFuncAST{
                 name: name,
-                ty: ty
+                ty: ty,
+                extern_flag: false
             }
+        })
+    }
+}
+
+//<extern_dec_func>
+parser! {
+   fn extern_dec_func_parser['a]()(MyStream<'a>) ->ast::DecFuncAST
+    {
+        string("ex")
+        .with(skip_many_parser())
+        .with(dec_func_parser())
+        .map(|mut x|{
+          x.extern_flag=true;
+          x
         })
     }
 }

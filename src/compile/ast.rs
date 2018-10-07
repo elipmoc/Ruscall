@@ -1,5 +1,5 @@
-use combine::stream::state::SourcePosition;
 use super::types::FuncType;
+use combine::stream::state::SourcePosition;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ProgramAST {
@@ -123,11 +123,12 @@ pub struct DefFuncAST {
     pub func_name: String,
     pub params: Vec<VariableAST>,
     pub body: ExprAST,
-    pub pos:SourcePosition
+    pub pos: SourcePosition,
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct DecFuncAST{
-    pub name:String,
-    pub ty: FuncType
+pub struct DecFuncAST {
+    pub name: String,
+    pub ty: FuncType,
+    pub extern_flag: bool,
 }

@@ -1,5 +1,4 @@
 use std::cmp::Ordering;
-use super::error::Error;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Type {
