@@ -10,5 +10,5 @@ use self::resolve_op::resolve_op;
 use super::error::Error;
 
 pub fn analysis(ast: ProgramAST) -> Result<(ir::ProgramIr), Error> {
-    Result::Ok(resolve_op(ast)?.to_ir()?.ty_check()?)
+    Result::Ok(resolve_op(ast)?.to_ir().ty_check()?)
 }
