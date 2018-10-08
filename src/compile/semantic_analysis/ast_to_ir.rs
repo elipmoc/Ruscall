@@ -8,15 +8,12 @@ type ResultIr<T> = Result<T, Error>;
 
 impl ProgramAST {
     pub fn to_ir(self) -> ProgramIr {
-        let empty_ir =
-            ProgramIr {
-                dec_func_list: vec![],
-                func_list: HashMap::new(),
-                ex_dec_func_list: HashMap::new(),
-            };
         self.stmt_list
             .into_iter()
-            .fold(empty_ir, |acc, stmt| stmt.to_ir(acc))
+            .fold(
+                ProgramIr::empty(),
+                |acc, stmt| stmt.to_ir(acc),
+            )
     }
 }
 
@@ -36,49 +33,48 @@ impl VariableTable {
 impl StmtAST {
     fn to_ir(self, mut program_ir: ProgramIr) -> ProgramIr {
         match self {
-            StmtAST::DefFuncAST(def_func_ast) => {
-                let func_type = FuncType {
-                    param_types: (0..def_func_ast.params.len())
-                        .map(|_| Type::Unknown)
-                        .collect(),
-                    ret_type: Type::Unknown,
-                };
-                let var_table =
-                    VariableTable(def_func_ast.params.into_iter().map(|x| x.id).collect());
-                let body_ir = def_func_ast.body.to_ir(&var_table);
-                let func_ir = FuncIr {
-                    name: def_func_ast.func_name,
-                    body: body_ir,
-                    ty: func_type,
-                    pos: def_func_ast.pos,
-                };
-                program_ir.func_list.insert(func_ir.name.clone(), func_ir);
-            }
-            StmtAST::DecFuncAST(x) => {
-                if x.extern_flag {
-                    program_ir.ex_dec_func_list.insert(
-                        x.name.clone(),
-                        DecFuncIr {
-                            name: x.name,
-                            ty: x.ty,
-                        },
-                    );
-                } else {
-                    program_ir.dec_func_list.push(DecFuncIr {
-                        name: x.name,
-                        ty: x.ty,
-                    });
-                }
-            }
-            _ => (),
+            StmtAST::DefFuncAST(x) => x.to_ir(program_ir),
+            StmtAST::DecFuncAST(x) => x.to_ir(program_ir),
+            _ => program_ir,
+        }
+    }
+}
+
+impl DefFuncAST {
+    fn to_ir(self, mut program_ir: ProgramIr) -> ProgramIr {
+        let func_type = FuncType {
+            param_types: (0..self.params.len())
+                .map(|_| Type::Unknown).collect(),
+            ret_type: Type::Unknown,
         };
+        let var_table =
+            VariableTable(self.params.into_iter().map(|x| x.id).collect());
+        let func_ir = FuncIr {
+            name: self.func_name,
+            body: self.body.to_ir(&var_table),
+            ty: func_type,
+            pos: self.pos,
+        };
+        program_ir.func_list.insert(func_ir.name.clone(), func_ir);
+        program_ir
+    }
+}
+
+impl DecFuncAST {
+    fn to_ir(self, mut program_ir: ProgramIr) -> ProgramIr {
+        match self.extern_flag {
+            true => {
+                program_ir.ex_dec_func_list.insert(self.name.clone(), self);
+            }
+            _ => program_ir.dec_func_list.push(self)
+        }
         program_ir
     }
 }
 
 impl ExprAST {
     fn to_ir(self, var_table: &VariableTable) -> ExprIr {
-        let ir = match self {
+        match self {
             ExprAST::NumAST(x) => ExprIr::create_numir(x.num),
             ExprAST::OpAST(x) => {
                 let x = *x;
@@ -99,13 +95,12 @@ impl ExprAST {
                 if x.params.len() == 0 {
                     func
                 } else {
-                    let params: Vec<ExprIr> =
+                    let params =
                         x.params.into_iter().map(|x| x.to_ir(var_table)).collect();
                     ExprIr::create_callir(func, params)
                 }
             }
-        };
-        ir
+        }
     }
 }
 

@@ -11,6 +11,16 @@ pub struct ProgramIr {
     pub ex_dec_func_list: HashMap<String, DecFuncIr>,
 }
 
+impl ProgramIr {
+    pub fn empty() -> ProgramIr {
+        ProgramIr {
+            dec_func_list: vec![],
+            func_list: HashMap::new(),
+            ex_dec_func_list: HashMap::new(),
+        }
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub struct FuncIr {
     pub name: String,
@@ -111,8 +121,6 @@ pub struct CallIr {
     pub ty: Type,
 }
 
-#[derive(Debug, PartialEq)]
-pub struct DecFuncIr {
-    pub ty: FuncType,
-    pub name: String,
-}
+use super::super::ast::DecFuncAST;
+
+pub type DecFuncIr = DecFuncAST;
