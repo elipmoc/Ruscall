@@ -20,16 +20,18 @@ BNF
 <expr_app>      := <term> {<skip_many> <term> }
 <infix>         := ('infixr' | 'infixl') <space>+ <num> <space>+ <op>
 <op>            := '+' | '-' | '/' | '*'
-<term>          := <num> | <id> | <paren>
+<term>          := <num> | <id> | <paren> | <tuple>
 <paren>         := '(' <skip_many> <expr> ')'
 <num>           := [0-9]+
+<tuple>         := '(' <skip_many> [<expr> {',' <skip_many> <expr>} [',' <skip_many>]] ')'
 <skip>          := '\n' | <space>
 <skip_many>     := {<skip>}
 <space>         := ' ' | '\t'
-<ty_term>       := 'Int32'| <ty_paren> | <ty_func_pointer>
+<ty_term>       := 'Int32'| <ty_paren> |<ty_paren>| <ty_func_pointer>
 <ty_func_pointer>
                 := 'Fn' <skip_many> <ty_func>
 <ty_paren>      := '(' <skip_many> <ty_term> <skip_many> ')'
+<ty_tuple>      := '(' <skip_many> [<ty_term> <skip_many> {',' <skip_many> <ty_term> <skip_many>} [',' <skip_many>]] ')'
 <ty_func>       := <ty_term> ( <skip_many> '->' <skip_many> <ty_term> )+
 <dec_func>      := <id> <skip_many> '::' <skip_many> <ty_func>
 <exturn_dec_func>
