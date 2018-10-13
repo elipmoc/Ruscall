@@ -1,6 +1,6 @@
 use super::ast;
 use combine::char::{alpha_num, char, digit, letter, newline, space, string, tab};
-use combine::easy;
+use combine::{easy, optional};
 use combine::parser::combinator::try;
 use combine::stream;
 use combine::stream::state::{DefaultPositioned, SourcePosition, State};
@@ -107,7 +107,11 @@ parser! {
             try(skip_many_parser().with(term_parser()))
         ))
         .map(|(x,xs):(ast::ExprAST,Vec<ast::ExprAST>)|{
-            ast::ExprAST::create_func_call_ast(x,xs)
+            if xs.len()==0 {
+                x
+            }else{
+                ast::ExprAST::create_func_call_ast(x,xs)
+            }
         })
     }
 }
@@ -182,11 +186,13 @@ parser! {
 parser! {
     fn term_parser['a]()(MyStream<'a>)->ast::ExprAST
     {
-        paren_parser()
+        try(paren_parser())
+        .or(tuple_parser())
         .or(
             num_parser()
             .map(ast::ExprAST::create_num_ast)
-        ).or(
+        )
+        .or(
             (position(),id_parser())
             .skip(skip_many_parser())
             .map(|(pos,id)|ast::ExprAST::VariableAST(ast::VariableAST::new(id,pos)))
@@ -211,6 +217,41 @@ parser! {
     fn num_parser['a]()(MyStream<'a>)->String
     {
         many1(digit())
+    }
+}
+
+//<tuple>
+parser! {
+    fn tuple_parser['a]()(MyStream<'a>)->ast::ExprAST
+    {
+        char('(')
+        .with(skip_many_parser())
+        .with(
+            optional((
+                expr_parser(),
+                many(try(
+                    char(',')
+                    .with(skip_many_parser())
+                    .with(expr_parser())
+                ))
+                .skip(optional((
+                    char(','),
+                    skip_many_parser()
+                )))
+            ))
+        )
+        .skip(char(')'))
+        .map(move|x:Option<(ast::ExprAST,Vec<ast::ExprAST>)>|{
+            let mut elements=vec![];
+            match x{
+                Some((x,mut xs))=>{
+                    elements.push(x);
+                    elements.append(&mut xs);
+                }
+                _=>()
+            }
+            ast::ExprAST::create_tuple_ast(elements)
+        })
     }
 }
 

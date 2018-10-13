@@ -100,6 +100,7 @@ impl ExprAST {
                     ExprIr::create_callir(func, params)
                 }
             }
+            _ => ExprIr::create_numir(0)
         }
     }
 }

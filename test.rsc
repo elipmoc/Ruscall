@@ -1,7 +1,5 @@
-infixl 1 *;
-
 ex print::Int32->Int32;
 
-main = print(exfunc 4);
+main = print (func 4 2);
 
-exfunc x = x*2;
+func x y = x;
