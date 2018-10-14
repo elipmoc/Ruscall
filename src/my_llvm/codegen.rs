@@ -1,4 +1,5 @@
 extern crate llvm_sys as llvm;
+
 use self::llvm::prelude::*;
 use super::helper::*;
 
@@ -20,6 +21,17 @@ impl CodeGenerator {
     pub fn position_builder_at_end(&self, block: LLVMBasicBlockRef) {
         unsafe {
             llvm::core::LLVMPositionBuilderAtEnd(self.builder, block);
+        }
+    }
+
+    pub fn build_struct_gep(&self, pointer: LLVMValueRef, idx: u32, name: &str) -> LLVMValueRef {
+        unsafe {
+            llvm::core::LLVMBuildStructGEP(
+                self.builder,
+                pointer,
+                idx,
+                string_cast(name).as_ptr(),
+            )
         }
     }
 

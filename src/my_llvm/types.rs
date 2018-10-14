@@ -1,8 +1,10 @@
 extern crate llvm_sys as llvm;
+
 use std::os::raw::c_char;
 
 pub type TargetDataRef = *mut llvm::target::LLVMOpaqueTargetData;
 pub type TargetTriple = *mut c_char;
+
 pub use self::llvm::prelude::{LLVMTypeRef, LLVMValueRef};
 
 pub fn int32_type() -> LLVMTypeRef {
@@ -17,9 +19,9 @@ pub fn void_type() -> LLVMTypeRef {
     unsafe { llvm::core::LLVMVoidType() }
 }
 
-pub fn pointer_type(ty:LLVMTypeRef)->LLVMTypeRef{
-    unsafe{
-        llvm::core::LLVMPointerType(ty,0)
+pub fn pointer_type(ty: LLVMTypeRef) -> LLVMTypeRef {
+    unsafe {
+        llvm::core::LLVMPointerType(ty, 0)
     }
 }
 
@@ -32,5 +34,15 @@ pub fn function_type(ret_type: LLVMTypeRef, mut param_types: Vec<LLVMTypeRef>) -
             0,
         );
         function_type
+    }
+}
+
+pub fn struct_type(mut element_types: Vec<LLVMTypeRef>) -> LLVMTypeRef {
+    unsafe {
+        llvm::core::LLVMStructType(
+            element_types.as_mut_ptr(),
+            element_types.len() as u32,
+            1,
+        )
     }
 }

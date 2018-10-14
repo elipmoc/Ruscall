@@ -99,6 +99,9 @@ impl ExprIr {
             ExprIr::GlobalVariableIr(x) => {
                 ExprIr::GlobalVariableIr(x.ty_check(func_list, ex_func_list, expect_ty)?)
             }
+            ExprIr::TupleIr(x) => ExprIr::TupleIr(Box::new(
+                x.ty_check(func_list, ex_func_list, params, expect_ty)?
+            ))
         })
     }
 }
@@ -199,6 +202,44 @@ impl GlobalVariableIr {
             },
         };
         self.ty = Type::Fn(Box::new(func_ty?));
+        Ok(self)
+    }
+}
+
+impl TupleIr {
+    fn ty_check(
+        mut self,
+        func_list: &mut FuncList,
+        ex_func_list: &ExFuncList,
+        params: &mut Vec<Type>,
+        expect_ty: Type,
+    ) -> TyCheckResult<TupleIr> {
+        match match expect_ty {
+            Type::TupleType(x) => {
+                self.elements =
+                    self.elements
+                        .into_iter()
+                        .zip(x.element_tys)
+                        .map(|(x, expect_ty)| x.ty_check(func_list, ex_func_list, params, expect_ty))
+                        .collect::<TyCheckResult<Vec<ExprIr>>>()?;
+                self.ty.merge(Type::TupleType(Box::new(TupleType {
+                    element_tys: self.elements.iter().map(|x| x.get_ty().clone()).collect()
+                })))
+            }
+            x =>{
+                self.elements =
+                    self.elements
+                        .into_iter()
+                        .map(|x| x.ty_check(func_list, ex_func_list, params, Type::Unknown))
+                        .collect::<TyCheckResult<Vec<ExprIr>>>()?;
+                self.ty.merge(Type::TupleType(Box::new(TupleType {
+                    element_tys: self.elements.iter().map(|x| x.get_ty().clone()).collect()
+                })))
+            },
+        } {
+            Ok(x) => self.ty = x,
+            Err(msg) => return Err(Error::new(self.pos, &msg)),
+        };
         Ok(self)
     }
 }

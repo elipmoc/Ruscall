@@ -6,6 +6,7 @@ pub enum Type {
     FuncType(Box<FuncType>),
     Unknown,
     Fn(Box<FuncType>),
+    TupleType(Box<TupleType>),
 }
 
 type MergeResult<T> = Result<T, String>;
@@ -19,6 +20,7 @@ impl PartialOrd for Type {
             (Type::Unknown, _) => Option::Some(Ordering::Less),
             (Type::FuncType(x), Type::FuncType(y)) => x.partial_cmp(&y),
             (Type::Fn(x), Type::Fn(y)) => x.partial_cmp(y),
+            (Type::TupleType(x), Type::TupleType(y)) => x.partial_cmp(y),
             (_, Type::Unknown) => Option::Some(Ordering::Greater),
             _ => Option::None
         }
@@ -31,7 +33,8 @@ impl Type {
             Type::Int32 => "Int32".to_string(),
             Type::Unknown => "Unknown".to_string(),
             Type::FuncType(x) => x.show(),
-            Type::Fn(x) => "Fn(".to_string() + &x.show() + ")"
+            Type::Fn(x) => "Fn(".to_string() + &x.show() + ")",
+            Type::TupleType(x) => x.show()
         }
     }
     pub fn create_func_type(param_types: Vec<Type>, ret_type: Type) -> Type {
@@ -46,6 +49,7 @@ impl Type {
             (Type::Unknown, other) => Ok(other),
             (x, Type::Unknown) => Ok(x),
             (Type::FuncType(x), other) => Ok(Type::FuncType(Box::new(x.merge(other)?))),
+            (Type::TupleType(x), other) => Ok(Type::TupleType(Box::new(x.merge(other)?))),
             (Type::Fn(x), Type::Fn(y)) => Ok(Type::Fn(Box::new(x.merge(Type::FuncType(Box::new(*y)))?))),
             ref x if x.0 == x.1 => Ok(x.0.clone()),
             (x, y) => Err(format!("type error!\nexpect: {}\nactual: {}", y.show(), x.show()))
@@ -86,11 +90,11 @@ impl PartialOrd for FuncType {
 }
 
 impl FuncType {
-    pub fn show(&self)->String{
+    pub fn show(&self) -> String {
         self.param_types
             .iter()
-            .fold("".to_string(),|acc,x|acc+&x.show()+"->")
-        +&self.ret_type.show()
+            .fold("".to_string(), |acc, x| acc + &x.show() + "->")
+            + &self.ret_type.show()
     }
 
     pub fn merge(self, other: Type) -> MergeResult<FuncType> {
@@ -105,6 +109,56 @@ impl FuncType {
                         param_types: self.param_types.into_iter().zip(x.param_types)
                             .map(|(a, b)| a.merge(b)).collect::<MergeResult<Vec<Type>>>()?,
                         ret_type: self.ret_type.merge(x.ret_type)?,
+                    }
+                )
+            }
+            Type::Unknown => Ok(self),
+            _ => Err(format!("type error!\nexpect: {}\nactual: {}", other.show(), self.show()))
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Clone, Eq)]
+pub struct TupleType {
+    pub element_tys: Vec<Type>
+}
+
+impl PartialOrd for TupleType {
+    fn partial_cmp(&self, other: &TupleType) -> Option<Ordering> {
+        if self.element_tys.len() != other.element_tys.len() {
+            return Option::None;
+        }
+        let elements_ord = self.element_tys.iter()
+            .zip(&other.element_tys)
+            .map(|(x, y)| x.partial_cmp(y))
+            .fold(
+                Option::Some(Ordering::Equal),
+                |acc, x| partial_cmp_merge(&acc, &x),
+            );
+        elements_ord
+    }
+}
+
+impl TupleType {
+    pub fn show(&self) -> String {
+        "(".to_string()
+            + &self.element_tys
+            .iter()
+            .fold("".to_string(), |acc, x| acc + &x.show() + ",")
+            + ")"
+    }
+
+    pub fn merge(self, other: Type) -> MergeResult<TupleType> {
+        match other {
+            Type::TupleType(x) => {
+                let x = *x;
+                if x.element_tys.len() != self.element_tys.len() {
+                    return Err(format!("type error! \nexpect: {}\nactual: {}", x.show(), self.show()));
+                }
+                Ok(
+                    TupleType {
+                        element_tys: self.element_tys.into_iter().zip(x.element_tys)
+                            .map(|(a, b)| a.merge(b)).collect::<MergeResult<Vec<Type>>>()?,
                     }
                 )
             }

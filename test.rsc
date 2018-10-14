@@ -1,5 +1,10 @@
 ex print::Int32->Int32;
 
-main = print (func 4 2);
+main = print 5;
 
-func x y = x;
+
+
+
+
+
+func = ();

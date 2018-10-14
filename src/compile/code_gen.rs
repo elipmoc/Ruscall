@@ -59,6 +59,7 @@ impl types::Type {
             types::Type::FuncType(x) => x.to_llvm_type(),
             types::Type::Unknown => panic!("unknown type!"),
             types::Type::Fn(x) => pointer_type(x.to_llvm_type()),
+            types::Type::TupleType(x) => x.to_llvm_type()
         }
     }
 }
@@ -68,6 +69,14 @@ impl types::FuncType {
         function_type(
             self.ret_type.to_llvm_type(),
             self.param_types.iter().map(|x| x.to_llvm_type()).collect(),
+        )
+    }
+}
+
+impl types::TupleType {
+    fn to_llvm_type(&self) -> LLVMTypeRef {
+        struct_type(
+            self.element_tys.iter().map(|x| x.to_llvm_type()).collect(),
         )
     }
 }
@@ -96,6 +105,7 @@ impl ir::ExprIr {
             ir::ExprIr::VariableIr(var_ir) => params[params.len() - var_ir.id - 1],
             ir::ExprIr::GlobalVariableIr(x) => x.code_gen(module),
             ir::ExprIr::CallIr(x) => x.code_gen(module, codegen, params),
+            ir::ExprIr::TupleIr(x) => x.code_gen(module, codegen, params),
         }
     }
 }
@@ -122,6 +132,27 @@ impl ir::CallIr {
             .collect();
 
         codegen.build_call(func, params, "")
+    }
+}
+
+impl ir::TupleIr {
+    fn code_gen(
+        self,
+        module: &Module,
+        codegen: &CodeGenerator,
+        params: &Vec<LLVMValueRef>,
+    ) -> LLVMValueRef {
+        let val = codegen.build_alloca(self.ty.to_llvm_type(), "");
+        self.elements
+            .into_iter()
+            .enumerate()
+            .for_each(|(id,x)|{
+                let x=x.code_gen(module, codegen, params);
+                let ptr=
+                    codegen.build_struct_gep(val,id as u32,"");
+                codegen.build_store(x,ptr);
+            });
+        codegen.build_load(val,"ret")
     }
 }
 

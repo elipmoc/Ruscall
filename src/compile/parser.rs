@@ -224,24 +224,27 @@ parser! {
 parser! {
     fn tuple_parser['a]()(MyStream<'a>)->ast::ExprAST
     {
-        char('(')
-        .with(skip_many_parser())
-        .with(
-            optional((
-                expr_parser(),
-                many(try(
-                    char(',')
-                    .with(skip_many_parser())
-                    .with(expr_parser())
+        (
+            position(),
+            char('(')
+            .with(skip_many_parser())
+            .with(
+                optional((
+                    expr_parser(),
+                    many(try(
+                        char(',')
+                        .with(skip_many_parser())
+                        .with(expr_parser())
+                    ))
+                    .skip(optional((
+                        char(','),
+                        skip_many_parser()
+                    )))
                 ))
-                .skip(optional((
-                    char(','),
-                    skip_many_parser()
-                )))
-            ))
+            )
         )
         .skip(char(')'))
-        .map(move|x:Option<(ast::ExprAST,Vec<ast::ExprAST>)>|{
+        .map(move|(pos,x):(_,Option<(ast::ExprAST,Vec<ast::ExprAST>)>)|{
             let mut elements=vec![];
             match x{
                 Some((x,mut xs))=>{
@@ -250,7 +253,7 @@ parser! {
                 }
                 _=>()
             }
-            ast::ExprAST::create_tuple_ast(elements)
+            ast::ExprAST::create_tuple_ast(elements,pos)
         })
     }
 }

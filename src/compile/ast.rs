@@ -38,7 +38,7 @@ pub enum ExprAST {
     VariableAST(VariableAST),
     ParenAST(Box<ParenAST>),
     FuncCallAST(Box<FuncCallAST>),
-    TupleAST(Box<TupleAST>)
+    TupleAST(Box<TupleAST>),
 }
 
 impl ExprAST {
@@ -62,8 +62,8 @@ impl ExprAST {
     pub fn create_func_call_ast(func: ExprAST, params: Vec<ExprAST>) -> ExprAST {
         ExprAST::FuncCallAST(Box::new(FuncCallAST { func, params }))
     }
-    pub fn create_tuple_ast(elements: Vec<ExprAST>) -> ExprAST {
-        ExprAST::TupleAST(Box::new(TupleAST{ elements}))
+    pub fn create_tuple_ast(elements: Vec<ExprAST>, pos: SourcePosition) -> ExprAST {
+        ExprAST::TupleAST(Box::new(TupleAST { elements, pos }))
     }
 }
 
@@ -140,4 +140,5 @@ pub struct DecFuncAST {
 #[derive(Debug, Clone, PartialEq)]
 pub struct TupleAST {
     pub elements: Vec<ExprAST>,
+    pub pos: SourcePosition,
 }

@@ -100,7 +100,13 @@ impl ExprAST {
                     ExprIr::create_callir(func, params)
                 }
             }
-            _ => ExprIr::create_numir(0)
+            ExprAST::TupleAST(x) => {
+                let x = *x;
+                ExprIr::create_tupleir(
+                    x.elements.into_iter().map(|x| x.to_ir(var_table)).collect(),
+                    x.pos,
+                )
+            }
         }
     }
 }

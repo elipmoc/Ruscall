@@ -8,6 +8,19 @@ pub fn const_int(
     unsafe { llvm::core::LLVMConstInt(llvm_type, val, if sign_flag { 1 } else { 0 }) }
 }
 
+pub fn const_struct(
+    llvm_type: *mut llvm::LLVMType,
+    mut vals: Vec<LLVMValueRef>, ) -> *mut llvm::LLVMValue
+{
+    unsafe {
+        llvm::core::LLVMConstNamedStruct(
+            llvm_type,
+            vals.as_mut_ptr(),
+            vals.len() as u32,
+        )
+    }
+}
+
 use self::llvm::prelude::LLVMValueRef;
 pub use self::llvm::LLVMLinkage;
 
