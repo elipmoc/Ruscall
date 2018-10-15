@@ -346,16 +346,20 @@ parser! {
 parser! {
    fn dec_func_parser['a]()(MyStream<'a>) ->ast::DecFuncAST
     {
-        id_parser()
-        .skip(skip_many_parser())
-        .skip(string("::"))
-        .skip(skip_many_parser())
-        .and(ty_func_parser())
-        .map(|(name,ty)|{
+        (
+            position(),
+            id_parser()
+            .skip(skip_many_parser())
+            .skip(string("::"))
+            .skip(skip_many_parser())
+            .and(ty_func_parser())
+        )
+        .map(|(pos,(name,ty))|{
             ast::DecFuncAST{
                 name: name,
                 ty: ty,
-                extern_flag: false
+                extern_flag: false,
+                pos
             }
         })
     }

@@ -135,6 +135,7 @@ pub struct DecFuncAST {
     pub name: String,
     pub ty: FuncType,
     pub extern_flag: bool,
+    pub pos: SourcePosition,
 }
 
 #[derive(Debug, Clone, PartialEq)]

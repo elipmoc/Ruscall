@@ -9,11 +9,15 @@ impl ProgramIr {
     pub fn ty_check(mut self) -> TyCheckResult<ProgramIr> {
         //関数宣言の型チェック
         for x in self.dec_func_list.into_iter() {
-            let func_ir = self.func_list.remove(&x.name).unwrap().ty_check(
-                &mut self.func_list,
-                &self.ex_dec_func_list,
-                Type::FuncType(Box::new(x.ty)),
-            )?;
+            let func_ir =
+                match self.func_list.remove(&x.name){
+                    Some(y)=>y.ty_check(
+                        &mut self.func_list,
+                        &self.ex_dec_func_list,
+                        Type::FuncType(Box::new(x.ty)),
+                    )?,
+                    _=>return Err(Error::new(x.pos,"not found define function"))
+                };
             self.func_list.insert(x.name, func_ir);
         }
         self.dec_func_list = vec![];
