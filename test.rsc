@@ -1,6 +1,6 @@
 
+ex print::Int32->();
 
-
-  func::Int32->Int32;
-func x=x;
-main = 5;
+func::()->();
+func x=print 777;
+main = func();

@@ -27,7 +27,7 @@ BNF
 <skip>          := '\n' | <space>
 <skip_many>     := {<skip>}
 <space>         := ' ' | '\t'
-<ty_term>       := 'Int32'| <ty_paren> |<ty_paren>| <ty_func_pointer>
+<ty_term>       := 'Int32'| <ty_paren> |<ty_tuple>| <ty_func_pointer>
 <ty_func_pointer>
                 := 'Fn' <skip_many> <ty_func>
 <ty_paren>      := '(' <skip_many> <ty_term> <skip_many> ')'
@@ -290,7 +290,8 @@ parser! {
    fn ty_term_parser['a]()(MyStream<'a>) ->Type
     {
        string("Int32").map(|_|Type::Int32)
-       .or(ty_paren_parser())
+       .or(try(ty_paren_parser()))
+       .or(ty_tuple_parser())
        .or(ty_func_pointer_parser())
     }
 }
@@ -314,6 +315,43 @@ parser! {
         .with(ty_term_parser())
         .skip(skip_many_parser())
         .skip(char(')'))
+    }
+}
+
+//<ty_tuple>
+parser! {
+   fn ty_tuple_parser['a]()(MyStream<'a>) ->Type
+    {
+        char('(')
+            .with(skip_many_parser())
+            .with(
+                optional((
+                    ty_term_parser()
+                    .skip(skip_many_parser()),
+                    many(try(
+                        char(',')
+                        .with(skip_many_parser())
+                        .with(ty_term_parser())
+                        .skip(skip_many_parser())
+                    ))
+                    .skip(optional((
+                        char(','),
+                        skip_many_parser()
+                    )))
+                ))
+            )
+            .skip(char(')'))
+            .map(move|x:Option<(Type,Vec<Type>)>|{
+                let mut elements=vec![];
+                match x{
+                    Some((x,mut xs))=>{
+                        elements.push(x);
+                        elements.append(&mut xs);
+                    }
+                    _=>()
+                }
+                Type::TupleType(Box::new( TupleType{ element_tys: elements }) )
+            })
     }
 }
 
