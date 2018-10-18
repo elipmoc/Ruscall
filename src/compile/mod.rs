@@ -5,6 +5,7 @@ pub mod output_file;
 pub mod parser;
 pub mod semantic_analysis;
 pub mod types;
+pub mod show_type;
 
 use self::error::Error;
 use self::output_file::output_file;

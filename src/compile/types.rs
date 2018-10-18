@@ -1,4 +1,5 @@
 use std::cmp::Ordering;
+use super::show_type::type_error;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Type {
@@ -28,15 +29,7 @@ impl PartialOrd for Type {
 }
 
 impl Type {
-    pub fn show(&self) -> String {
-        match self {
-            Type::Int32 => "Int32".to_string(),
-            Type::Unknown => "Unknown".to_string(),
-            Type::FuncType(x) => x.show(),
-            Type::Fn(x) => "Fn(".to_string() + &x.show() + ")",
-            Type::TupleType(x) => x.show()
-        }
-    }
+
     pub fn create_func_type(param_types: Vec<Type>, ret_type: Type) -> Type {
         Type::FuncType(Box::new(FuncType { param_types, ret_type }))
     }
@@ -52,7 +45,7 @@ impl Type {
             (Type::TupleType(x), other) => Ok(Type::TupleType(Box::new(x.merge(other)?))),
             (Type::Fn(x), Type::Fn(y)) => Ok(Type::Fn(Box::new(x.merge(Type::FuncType(Box::new(*y)))?))),
             ref x if x.0 == x.1 => Ok(x.0.clone()),
-            (x, y) => Err(format!("type error!\nexpect: {}\nactual: {}", y.show(), x.show()))
+            (x, y) => type_error(&y, &x)
         }
     }
 }
@@ -90,19 +83,13 @@ impl PartialOrd for FuncType {
 }
 
 impl FuncType {
-    pub fn show(&self) -> String {
-        self.param_types
-            .iter()
-            .fold("".to_string(), |acc, x| acc + &x.show() + "->")
-            + &self.ret_type.show()
-    }
 
     pub fn merge(self, other: Type) -> MergeResult<FuncType> {
         match other {
             Type::FuncType(x) => {
                 let x = *x;
                 if x.param_types.len() != self.param_types.len() {
-                    return Err(format!("type error! \nexpect: {}\nactual: {}", x.show(), self.show()));
+                    return type_error(&x, &self);
                 }
                 Ok(
                     FuncType {
@@ -113,7 +100,7 @@ impl FuncType {
                 )
             }
             Type::Unknown => Ok(self),
-            _ => Err(format!("type error!\nexpect: {}\nactual: {}", other.show(), self.show()))
+            _ => type_error(&other, &self)
         }
     }
 }
@@ -140,20 +127,14 @@ impl PartialOrd for TupleType {
 }
 
 impl TupleType {
-    pub fn show(&self) -> String {
-        "(".to_string()
-            + &self.element_tys
-            .iter()
-            .fold("".to_string(), |acc, x| acc + &x.show() + ",")
-            + ")"
-    }
+
 
     pub fn merge(self, other: Type) -> MergeResult<TupleType> {
         match other {
             Type::TupleType(x) => {
                 let x = *x;
                 if x.element_tys.len() != self.element_tys.len() {
-                    return Err(format!("type error! \nexpect: {}\nactual: {}", x.show(), self.show()));
+                    return type_error( &x, &self);
                 }
                 Ok(
                     TupleType {
@@ -163,7 +144,7 @@ impl TupleType {
                 )
             }
             Type::Unknown => Ok(self),
-            _ => Err(format!("type error!\nexpect: {}\nactual: {}", other.show(), self.show()))
+            _ => type_error(&other, &self)
         }
     }
 }
