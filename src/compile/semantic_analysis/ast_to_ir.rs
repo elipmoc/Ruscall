@@ -1,10 +1,6 @@
 use super::super::ast::*;
-use super::super::error::Error;
 use super::super::types::{FuncType, Type};
 use super::ir_tree::*;
-use std::collections::HashMap;
-
-type ResultIr<T> = Result<T, Error>;
 
 impl ProgramAST {
     pub fn to_ir(self) -> ProgramIr {
@@ -31,7 +27,7 @@ impl VariableTable {
 }
 
 impl StmtAST {
-    fn to_ir(self, mut program_ir: ProgramIr) -> ProgramIr {
+    fn to_ir(self, program_ir: ProgramIr) -> ProgramIr {
         match self {
             StmtAST::DefFuncAST(x) => x.to_ir(program_ir),
             StmtAST::DecFuncAST(x) => x.to_ir(program_ir),
@@ -113,6 +109,7 @@ impl ExprAST {
 
 #[test]
 fn ast_to_ir_test() {
+    use std::collections::HashMap;
     use combine::stream::state::SourcePosition;
     let ast = ProgramAST {
         stmt_list: vec![StmtAST::DefFuncAST(DefFuncAST {

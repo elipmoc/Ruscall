@@ -230,7 +230,7 @@ impl TupleIr {
                     element_tys: self.elements.iter().map(|x| x.get_ty().clone()).collect()
                 })))
             }
-            x =>{
+            _ =>{
                 self.elements =
                     self.elements
                         .into_iter()

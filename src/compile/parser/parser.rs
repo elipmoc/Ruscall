@@ -1,10 +1,11 @@
-use super::ast;
-use combine::char::{alpha_num, char, digit, letter, newline, space, string, tab};
+use super::super::ast;
+use combine::char::{alpha_num, char, digit, letter, string};
 use combine::{easy, optional};
 use combine::parser::combinator::try;
-use combine::stream;
 use combine::stream::state::{DefaultPositioned, SourcePosition, State};
-use combine::{eof, many, many1, position, unexpected, value, Parser};
+use combine::{eof, many, many1, position, unexpected, value};
+use super::skipper::*;
+
 /*
 BNF
 <program>       := {<stmt>} <skip_many>
@@ -38,23 +39,11 @@ BNF
                 := 'ex' <skip_many> <dec_func>
 */
 
-pub fn parse(
-    s: &str,
-) -> Result<
-    (
-        ast::ProgramAST,
-        stream::state::State<&str, stream::state::SourcePosition>,
-    ),
-    easy::Errors<char, &str, stream::state::SourcePosition>,
-> {
-    program_parser().easy_parse(State::new(s))
-}
-
-type MyStream<'a> = easy::Stream<State<&'a str, <&'a str as DefaultPositioned>::Positioner>>;
+pub type MyStream<'a> = easy::Stream<State<&'a str, <&'a str as DefaultPositioned>::Positioner>>;
 
 //<program>
 parser! {
-   fn program_parser['a]()(MyStream<'a>) ->ast::ProgramAST
+   pub fn program_parser['a]()(MyStream<'a>) ->ast::ProgramAST
     {
         many(stmt_parser()).skip(skip_many_parser()).skip(eof().expected("statement or infix")).map(|x|ast::ProgramAST{stmt_list:x})
     }
@@ -258,132 +247,11 @@ parser! {
     }
 }
 
-//<skip>
-parser! {
-    fn skip_parser['a]()(MyStream<'a>)->()
-    {
-        newline().map(|_|()).or(space_parser())
-    }
-}
-
-//<skip_many>
-parser! {
-    fn skip_many_parser['a]()(MyStream<'a>)->()
-
-    {
-        many::<Vec<_>,_>(skip_parser()).map(|_|())
-    }
-}
-
-//<space>
-parser! {
-   fn space_parser['a]()(MyStream<'a>) ->()
-    {
-        space().or(tab()).map(|_|())
-    }
-}
-
-use super::types::*;
-
-//<ty_term>
-parser! {
-   fn ty_term_parser['a]()(MyStream<'a>) ->Type
-    {
-       string("Int32").map(|_|Type::Int32)
-       .or(try(ty_paren_parser()))
-       .or(ty_tuple_parser())
-       .or(ty_func_pointer_parser())
-    }
-}
-//<ty_func_pointer>
-parser! {
-   fn ty_func_pointer_parser['a]()(MyStream<'a>) ->Type
-    {
-        string("Fn")
-        .with(skip_many_parser())
-        .with(ty_func_parser())
-        .map(|x|Type::Fn(Box::new(x)))
-    }
-}
-
-//<ty_paren>
-parser! {
-   fn ty_paren_parser['a]()(MyStream<'a>) ->Type
-    {
-        char('(')
-        .with(skip_many_parser())
-        .with(ty_term_parser())
-        .skip(skip_many_parser())
-        .skip(char(')'))
-    }
-}
-
-//<ty_tuple>
-parser! {
-   fn ty_tuple_parser['a]()(MyStream<'a>) ->Type
-    {
-        char('(')
-            .with(skip_many_parser())
-            .with(
-                optional((
-                    ty_term_parser()
-                    .skip(skip_many_parser()),
-                    many(try(
-                        char(',')
-                        .with(skip_many_parser())
-                        .with(ty_term_parser())
-                        .skip(skip_many_parser())
-                    ))
-                    .skip(optional((
-                        char(','),
-                        skip_many_parser()
-                    )))
-                ))
-            )
-            .skip(char(')'))
-            .map(move|x:Option<(Type,Vec<Type>)>|{
-                let mut elements=vec![];
-                match x{
-                    Some((x,mut xs))=>{
-                        elements.push(x);
-                        elements.append(&mut xs);
-                    }
-                    _=>()
-                }
-                Type::TupleType(Box::new( TupleType{ element_tys: elements }) )
-            })
-    }
-}
-
-//<ty_func>
-parser! {
-   fn ty_func_parser['a]()(MyStream<'a>) ->FuncType
-    {
-        (
-            ty_term_parser(),
-            many1(
-                skip_many_parser()
-                .with(string("->"))
-                .with(skip_many_parser())
-                .with(ty_term_parser())
-            )
-        )
-        .map(|(x,mut xs):(Type,Vec<Type>)|{
-            let ret_type = xs.pop().unwrap();
-            let mut param_types=vec![x];
-            param_types.append(&mut xs);
-            FuncType{
-                ret_type: ret_type,
-                param_types: param_types
-            }
-        })
-    }
-}
-
 //<dec_func>
 parser! {
    fn dec_func_parser['a]()(MyStream<'a>) ->ast::DecFuncAST
     {
+        use super::types::ty_func_parser;
         (
             position(),
             id_parser()

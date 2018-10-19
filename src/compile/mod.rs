@@ -2,10 +2,10 @@ pub mod ast;
 pub mod code_gen;
 pub mod error;
 pub mod output_file;
-pub mod parser;
 pub mod semantic_analysis;
 pub mod types;
 pub mod show_type;
+pub mod parser;
 
 use self::error::Error;
 use self::output_file::output_file;
