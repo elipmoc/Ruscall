@@ -17,11 +17,9 @@ impl CmdArgsKind {
     pub fn run(self) {
         match self {
             CmdArgsKind::Help => {
-                println!("");
-                println!("Usage:");
+                println!("\nUsage:");
                 println!("Ruscall.exe [OPTIONS]");
-                println!("");
-                println!("OPTIONS:");
+                println!("\nOPTIONS:");
                 println!("-h                    help");
                 println!("-v                    version");
                 println!("-hello                hello world build");
