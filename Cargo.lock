@@ -1,6 +1,6 @@
 [[package]]
 name = "Ruscall"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "cc 1.0.25 (registry+https://github.com/rust-lang/crates.io-index)",
  "combine 3.5.2 (registry+https://github.com/rust-lang/crates.io-index)",
