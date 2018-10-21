@@ -58,9 +58,11 @@ pub struct FuncType {
 
 fn partial_cmp_merge(left: &Option<Ordering>, right: &Option<Ordering>) -> Option<Ordering> {
     match (left, right) {
-        (Option::Some(Ordering::Equal), Option::Some(right)) => Option::Some(*right),
-        (Option::Some(Ordering::Greater), Option::Some(Ordering::Less)) => Option::None,
-        (Option::Some(Ordering::Less), Option::Some(Ordering::Greater)) => Option::None,
+        (Some(Ordering::Equal), right) => *right,
+        (Some(Ordering::Greater), Some(Ordering::Less)) => None,
+        (Some(Ordering::Less), Some(Ordering::Greater)) => None,
+        (_,None)=>None,
+        (None,_)=>None,
         (left, _) => *left,
     }
 }

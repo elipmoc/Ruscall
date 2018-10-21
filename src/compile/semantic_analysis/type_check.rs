@@ -48,9 +48,9 @@ impl DecFuncIr {
             Type::Fn(x) => if self.ty >= *x {
                 Ok(self.ty.clone())
             } else {
-                panic!("type error!")
+                Err(Error::new(self.pos,"type error!"))
             },
-            _ => panic!("type error!"),
+            _=>Err(Error::new(self.pos,"type error!"))
         }
     }
 }
