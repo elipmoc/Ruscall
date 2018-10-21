@@ -1,5 +1,5 @@
 use super::super::ast::*;
-use super::super::types::{FuncType, Type};
+use super::super::types::*;
 use super::ir_tree::*;
 
 impl ProgramAST {
@@ -38,9 +38,15 @@ impl StmtAST {
 
 impl DefFuncAST {
     fn to_ir(self, mut program_ir: ProgramIr) -> ProgramIr {
+        let param_types =
+            if self.params.len() == 0 {
+                vec![Type::TupleType(Box::new(TupleType { element_tys: vec![] }))]
+            } else {
+                (0..self.params.len())
+                    .map(|_| Type::Unknown).collect()
+            };
         let func_type = FuncType {
-            param_types: (0..self.params.len())
-                .map(|_| Type::Unknown).collect(),
+            param_types,
             ret_type: Type::Unknown,
         };
         let var_table =
