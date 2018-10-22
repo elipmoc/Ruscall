@@ -5,50 +5,52 @@ use super::ir::*;
 
 type TyCheckResult<T> = Result<T, Error>;
 
+trait FuncTypeGet {
+    fn ty_get(&self, ty_env: TypeEnv, ty_subst: TypeSubstitute) -> TyCheckResult<(TypeEnv, TypeSubstitute)>;
+}
+
+fn func_ty_get<Item: FuncTypeGet, T: Iterator<Item=Item>>(iter: T, mut ty_info: (TypeEnv, TypeSubstitute)) -> TyCheckResult<(TypeEnv, TypeSubstitute)>
+{
+    for x in iter {
+        ty_info = x.ty_get(ty_info.0, ty_info.1)?;
+    }
+    Ok(ty_info)
+}
 
 impl ProgramIr {
     pub fn ty_get(&self) -> TyCheckResult<(TypeEnv, TypeSubstitute)> {
-        let mut ty_env = TypeEnv::new();
-        let mut ty_subst = TypeSubstitute::new();
+        let ty_info = (TypeEnv::new(), TypeSubstitute::new());
         //外部関数宣言の型チェック
-        for x in self.ex_dec_func_list.iter() {
-            let (new_ty_env, new_ty_subst) = x.1.ty_get(ty_env, ty_subst)?;
-            ty_env = new_ty_env;
-            ty_subst = new_ty_subst;
-        };
+        let ty_info =
+            func_ty_get(
+                self.ex_dec_func_list.iter().map(|x| x.1), ty_info,
+            )?;
         //関数宣言の型チェック
-        for x in self.dec_func_list.iter() {
-            let (new_ty_env, new_ty_subst) = x.ty_get(ty_env, ty_subst)?;
-            ty_env = new_ty_env;
-            ty_subst = new_ty_subst;
-        };
-
+        let ty_info =
+            func_ty_get(self.dec_func_list.iter(), ty_info)?;
         //関数定義の型チェック
-        for x in self.func_list.iter() {
-            let (new_ty_env, new_ty_subst) = x.1.ty_get(ty_env, ty_subst)?;
-            ty_env = new_ty_env;
-            ty_subst = new_ty_subst;
-        }
+        let ty_info =
+            func_ty_get(self.func_list.iter().map(|x| x.1), ty_info)?;
 
-        Ok((ty_env, ty_subst))
+        Ok(ty_info)
     }
 }
 
 use super::super::ast::DecFuncAST;
 
-impl DecFuncAST {
+impl<'a> FuncTypeGet for &'a DecFuncAST {
     fn ty_get(&self, ty_env: TypeEnv, ty_subst: TypeSubstitute) -> TyCheckResult<(TypeEnv, TypeSubstitute)> {
         let (ty_id, ty_env) = ty_env.get(self.name.clone());
 
-        let ty_subst = ty_subst.insert(
-            ty_id,
+        let ty_subst = ty_subst.unify(
+            Type::TyVar(ty_id),
             Type::Fn(Box::new(self.ty.clone())),
         ).map_err(|msg| Error::new(self.pos, &msg))?;
         Ok((ty_env, ty_subst))
     }
 }
 
-impl FuncIr {
+impl<'a> FuncTypeGet for &'a FuncIr {
     fn ty_get(&self, ty_env: TypeEnv, ty_subst: TypeSubstitute) -> TyCheckResult<(TypeEnv, TypeSubstitute)> {
         let (ty_env, params_ty): (_, Vec<Type>)
         = (0..self.pamrams_len)
@@ -61,14 +63,14 @@ impl FuncIr {
             });
         let (ty_env, ty_subst, ret_ty) = self.body.ty_get(ty_env, ty_subst)?;
         let (func_ty_id, ty_env) = ty_env.get(self.name.clone());
-        let ty_subst = ty_subst.insert(
-            func_ty_id,
+        let ty_subst = ty_subst.unify(
+            Type::TyVar(func_ty_id),
             Type::create_fn_func_type(
                 params_ty,
                 ret_ty,
             ),
-        )
-            .map_err(|msg| Error::new(self.pos, &msg))?;
+        ).map_err(|msg| Error::new(self.pos, &msg))?;
+
         let ty_env =
             (0..self.pamrams_len)
                 .fold(ty_env, |acc, x| {

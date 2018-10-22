@@ -52,7 +52,7 @@ impl TypeSubstitute {
         TypeSubstitute(HashMap::new())
     }
 
-    pub fn insert(mut self, id: usize, ty: Type) -> Result<TypeSubstitute, String> {
+    fn insert(mut self, id: usize, ty: Type) -> Result<TypeSubstitute, String> {
         match self.0.remove(&id) {
             Some(ty2) => {
                 let mut ty_subst = self.unify(ty, ty2.clone())?;
