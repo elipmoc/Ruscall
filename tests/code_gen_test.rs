@@ -6,7 +6,7 @@ macro_rules! helper {
     ($file_name:expr) => {
         match parse(include_str!(concat!("test_data/",$file_name,".rsc")))
             {
-                Ok(ir) => {ir.code_gen($file_name);},
+                Ok((ir,ty_resolved)) => {ir.code_gen($file_name,ty_resolved);},
                 Err(err) => assert!(false, "error!".to_string() + &err)
             };
     };

@@ -12,11 +12,12 @@ use self::output_file::output_file;
 use self::semantic_analysis::ir_tree as ir;
 use std::fs;
 use std::io::{BufReader, Read};
+use self::semantic_analysis::type_env::TypeResolved;
 
 pub fn compile(file_name: &str) {
     println!("input:{}", file_name);
     match parse(&src_file_to_str(file_name)) {
-        Ok(x) => output_file(x.code_gen("compiled")),
+        Ok((program_ir, ty_resolved)) => output_file(program_ir.code_gen("compiled", ty_resolved)),
         Err(err) => println!("{}", err),
     };
 }
@@ -28,14 +29,14 @@ pub fn src_file_to_str(file_name: &str) -> String {
     src_str
 }
 
-pub fn parse(src_str: &str) -> Result<(ir::ProgramIr), String> {
+pub fn parse(src_str: &str) -> Result<(ir::ProgramIr, TypeResolved), String> {
     match parser::parse(src_str) {
         Ok(ast) => {
             println!("\nparse\n{:?}\n", ast);
             let result = semantic_analysis::analysis(ast.0);
             match result {
                 Ok(x) => {
-                    println!("resolve_op\n{:?}\n", x);
+                    println!("resolve_op\n{:?}\n", x.0);
                     Result::Ok(x)
                 }
                 Err(err) => Result::Err(err.to_string()),

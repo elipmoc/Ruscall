@@ -1,4 +1,3 @@
-use self::super::super::types::*;
 use combine::stream::state::SourcePosition;
 use std::collections::HashMap;
 
@@ -25,7 +24,7 @@ impl ProgramIr {
 pub struct FuncIr {
     pub name: String,
     pub body: ExprIr,
-    pub ty: FuncType,
+    pub pamrams_len: usize,
     pub pos: SourcePosition,
 }
 
@@ -45,54 +44,37 @@ impl ExprIr {
             op,
             l_expr,
             r_expr,
-            ty: Type::Unknown,
         }))
     }
     pub fn create_variableir(id: usize, pos: SourcePosition) -> ExprIr {
         ExprIr::VariableIr(VariableIr {
             id,
-            ty: Type::Unknown,
             pos,
         })
     }
     pub fn create_global_variableir(id: String, pos: SourcePosition) -> ExprIr {
         ExprIr::GlobalVariableIr(GlobalVariableIr {
             id,
-            ty: Type::Unknown,
             pos,
         })
     }
     pub fn create_numir(num: i32) -> ExprIr {
         ExprIr::NumIr(NumIr {
             num,
-            ty: Type::Unknown,
         })
     }
     pub fn create_callir(func: ExprIr, params: Vec<ExprIr>) -> ExprIr {
         ExprIr::CallIr(Box::new(CallIr {
             func,
             params,
-            ty: Type::Unknown,
         }))
     }
 
-    pub fn create_tupleir(elements:Vec<ExprIr>, pos: SourcePosition) -> ExprIr {
-        ExprIr::TupleIr(Box::new(TupleIr{
+    pub fn create_tupleir(elements: Vec<ExprIr>, pos: SourcePosition) -> ExprIr {
+        ExprIr::TupleIr(Box::new(TupleIr {
             elements,
             pos,
-            ty: Type::Unknown,
         }))
-    }
-
-    pub fn get_ty(&self) -> &Type {
-        match self {
-            ExprIr::VariableIr(x) => &x.ty,
-            ExprIr::OpIr(x) => &x.ty,
-            ExprIr::NumIr(x) => &x.ty,
-            ExprIr::TupleIr(x)=>&x.ty,
-            ExprIr::CallIr(x) => &x.ty,
-            ExprIr::GlobalVariableIr(x) => &x.ty,
-        }
     }
 }
 
@@ -101,33 +83,28 @@ pub struct OpIr {
     pub op: String,
     pub l_expr: ExprIr,
     pub r_expr: ExprIr,
-    pub ty: Type,
 }
 
 #[derive(Debug, PartialEq)]
 pub struct NumIr {
     pub num: i32,
-    pub ty: Type,
 }
 
 #[derive(Debug, PartialEq)]
 pub struct TupleIr {
     pub elements: Vec<ExprIr>,
-    pub ty: Type,
-    pub pos:SourcePosition
+    pub pos: SourcePosition,
 }
 
 #[derive(Debug, PartialEq)]
 pub struct VariableIr {
     pub id: usize,
-    pub ty: Type,
     pub pos: SourcePosition,
 }
 
 #[derive(Debug, PartialEq)]
 pub struct GlobalVariableIr {
     pub id: String,
-    pub ty: Type,
     pub pos: SourcePosition,
 }
 
@@ -135,7 +112,6 @@ pub struct GlobalVariableIr {
 pub struct CallIr {
     pub func: ExprIr,
     pub params: Vec<ExprIr>,
-    pub ty: Type,
 }
 
 use super::super::ast::DecFuncAST;

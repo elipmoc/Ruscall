@@ -12,10 +12,10 @@ impl ShowType for Type{
     fn show(&self) -> String {
         match self {
             Type::Int32 => "Int32".to_string(),
-            Type::Unknown => "Unknown".to_string(),
             Type::FuncType(x) => x.show(),
             Type::Fn(x) => "Fn(".to_string() + &x.show() + ")",
-            Type::TupleType(x) => x.show()
+            Type::TupleType(x) => x.show(),
+            Type::TyVar(id)=> id.to_string()
         }
     }
 }

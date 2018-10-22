@@ -1,5 +1,4 @@
 use super::super::ast::*;
-use super::super::types::*;
 use super::ir_tree::*;
 
 impl ProgramAST {
@@ -38,23 +37,18 @@ impl StmtAST {
 
 impl DefFuncAST {
     fn to_ir(self, mut program_ir: ProgramIr) -> ProgramIr {
-        let param_types =
+        let params_len: usize =
             if self.params.len() == 0 {
-                vec![Type::TupleType(Box::new(TupleType { element_tys: vec![] }))]
+                1
             } else {
-                (0..self.params.len())
-                    .map(|_| Type::Unknown).collect()
+                self.params.len()
             };
-        let func_type = FuncType {
-            param_types,
-            ret_type: Type::Unknown,
-        };
         let var_table =
             VariableTable(self.params.into_iter().map(|x| x.id).collect());
         let func_ir = FuncIr {
             name: self.func_name,
             body: self.body.to_ir(&var_table),
-            ty: func_type,
+            pamrams_len: params_len,
             pos: self.pos,
         };
         program_ir.func_list.insert(func_ir.name.clone(), func_ir);
@@ -137,10 +131,7 @@ fn ast_to_ir_test() {
         FuncIr {
             name: "hoge".to_string(),
             body: ExprIr::create_variableir(0, SourcePosition { line: 0, column: 0 }),
-            ty: FuncType {
-                ret_type: Type::Unknown,
-                param_types: vec![Type::Unknown, Type::Unknown],
-            },
+            pamrams_len: 2,
             pos: SourcePosition { column: 0, line: 0 },
         },
     );
