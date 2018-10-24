@@ -2,22 +2,22 @@ use std::collections::HashMap;
 use super::super::types::*;
 
 #[derive(Debug)]
-pub struct TypeEnv {
+struct TypeEnv {
     env: HashMap<String, usize>,
     id: usize,
 }
 
 //型環境
 impl TypeEnv {
-    pub fn new() -> TypeEnv {
+    fn new() -> TypeEnv {
         TypeEnv {
             env: HashMap::new(),
             id: 0,
         }
     }
 
-    //symbolに対応した型変数を生成する
-    pub fn get(mut self, symbol: String) -> (usize, TypeEnv) {
+    //変数名に対応した型変数を生成する
+    fn get(mut self, symbol: String) -> (usize, TypeEnv) {
         match self.env.remove(&symbol) {
             Some(x) => {
                 self.env.insert(symbol, x.clone());
@@ -32,12 +32,13 @@ impl TypeEnv {
     }
 
     //変数に対応しない型変数を生成する
-    pub fn no_name_get(mut self) -> (usize, TypeEnv) {
+    fn no_name_get(mut self) -> (usize, TypeEnv) {
         self.id += 1;
         (self.id - 1, self)
     }
 
-    pub fn remove(mut self, symbol: &String) -> TypeEnv {
+    //変数名と型変数との対応を取り除く
+    fn remove(mut self, symbol: &String) -> TypeEnv {
         self.env.remove(symbol);
         self
     }
@@ -45,10 +46,10 @@ impl TypeEnv {
 
 //型代入環境
 #[derive(Debug)]
-pub struct TypeSubstitute(pub HashMap<usize, Type>);
+struct TypeSubstitute(pub HashMap<usize, Type>);
 
 impl TypeSubstitute {
-    pub fn new() -> TypeSubstitute {
+    fn new() -> TypeSubstitute {
         TypeSubstitute(HashMap::new())
     }
 
@@ -66,7 +67,7 @@ impl TypeSubstitute {
         }
     }
 
-    pub fn unify(self, ty1: Type, ty2: Type) -> Result<TypeSubstitute, String> {
+    fn unify(self, ty1: Type, ty2: Type) -> Result<TypeSubstitute, String> {
         match (ty1, ty2) {
             (ref ty1, ref ty2)if ty1 == ty2 => Ok(self),
             (Type::TyVar(id), ty) => self.insert(id.clone(), ty),
@@ -92,12 +93,13 @@ impl TypeSubstitute {
     }
 
     // 型変数に対応する単相型を見つけて返す。見つからなかったら空タプルの型を返す
-    pub fn look_up(&self, id: &usize) -> Type {
+    fn look_up(&self, id: &usize) -> Type {
         match self.0.get(&id) {
             Some(ty) => self.type_look_up(ty),
             None => Type::TupleType(Box::new(TupleType { element_tys: vec![] }))
         }
     }
+
     fn type_look_up(&self, ty: &Type) -> Type {
         match ty {
             Type::TyVar(id) => self.look_up(id),
@@ -123,10 +125,11 @@ impl TypeSubstitute {
     }
 }
 
+//型を解決した結果を持つ
 pub struct TypeResolved(HashMap<String, Type>);
 
 impl TypeResolved {
-    pub fn new(ty_env: TypeEnv, ty_subst: TypeSubstitute) -> TypeResolved {
+    fn new(ty_env: TypeEnv, ty_subst: TypeSubstitute) -> TypeResolved {
         TypeResolved(
             ty_env.env.into_iter().map(|(k, v)| {
                 (k, ty_subst.look_up(&v))
@@ -134,8 +137,41 @@ impl TypeResolved {
         )
     }
 
+    //型変数に対応する単相型を返す
     pub fn get(&self, id: String) -> Type {
         self.0[&id].clone()
     }
 }
 
+//型環境と型代入をひとまとめにした
+pub struct TypeInfo(TypeEnv, TypeSubstitute);
+
+impl TypeInfo {
+    pub fn new() -> TypeInfo {
+        TypeInfo(TypeEnv::new(), TypeSubstitute::new())
+    }
+
+    pub fn get(self, id: String) -> (usize, TypeInfo) {
+        let (id, ty_env) = self.0.get(id);
+        (id, TypeInfo(ty_env, self.1))
+    }
+
+    pub fn no_name_get(self) -> (usize, TypeInfo) {
+        let (id, ty_env) = self.0.no_name_get();
+        (id, TypeInfo(ty_env, self.1))
+    }
+
+    pub fn unify(mut self, ty1: Type, ty2: Type) -> Result<TypeInfo, String> {
+        self.1 = self.1.unify(ty1, ty2)?;
+        Ok(self)
+    }
+
+    pub fn get_type_resolved(self) -> TypeResolved {
+        TypeResolved::new(self.0, self.1)
+    }
+
+    pub fn remove(mut self, symbol: &String) -> TypeInfo {
+        self.0 = self.0.remove(symbol);
+        self
+    }
+}

@@ -13,7 +13,7 @@ use self::type_env::TypeResolved;
 
 pub fn analysis(ast: ProgramAST) -> Result<(ir::ProgramIr, TypeResolved), Error> {
     let ir = resolve_op(ast)?.to_ir();
-    let (ty_env, ty_subst) = ir.ty_get()?;
-    let ty_resolved = TypeResolved::new(ty_env, ty_subst);
+    let ty_info = ir.ty_get()?;
+    let ty_resolved = ty_info.get_type_resolved();
     Result::Ok((ir, ty_resolved))
 }

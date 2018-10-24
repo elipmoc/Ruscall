@@ -1,6 +1,13 @@
+infixl 0 +;
 
-ex print::Int32->();
+main=(f 4)+(f 1);
 
-func::()->();
-func x=print 777;
-main = func();
+f x= g x;
+
+g x= x;
+
+
+
+
+
+
