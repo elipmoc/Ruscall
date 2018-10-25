@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use super::super::types::*;
+use std::collections::HashMap;
 
 #[derive(Debug)]
 struct TypeEnv {
@@ -69,12 +69,17 @@ impl TypeSubstitute {
 
     fn unify(self, ty1: Type, ty2: Type) -> Result<TypeSubstitute, String> {
         match (ty1, ty2) {
-            (ref ty1, ref ty2)if ty1 == ty2 => Ok(self),
+            (ref ty1, ref ty2) if ty1 == ty2 => Ok(self),
             (Type::TyVar(id), ty) => self.insert(id.clone(), ty),
             (ty, Type::TyVar(id)) => self.insert(id.clone(), ty),
             (Type::Fn(ty1), Type::Fn(ty2)) => self.fn_unify(*ty1, *ty2),
             (Type::TupleType(ty1), Type::TupleType(ty2)) => self.tuple_unify(*ty1, *ty2),
-            (ty1, ty2) => return Err(format!("TypeSubstitute insert error! \n expect:{:?} \n actual:{:?}", ty1, ty2)),
+            (ty1, ty2) => {
+                return Err(format!(
+                    "TypeSubstitute insert error! \n expect:{:?} \n actual:{:?}",
+                    ty1, ty2
+                ));
+            }
         }
     }
 
@@ -96,7 +101,9 @@ impl TypeSubstitute {
     fn look_up(&self, id: &usize) -> Type {
         match self.0.get(&id) {
             Some(ty) => self.type_look_up(ty),
-            None => Type::TupleType(Box::new(TupleType { element_tys: vec![] }))
+            None => Type::TupleType(Box::new(TupleType {
+                element_tys: vec![],
+            })),
         }
     }
 
@@ -110,17 +117,19 @@ impl TypeSubstitute {
     }
     fn func_look_up(&self, ty: &FuncType) -> Type {
         Type::create_fn_func_type(
-            ty.param_types.iter().map(|ty| {
-                self.type_look_up(ty)
-            }).collect(),
+            ty.param_types
+                .iter()
+                .map(|ty| self.type_look_up(ty))
+                .collect(),
             self.type_look_up(&ty.ret_type),
         )
     }
     fn tuple_look_up(&self, ty: &TupleType) -> Type {
         Type::create_tuple_type(
-            ty.element_tys.iter().map(|ty| {
-                self.type_look_up(ty)
-            }).collect()
+            ty.element_tys
+                .iter()
+                .map(|ty| self.type_look_up(ty))
+                .collect(),
         )
     }
 }
@@ -131,9 +140,11 @@ pub struct TypeResolved(HashMap<String, Type>);
 impl TypeResolved {
     fn new(ty_env: TypeEnv, ty_subst: TypeSubstitute) -> TypeResolved {
         TypeResolved(
-            ty_env.env.into_iter().map(|(k, v)| {
-                (k, ty_subst.look_up(&v))
-            }).collect()
+            ty_env
+                .env
+                .into_iter()
+                .map(|(k, v)| (k, ty_subst.look_up(&v)))
+                .collect(),
         )
     }
 
