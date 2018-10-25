@@ -8,6 +8,10 @@
 
 ![ラスカル](https://raw.githubusercontent.com/elipmoc/Ruscall/develop/image.jpg "ラスカル")
 
+# 一緒に開発してくれる人募集！
+  お願いします
+
+
 # インストールガイド
 
 ## [Linux]
