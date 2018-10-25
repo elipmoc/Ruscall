@@ -1,6 +1,6 @@
 use super::super::ast;
 use combine::char::{alpha_num, char, digit, letter, string};
-use combine::{easy, optional};
+use combine::{easy, optional,sep_by1};
 use combine::parser::combinator::try;
 use combine::stream::state::{DefaultPositioned, SourcePosition, State};
 use combine::{eof, many, many1, position, unexpected, value};
@@ -21,16 +21,17 @@ BNF
 <expr_app>      := <term> {<skip_many> <term> }
 <infix>         := ('infixr' | 'infixl') <space>+ <num> <space>+ <op>
 <op>            := '+' | '-' | '/' | '*'
-<term>          := <num> | <id> | <paren> | <tuple>
+<term>          := <num> | <id> | <paren> | <tuple> | <lambda>
 <paren>         := '(' <skip_many> <expr> ')'
 <num>           := [0-9]+
 <tuple>         := '(' <skip_many> [<expr> {',' <skip_many> <expr>} [',' <skip_many>]] ')'
+<lambda>        := '\' <skip_many> [ <id> { <skip_many> ',' <skip_many> <id>} ] <skip_many> '->' <skip_many> <expr>
 <skip>          := '\n' | <space>
 <skip_many>     := {<skip>}
 <space>         := ' ' | '\t'
 <ty_term>       := 'Int32'| <ty_paren> |<ty_tuple>| <ty_func_pointer>
 <ty_func_pointer>
-                := 'Fn' <skip_many> <ty_func>
+                := 'Fn' <skip_many> [ '[' <ty_term>{ ',' <ty_term> } ']' ] <skip_many> <ty_func>
 <ty_paren>      := '(' <skip_many> <ty_term> <skip_many> ')'
 <ty_tuple>      := '(' <skip_many> [<ty_term> <skip_many> {',' <skip_many> <ty_term> <skip_many>} [',' <skip_many>]] ')'
 <ty_func>       := <ty_term> ( <skip_many> '->' <skip_many> <ty_term> )+
@@ -186,6 +187,7 @@ parser! {
             .skip(skip_many_parser())
             .map(|(pos,id)|ast::ExprAST::VariableAST(ast::VariableAST::new(id,pos)))
         )
+        .or(lambda_parser())
     }
 }
 
@@ -246,6 +248,36 @@ parser! {
         })
     }
 }
+
+//<lambda>
+parser! {
+    fn lambda_parser['a]()(MyStream<'a>)->ast::ExprAST
+    {
+        (
+            position(),
+            char('\\')
+            .with(skip_many_parser())
+            .with(
+                optional(
+                    many(try(
+                        sep_by1(
+                            id_parser(),
+                            (skip_many_parser(),char(','),skip_many_parser())
+                        )
+                    ))
+                )
+            )
+            .skip(skip_many_parser())
+            .skip(string("->"))
+            .skip(skip_many_parser()),
+            expr_parser()
+        )
+        .map(move|(_pos,_params,_expr):(_,Option<Vec<String>>,ast::ExprAST)|{
+            ast::ExprAST::create_num_ast("4545".to_string())
+        })
+    }
+}
+
 
 //<dec_func>
 parser! {

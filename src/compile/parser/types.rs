@@ -1,7 +1,7 @@
 use combine::char::{char, string};
 use combine::optional;
 use combine::parser::combinator::try;
-use combine::{many, many1};
+use combine::{many, many1,sep_by1};
 use super::super::types::*;
 use super::parser::MyStream;
 use super::skipper::skip_many_parser;
@@ -20,10 +20,21 @@ parser! {
 parser! {
    fn ty_func_pointer_parser['a]()(MyStream<'a>) ->Type
     {
-        string("Fn")
-        .with(skip_many_parser())
-        .with(ty_func_parser())
-        .map(|x|Type::Fn(Box::new(x)))
+        (
+            string("Fn")
+            .with(skip_many_parser())
+            .with(optional(
+                char('[')
+                .with(
+                    sep_by1(ty_term_parser(),char(','))
+                )
+                .skip(char(']'))
+            ))
+            ,
+            skip_many_parser()
+            .with(ty_func_parser())
+        )
+        .map(|(vec,x):(Option<Vec<_>>,_)|Type::Fn(Box::new(x)))
     }
 }
 
