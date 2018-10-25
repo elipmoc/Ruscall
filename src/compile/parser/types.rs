@@ -34,7 +34,7 @@ parser! {
             skip_many_parser()
             .with(ty_func_parser())
         )
-        .map(|(vec,x):(Option<Vec<_>>,_)|Type::Fn(Box::new(x)))
+        .map(|(_vec,x):(Option<Vec<_>>,_)|Type::FuncType(Box::new(x)))
     }
 }
 

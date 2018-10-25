@@ -72,7 +72,7 @@ impl TypeSubstitute {
             (ref ty1, ref ty2) if ty1 == ty2 => Ok(self),
             (Type::TyVar(id), ty) => self.insert(id.clone(), ty),
             (ty, Type::TyVar(id)) => self.insert(id.clone(), ty),
-            (Type::Fn(ty1), Type::Fn(ty2)) => self.fn_unify(*ty1, *ty2),
+            (Type::FuncType(ty1), Type::FuncType(ty2)) => self.fn_unify(*ty1, *ty2),
             (Type::TupleType(ty1), Type::TupleType(ty2)) => self.tuple_unify(*ty1, *ty2),
             (ty1, ty2) => {
                 return Err(format!(
@@ -110,13 +110,13 @@ impl TypeSubstitute {
     fn type_look_up(&self, ty: &Type) -> Type {
         match ty {
             Type::TyVar(id) => self.look_up(id),
-            Type::Fn(x) => self.func_look_up(x),
+            Type::FuncType(x) => self.func_look_up(x),
             Type::TupleType(x) => self.tuple_look_up(x),
             ty => ty.clone(),
         }
     }
     fn func_look_up(&self, ty: &FuncType) -> Type {
-        Type::create_fn_func_type(
+        Type::create_func_type(
             ty.param_types
                 .iter()
                 .map(|ty| self.type_look_up(ty))
@@ -135,6 +135,7 @@ impl TypeSubstitute {
 }
 
 //型を解決した結果を持つ
+#[derive(Debug)]
 pub struct TypeResolved(HashMap<String, Type>);
 
 impl TypeResolved {

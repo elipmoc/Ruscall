@@ -48,7 +48,7 @@ impl<'a> TypeGet for &'a DecFuncAST {
 
         let ty_info = ty_info.unify(
             Type::TyVar(ty_id.clone()),
-            Type::Fn(Box::new(self.ty.clone())),
+            Type::FuncType(Box::new(self.ty.clone())),
         ).map_err(|msg| Error::new(self.pos, &msg))?;
         Ok((ty_info, Type::TyVar(ty_id)))
     }
@@ -69,7 +69,7 @@ impl<'a> TypeGet for &'a FuncIr {
         let (func_ty_id, ty_info) = ty_info.get(self.name.clone());
         let ty_info = ty_info.unify(
             Type::TyVar(func_ty_id.clone()),
-            Type::create_fn_func_type(
+            Type::create_func_type(
                 params_ty,
                 ret_ty,
             ),
@@ -111,7 +111,7 @@ impl TypeGet for CallIr {
         let ret_ty = Type::TyVar(ret_ty_id);
         let (ty_info, func_ty) = (&self.func).ty_get(ty_info)?;
         let ty_info =
-            ty_info.unify(func_ty, Type::create_fn_func_type(params_ty, ret_ty.clone()))
+            ty_info.unify(func_ty, Type::create_func_type(params_ty, ret_ty.clone()))
                 .map_err(|msg| Error::new(SourcePosition::new(), &msg))?;
         Ok((ty_info, ret_ty))
     }

@@ -24,13 +24,9 @@ impl ir::ProgramIr {
 
         //関数宣言のコード化
         self.func_list.keys().for_each(|k| {
-            if let Type::Fn(ty) = ty_resolved.get(k.clone()) {
-                let func_type = ty.to_llvm_type();
-                let func = Function::new(&k, &module, func_type);
-                set_linkage(func.llvm_function, LLVMLinkage::LLVMExternalLinkage);
-            } else {
-                panic!("error!");
-            }
+            let func_type = ty_resolved.get(k.clone()).to_llvm_type(false);
+            let func = Function::new(&k, &module, func_type);
+            set_linkage(func.llvm_function, LLVMLinkage::LLVMExternalLinkage);
         });
 
         //関数定義のコード化
@@ -53,11 +49,11 @@ impl ir::ProgramIr {
 
 fn ex_func_gen(dec_func_ir: ir::DecFuncIr, module: &Module, ty_resolved: &TypeResolved) {
     match ty_resolved.get(dec_func_ir.name.clone()) {
-        Type::Fn(ty) => {
+        Type::FuncType(ty) => {
             let function = Function::new(
                 &dec_func_ir.name,
                 &module,
-                Type::FuncType(Box::new(*ty)).to_llvm_type(),
+                Type::FuncType(Box::new(*ty)).to_llvm_type(false),
             );
             set_linkage(function.llvm_function, LLVMLinkage::LLVMExternalLinkage);
         }
@@ -66,11 +62,15 @@ fn ex_func_gen(dec_func_ir: ir::DecFuncIr, module: &Module, ty_resolved: &TypeRe
 }
 
 impl Type {
-    fn to_llvm_type(&self) -> LLVMTypeRef {
+    fn to_llvm_type(&self, fn_pointer_flag: bool) -> LLVMTypeRef {
         match self {
             Type::Int32 => int32_type(),
-            Type::FuncType(x) => x.to_llvm_type(),
-            Type::Fn(x) => pointer_type(x.to_llvm_type()),
+            Type::FuncType(x) =>
+                if fn_pointer_flag {
+                    pointer_type(x.to_llvm_type())
+                } else {
+                    x.to_llvm_type()
+                },
             Type::TupleType(x) => x.to_llvm_type(),
             Type::TyVar(_) => panic!("TyVar type!")
         }
@@ -80,8 +80,10 @@ impl Type {
 impl FuncType {
     fn to_llvm_type(&self) -> LLVMTypeRef {
         function_type(
-            self.ret_type.to_llvm_type(),
-            self.param_types.iter().map(|x| x.to_llvm_type()).collect(),
+            self.ret_type.to_llvm_type(true),
+            self.param_types.iter()
+                .map(|x| x.to_llvm_type(true))
+                .collect(),
         )
     }
 }
@@ -89,7 +91,7 @@ impl FuncType {
 impl TupleType {
     fn to_llvm_type(&self) -> LLVMTypeRef {
         struct_type(
-            self.element_tys.iter().map(|x| x.to_llvm_type()).collect(),
+            self.element_tys.iter().map(|x| x.to_llvm_type(true)).collect(),
         )
     }
 }
