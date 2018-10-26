@@ -1,5 +1,6 @@
 use combine::stream::state::SourcePosition;
 use std::collections::HashMap;
+use super::super::ast::*;
 
 #[derive(Debug, PartialEq)]
 pub struct ProgramIr {
@@ -58,11 +59,6 @@ impl ExprIr {
             pos,
         })
     }
-    pub fn create_numir(num: i32) -> ExprIr {
-        ExprIr::NumIr(NumIr {
-            num,
-        })
-    }
     pub fn create_callir(func: ExprIr, params: Vec<ExprIr>) -> ExprIr {
         ExprIr::CallIr(Box::new(CallIr {
             func,
@@ -85,10 +81,7 @@ pub struct OpIr {
     pub r_expr: ExprIr,
 }
 
-#[derive(Debug, PartialEq)]
-pub struct NumIr {
-    pub num: i32,
-}
+pub type NumIr = NumAST;
 
 #[derive(Debug, PartialEq)]
 pub struct TupleIr {
@@ -102,18 +95,12 @@ pub struct VariableIr {
     pub pos: SourcePosition,
 }
 
-#[derive(Debug, PartialEq)]
-pub struct GlobalVariableIr {
-    pub id: String,
-    pub pos: SourcePosition,
-}
+pub type GlobalVariableIr = VariableAST;
 
 #[derive(Debug, PartialEq)]
 pub struct CallIr {
     pub func: ExprIr,
     pub params: Vec<ExprIr>,
 }
-
-use super::super::ast::DecFuncAST;
 
 pub type DecFuncIr = DecFuncAST;

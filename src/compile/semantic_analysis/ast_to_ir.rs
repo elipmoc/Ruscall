@@ -71,7 +71,7 @@ impl DecFuncAST {
 impl ExprAST {
     fn to_ir(self, var_table: &VariableTable) -> ExprIr {
         match self {
-            ExprAST::NumAST(x) => ExprIr::create_numir(x.num),
+            ExprAST::NumAST(x) => ExprIr::NumIr(x),
             ExprAST::OpAST(x) => {
                 let x = *x;
                 ExprIr::create_opir(
@@ -82,7 +82,7 @@ impl ExprAST {
             }
             ExprAST::VariableAST(x) => match var_table.find_variable_id(&x.id) {
                 Some(id) => ExprIr::create_variableir(id, x.pos),
-                _ => ExprIr::create_global_variableir(x.id, x.pos),
+                _ => ExprIr::GlobalVariableIr(x),
             },
             ExprAST::ParenAST(x) => x.expr.to_ir(var_table),
             ExprAST::FuncCallAST(x) => {
