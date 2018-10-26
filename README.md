@@ -8,6 +8,17 @@
 
 ![ラスカル](https://raw.githubusercontent.com/elipmoc/Ruscall/develop/image.jpg "ラスカル")
 
+# 一緒に開発してくれる人募集！
+  お願いします。
+  
+  ・やってほしいこと
+  
+    ・テストの追加（わざと失敗するテストがまだない）
+    
+    ・Debugトレイトで綺麗に構文木や型を表示できるようにする
+    
+    ・リファクタリング
+
 # インストールガイド
 
 ## [Linux]
