@@ -48,7 +48,7 @@ impl DefFuncAST {
         let func_ir = FuncIr {
             name: self.func_name,
             body: self.body.to_ir(&var_table),
-            pamrams_len: params_len,
+            params_len: params_len,
             pos: self.pos,
         };
         program_ir.func_list.insert(func_ir.name.clone(), func_ir);

@@ -25,7 +25,7 @@ impl ProgramIr {
 pub struct FuncIr {
     pub name: String,
     pub body: ExprIr,
-    pub pamrams_len: usize,
+    pub params_len: usize,
     pub pos: SourcePosition,
 }
 

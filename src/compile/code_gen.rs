@@ -99,7 +99,7 @@ impl TupleType {
 impl ir::FuncIr {
     fn code_gen(self, module: &Module, codegen: &CodeGenerator) {
         let function = module.get_named_function(&self.name);
-        let params = function.get_params(self.pamrams_len);
+        let params = function.get_params(self.params_len);
         let entry_block = function.append_basic_block("entry");
         codegen.position_builder_at_end(entry_block);
         let value = self.body.code_gen(&module, &codegen, &params);

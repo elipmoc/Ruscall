@@ -57,9 +57,9 @@ impl<'a> TypeGet for &'a DecFuncAST {
 impl<'a> TypeGet for &'a FuncIr {
     fn ty_get(&self, ty_info: TypeInfo) -> TyCheckResult<(TypeInfo, Type)> {
         let (ty_info, params_ty): (_, Vec<Type>)
-        = (0..self.pamrams_len)
+        = (0..self.params_len)
             .fold((ty_info, vec![]), move |mut acc, id| {
-                let id = self.pamrams_len - id - 1;
+                let id = self.params_len - id - 1;
                 let (ty_id, ty_info) = acc.0.get(id.to_string());
                 acc.1.push(Type::TyVar(ty_id));
                 acc.0 = ty_info;
@@ -76,7 +76,7 @@ impl<'a> TypeGet for &'a FuncIr {
         ).map_err(|msg| Error::new(self.pos, &msg))?;
 
         let ty_info =
-            (0..self.pamrams_len)
+            (0..self.params_len)
                 .fold(ty_info, |acc, x| acc.remove(&x.to_string()));
         Ok((ty_info, Type::TyVar(func_ty_id)))
     }
