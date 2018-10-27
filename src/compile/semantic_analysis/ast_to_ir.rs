@@ -131,7 +131,7 @@ fn ast_to_ir_test() {
         FuncIr {
             name: "hoge".to_string(),
             body: ExprIr::create_variableir(0, SourcePosition { line: 0, column: 0 }),
-            pamrams_len: 2,
+            params_len: 2,
             pos: SourcePosition { column: 0, line: 0 },
         },
     );
