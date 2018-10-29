@@ -1,10 +1,9 @@
 pub mod ast_to_ir;
-pub mod ir_tree;
+pub mod ir;
 mod resolve_op;
 pub mod type_get;
 pub mod type_env;
 
-pub use self::ir_tree as ir;
 pub use super::ast::ProgramAST;
 
 use self::resolve_op::resolve_op;

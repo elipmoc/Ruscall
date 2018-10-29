@@ -1,5 +1,5 @@
 use super::super::my_llvm::easy::*;
-use super::semantic_analysis::ir_tree as ir;
+use super::semantic_analysis::ir as ir;
 use super::types::*;
 use super::semantic_analysis::type_env::TypeResolved;
 
@@ -20,19 +20,19 @@ impl ir::ProgramIr {
         //外部関数宣言のコード化
         self.ex_dec_func_list
             .into_iter()
-            .for_each(|(_, v)| ex_func_gen(v, &module, &ty_resolved));
+            .for_each(|x| ex_func_gen(x, &module, &ty_resolved));
 
         //関数宣言のコード化
-        self.func_list.keys().for_each(|k| {
-            let func_type = ty_resolved.get(k.clone()).to_llvm_type(false);
-            let func = Function::new(&k, &module, func_type);
+        self.func_list.iter().for_each(|x| {
+            let func_type = ty_resolved.get(x.name.clone()).to_llvm_type(false);
+            let func = Function::new(&x.name, &module, func_type);
             set_linkage(func.llvm_function, LLVMLinkage::LLVMExternalLinkage);
         });
 
         //関数定義のコード化
         self.func_list
             .into_iter()
-            .for_each(|(_, func)| func.code_gen(&module, &code_gen, &ty_resolved));
+            .for_each(|func| func.code_gen(&module, &code_gen, &ty_resolved));
 
         module.dump_module();
         if let Some(err_msg) = module.verify_module() {

@@ -6,17 +6,17 @@ use super::super::ast::*;
 pub struct ProgramIr {
     pub dec_func_list: Vec<DecFuncIr>,
 
-    pub func_list: HashMap<String, FuncIr>,
+    pub func_list: Vec<FuncIr>,
     //extern　宣言された関数のリスト
-    pub ex_dec_func_list: HashMap<String, DecFuncIr>,
+    pub ex_dec_func_list: Vec<DecFuncIr>,
 }
 
 impl ProgramIr {
     pub fn empty() -> ProgramIr {
         ProgramIr {
             dec_func_list: vec![],
-            func_list: HashMap::new(),
-            ex_dec_func_list: HashMap::new(),
+            func_list: vec![],
+            ex_dec_func_list: vec![],
         }
     }
 }

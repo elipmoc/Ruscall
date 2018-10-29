@@ -1,5 +1,5 @@
 use super::super::ast::*;
-use super::ir_tree::*;
+use super::ir::*;
 
 impl ProgramAST {
     pub fn to_ir(self) -> ProgramIr {
@@ -55,7 +55,7 @@ impl DefFuncAST {
             params_len,
             pos: self.pos,
         };
-        program_ir.func_list.insert(func_ir.name.clone(), func_ir);
+        program_ir.func_list.push(func_ir);
         program_ir
     }
 }
@@ -64,7 +64,7 @@ impl DecFuncAST {
     fn to_ir(self, mut program_ir: ProgramIr) -> ProgramIr {
         match self.extern_flag {
             true => {
-                program_ir.ex_dec_func_list.insert(self.name.clone(), self);
+                program_ir.ex_dec_func_list.push( self);
             }
             _ => program_ir.dec_func_list.push(self)
         }
@@ -159,9 +159,8 @@ fn ast_to_ir_test() {
             pos: SourcePosition { column: 0, line: 0 },
         })],
     };
-    let mut func_list = HashMap::new();
-    func_list.insert(
-        "hoge".to_string(),
+    let mut func_list = vec![];
+    func_list.push(
         FuncIr {
             name: "hoge".to_string(),
             body: ExprIr::create_variableir(0, SourcePosition { line: 0, column: 0 }),
@@ -172,7 +171,7 @@ fn ast_to_ir_test() {
     let ir = ProgramIr {
         dec_func_list: vec![],
         func_list,
-        ex_dec_func_list: HashMap::new(),
+        ex_dec_func_list: vec![],
     };
     assert_eq!(ast.to_ir(), ir);
 }

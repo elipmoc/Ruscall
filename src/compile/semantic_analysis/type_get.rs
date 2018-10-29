@@ -27,14 +27,14 @@ impl ProgramIr {
         //外部関数宣言の型チェック
         let ty_info =
             ty_get_all(
-                self.ex_dec_func_list.iter().map(|x| x.1), ty_info,
+                self.ex_dec_func_list.iter(), ty_info,
             )?.0;
         //関数宣言の型チェック
         let ty_info =
             ty_get_all(self.dec_func_list.iter(), ty_info)?.0;
         //関数定義の型チェック
         let ty_info =
-            ty_get_all(self.func_list.iter().map(|x| x.1), ty_info)?.0;
+            ty_get_all(self.func_list.iter().map(|x| x), ty_info)?.0;
 
         Ok(ty_info)
     }

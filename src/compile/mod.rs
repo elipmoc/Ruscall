@@ -9,7 +9,7 @@ pub mod parser;
 
 use self::error::Error;
 use self::output_file::output_file;
-use self::semantic_analysis::ir_tree as ir;
+use self::semantic_analysis::ir as ir;
 use std::fs;
 use std::io::{BufReader, Read};
 use self::semantic_analysis::type_env::TypeResolved;
