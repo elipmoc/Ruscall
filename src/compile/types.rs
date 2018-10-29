@@ -1,10 +1,10 @@
-
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub enum Type {
     Int32,
     FuncType(Box<FuncType>),
     TupleType(Box<TupleType>),
     TyVar(usize),
+    LambdaType(Box<LambdaType>)
 }
 
 impl Type {
@@ -13,6 +13,9 @@ impl Type {
     }
     pub fn create_tuple_type(element_tys: Vec<Type>) -> Type {
         Type::TupleType(Box::new(TupleType { element_tys }))
+    }
+    pub fn create_lambda_type(env_tys:Vec<Type>,func_ty:FuncType)->Type{
+        Type::LambdaType(Box::new(LambdaType{env_tys,func_ty}))
     }
 }
 
@@ -26,4 +29,10 @@ pub struct FuncType {
 #[derive(Debug, Clone, PartialEq)]
 pub struct TupleType {
     pub element_tys: Vec<Type>
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct LambdaType {
+    pub env_tys: Vec<Type>,
+    pub func_ty:FuncType
 }
