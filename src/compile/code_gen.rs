@@ -32,7 +32,7 @@ impl ir::ProgramIr {
         //関数定義のコード化
         self.func_list
             .into_iter()
-            .for_each(|(_, func)| func.code_gen(&module, &code_gen));
+            .for_each(|(_, func)| func.code_gen(&module, &code_gen, &ty_resolved));
 
         module.dump_module();
         if let Some(err_msg) = module.verify_module() {
@@ -72,7 +72,8 @@ impl Type {
                     x.to_llvm_type()
                 },
             Type::TupleType(x) => x.to_llvm_type(),
-            Type::TyVar(_) => panic!("TyVar type!")
+            Type::TyVar(_) => panic!("TyVar type!"),
+            Type::LambdaType(x) => x.to_llvm_type()
         }
     }
 }
@@ -96,13 +97,23 @@ impl TupleType {
     }
 }
 
+impl LambdaType {
+    fn to_llvm_type(&self) -> LLVMTypeRef {
+        let envs_llvm_ty =
+            self.env_tys.iter().map(|x| x.to_llvm_type(true)).collect();
+        let func_llvm_ty = pointer_type( self.func_ty.to_llvm_type());
+        struct_type(vec![struct_type(envs_llvm_ty), func_llvm_ty])
+    }
+}
+
 impl ir::FuncIr {
-    fn code_gen(self, module: &Module, codegen: &CodeGenerator) {
+    fn code_gen(self, module: &Module, codegen: &CodeGenerator, ty_resolved: &TypeResolved) {
         let function = module.get_named_function(&self.name);
         let params = function.get_params(self.params_len);
-        let entry_block = function.append_basic_block("entry");
+        let entry_block = function.append_basic_block(&("entry_".to_string()+&self.name));
         codegen.position_builder_at_end(entry_block);
-        let value = self.body.code_gen(&module, &codegen, &params);
+        let value = self.body.code_gen(&module, &codegen, &params, ty_resolved);
+        codegen.position_builder_at_end(entry_block);
         codegen.build_ret(value);
     }
 }
@@ -113,14 +124,16 @@ impl ir::ExprIr {
         module: &Module,
         codegen: &CodeGenerator,
         params: &Vec<LLVMValueRef>,
+        ty_resolved: &TypeResolved,
     ) -> LLVMValueRef {
         match self {
             ir::ExprIr::NumIr(num_ir) => const_int(int32_type(), num_ir.num as u64, true),
-            ir::ExprIr::OpIr(op_ir) => op_ir.code_gen(module, codegen, params),
+            ir::ExprIr::OpIr(op_ir) => op_ir.code_gen(module, codegen, params, ty_resolved),
             ir::ExprIr::VariableIr(var_ir) => params[params.len() - var_ir.id - 1],
             ir::ExprIr::GlobalVariableIr(x) => x.code_gen(module),
-            ir::ExprIr::CallIr(x) => x.code_gen(module, codegen, params),
-            ir::ExprIr::TupleIr(x) => x.code_gen(module, codegen, params),
+            ir::ExprIr::CallIr(x) => x.code_gen(module, codegen, params, ty_resolved),
+            ir::ExprIr::TupleIr(x) => x.code_gen(module, codegen, params, ty_resolved),
+            ir::ExprIr::LambdaIr(x) => x.code_gen(module, codegen, params, ty_resolved)
         }
     }
 }
@@ -138,12 +151,13 @@ impl ir::CallIr {
         module: &Module,
         codegen: &CodeGenerator,
         params: &Vec<LLVMValueRef>,
+        ty_resolved: &TypeResolved,
     ) -> LLVMValueRef {
-        let func = self.func.code_gen(module, codegen, params);
+        let func = self.func.code_gen(module, codegen, params, ty_resolved);
         let params = self
             .params
             .into_iter()
-            .map(|x| x.code_gen(module, codegen, params))
+            .map(|x| x.code_gen(module, codegen, params, ty_resolved))
             .collect();
 
         codegen.build_call(func, params, "")
@@ -156,11 +170,12 @@ impl ir::TupleIr {
         module: &Module,
         codegen: &CodeGenerator,
         params: &Vec<LLVMValueRef>,
+        ty_resolved: &TypeResolved,
     ) -> LLVMValueRef {
         let elements_val: Vec<LLVMValueRef> =
             self.elements
                 .into_iter()
-                .map(|x| x.code_gen(module, codegen, params)).collect();
+                .map(|x| x.code_gen(module, codegen, params, ty_resolved)).collect();
         let ty = struct_type(
             elements_val.iter()
                 .map(|x| type_of(*x))
@@ -185,9 +200,10 @@ impl ir::OpIr {
         module: &Module,
         codegen: &CodeGenerator,
         params: &Vec<LLVMValueRef>,
+        ty_resolved: &TypeResolved,
     ) -> LLVMValueRef {
-        let lhs = self.l_expr.code_gen(module, codegen, params);
-        let rhs = self.r_expr.code_gen(module, codegen, params);
+        let lhs = self.l_expr.code_gen(module, codegen, params, ty_resolved);
+        let rhs = self.r_expr.code_gen(module, codegen, params, ty_resolved);
         match &self.op as &str {
             "+" => codegen.build_add(lhs, rhs, ""),
             "-" => codegen.build_sub(lhs, rhs, ""),
@@ -199,5 +215,55 @@ impl ir::OpIr {
             }
             _ => panic!("error"),
         }
+    }
+}
+
+impl ir::LambdaIr {
+    fn code_gen(
+        self,
+        module: &Module,
+        codegen: &CodeGenerator,
+        params: &Vec<LLVMValueRef>,
+        ty_resolved: &TypeResolved,
+    ) -> LLVMValueRef {
+        //環境の値取得
+        let env_val: Vec<LLVMValueRef> = self.env.into_iter()
+            .map(|x| params[params.len() - x.id - 1])
+            .collect();
+        //環境の型生成
+        let env_llvm_ty = struct_type(
+            env_val.iter().map(|x| type_of(*x)).collect()
+        );
+
+        //ラムダ式の関数作成
+        let func_ty = ty_resolved.get(self.func.name.clone()).to_llvm_type(false);
+        let func = Function::new(&self.func.name, &module, func_ty);
+        set_linkage(func.llvm_function, LLVMLinkage::LLVMExternalLinkage);
+
+        //ラムダ式の型生成
+        let lambda_ty = struct_type(vec![env_llvm_ty, pointer_type(func_ty)]);
+
+        //ラムダ式の生成
+        let env_tuple_val = codegen.build_alloca(env_llvm_ty, "");
+        let func_val =
+            env_val
+                .into_iter()
+                .enumerate()
+                .for_each(|(id, x)| {
+                    let ptr =
+                        codegen.build_struct_gep(env_tuple_val, id as u32, "");
+                    codegen.build_store(x, ptr);
+                });
+        let env_tuple_val=codegen.build_load(env_tuple_val,"");
+        let lambda_val = codegen.build_alloca(lambda_ty, "");
+        let env_tuple_ptr = codegen.build_struct_gep(lambda_val, 0, "");
+        codegen.build_store(env_tuple_val, env_tuple_ptr);
+        let func_ptr = codegen.build_struct_gep(lambda_val, 1, "");
+        codegen.build_store(func.llvm_function, func_ptr);
+        let ret=codegen.build_load(lambda_val, "ret");
+
+        //ラムダ式の中身を生成
+        self.func.code_gen(module, codegen, ty_resolved);
+        ret
     }
 }
