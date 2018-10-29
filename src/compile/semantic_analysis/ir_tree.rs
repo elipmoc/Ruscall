@@ -37,6 +37,7 @@ pub enum ExprIr {
     VariableIr(VariableIr),
     GlobalVariableIr(GlobalVariableIr),
     CallIr(Box<CallIr>),
+    LambdaIr(Box<LambdaIr>),
 }
 
 impl ExprIr {
@@ -72,6 +73,13 @@ impl ExprIr {
             pos,
         }))
     }
+
+    pub fn create_lambdair(env: Vec<VariableIr>, params_len: usize, body: ExprIr, pos: SourcePosition, id: String) -> ExprIr {
+        ExprIr::LambdaIr(Box::new(LambdaIr {
+            env,
+            func: FuncIr { name: id, params_len, body, pos },
+        }))
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -101,6 +109,12 @@ pub type GlobalVariableIr = VariableAST;
 pub struct CallIr {
     pub func: ExprIr,
     pub params: Vec<ExprIr>,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct LambdaIr {
+    pub env: Vec<VariableIr>,
+    pub func: FuncIr,
 }
 
 pub type DecFuncIr = DecFuncAST;
