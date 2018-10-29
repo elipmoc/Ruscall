@@ -8,7 +8,6 @@ pub struct ProgramAST {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum StmtAST {
-    //   ExprAST(ExprAST),
     InfixAST(InfixAST),
     DefFuncAST(DefFuncAST),
     DecFuncAST(DecFuncAST),
@@ -39,6 +38,7 @@ pub enum ExprAST {
     ParenAST(Box<ParenAST>),
     FuncCallAST(Box<FuncCallAST>),
     TupleAST(Box<TupleAST>),
+    LambdaAST(Box<LambdaAST>),
 }
 
 impl ExprAST {
@@ -64,6 +64,9 @@ impl ExprAST {
     }
     pub fn create_tuple_ast(elements: Vec<ExprAST>, pos: SourcePosition) -> ExprAST {
         ExprAST::TupleAST(Box::new(TupleAST { elements, pos }))
+    }
+    pub fn create_lambda_ast(env: Vec<VariableAST>, params: Vec<VariableAST>, body: ExprAST, pos: SourcePosition) -> ExprAST {
+        ExprAST::LambdaAST(Box::new(LambdaAST { env, params, body, pos }))
     }
 }
 
@@ -141,5 +144,13 @@ pub struct DecFuncAST {
 #[derive(Debug, Clone, PartialEq)]
 pub struct TupleAST {
     pub elements: Vec<ExprAST>,
+    pub pos: SourcePosition,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct LambdaAST {
+    pub env: Vec<VariableAST>,
+    pub params: Vec<VariableAST>,
+    pub body: ExprAST,
     pub pos: SourcePosition,
 }
