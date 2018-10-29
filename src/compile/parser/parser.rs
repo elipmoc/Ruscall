@@ -1,43 +1,44 @@
 use super::super::ast;
+use super::skipper::*;
 use combine::char::{alpha_num, char, digit, letter, string};
-use combine::{easy, optional,sep_by1};
 use combine::parser::combinator::try;
 use combine::stream::state::{DefaultPositioned, SourcePosition, State};
+use combine::{easy, optional, sep_by};
 use combine::{eof, many, many1, position, unexpected, value};
-use super::skipper::*;
 
 /*
 BNF
-<program>       := {<stmt>} <skip_many>
-<stmt>          := <skip_many> (
-                        <infix> |
-                        <def_func> |
-                        <dec_func> |
-                        <exturn_dec_func>
-                   ) <skip_many> ';'
-<def_func>      := <id> {<skip_many> <id>} <skip_many> '=' <skip_many> <expr>
-<id>            := [a-z]{ [a-z] | [0-9] | '_' }
-<expr>          := <expr_app> <skip_many> { <op> <skip_many> <expr_app> <skip_many> }
-<expr_app>      := <term> {<skip_many> <term> }
-<infix>         := ('infixr' | 'infixl') <space>+ <num> <space>+ <op>
-<op>            := '+' | '-' | '/' | '*'
-<term>          := <num> | <id> | <paren> | <tuple> | <lambda>
-<paren>         := '(' <skip_many> <expr> ')'
-<num>           := [0-9]+
-<tuple>         := '(' <skip_many> [<expr> {',' <skip_many> <expr>} [',' <skip_many>]] ')'
-<lambda>        := '\' <skip_many> [ <id> { <skip_many> ',' <skip_many> <id>} ] <skip_many> '->' <skip_many> <expr>
-<skip>          := '\n' | <space>
-<skip_many>     := {<skip>}
-<space>         := ' ' | '\t'
-<ty_term>       := 'Int32'| <ty_paren> |<ty_tuple>| <ty_func_pointer>
-<ty_func_pointer>
-                := 'Fn' <skip_many> [ '[' <ty_term>{ ',' <ty_term> } ']' ] <skip_many> <ty_func>
-<ty_paren>      := '(' <skip_many> <ty_term> <skip_many> ')'
-<ty_tuple>      := '(' <skip_many> [<ty_term> <skip_many> {',' <skip_many> <ty_term> <skip_many>} [',' <skip_many>]] ')'
-<ty_func>       := <ty_term> ( <skip_many> '->' <skip_many> <ty_term> )+
-<dec_func>      := <id> <skip_many> '::' <skip_many> <ty_func>
-<exturn_dec_func>
-                := 'ex' <skip_many> <dec_func>
+:program       := {:stmt} :skip_many
+:stmt          := :skip_many (
+                        :infix |
+                        :def_func |
+                        :dec_func |
+                        :exturn_dec_func
+                   ) :skip_many ';'
+:def_func      := :id {:skip_many :id} :skip_many '=' :skip_many :expr
+:id            := [a-z]{ [a-z] | [0-9] | '_' }
+:expr          := :expr_app :skip_many { :op :skip_many :expr_app :skip_many }
+:expr_app      := :term {:skip_many :term }
+:infix         := ('infixr' | 'infixl') :space + :num :space + :op
+:op            := '+' | '-' | '/' | '*'
+:term         := :num | :id | :paren | :tuple | :lambda
+:paren         := '(' :skip_many :expr ')'
+:num           := [0-9]+
+:tuple         := '(' :skip_many [ :expr {',' :skip_many :expr} [',' :skip_many]] ')'
+:lambda        := '\' :skip_many [ '[' :lambda_params ']' ] :lambda_params '->' :skip_many :expr
+:lambda_params := :skip_many [ :id { :skip_many ',' :skip_many :id } :skip_many ]
+:skip          := '\n' | :space
+:skip_many     := {:skip}
+:space         := ' ' | '\t'
+:ty_term       := 'Int32'| :ty_paren | :ty_tuple| :ty_func_pointer
+:ty_func_pointer
+                := 'Fn' :skip_many [ '[' :ty_term { ',' :ty_term } ']' ] :skip_many :ty_func
+:ty_paren      := '(' :skip_many :ty_term :skip_many ')'
+:ty_tuple      := '(' :skip_many [ :ty_term :skip_many {',' :skip_many :ty_term :skip_many} [',' :skip_many]] ')'
+:ty_func       := :ty_term ( :skip_many '->' :skip_many :ty_term )+
+:dec_func      := :id :skip_many '::' :skip_many :ty_func
+:exturn_dec_func
+                := 'ex' :skip_many :dec_func
 */
 
 pub type MyStream<'a> = easy::Stream<State<&'a str, <&'a str as DefaultPositioned>::Positioner>>;
@@ -249,7 +250,6 @@ parser! {
     }
 }
 
-//<lambda>
 parser! {
     fn lambda_parser['a]()(MyStream<'a>)->ast::ExprAST
     {
@@ -259,25 +259,40 @@ parser! {
             .with(skip_many_parser())
             .with(
                 optional(
-                    many(try(
-                        sep_by1(
-                            id_parser(),
-                            (skip_many_parser(),char(','),skip_many_parser())
-                        )
-                    ))
-                )
-            )
-            .skip(skip_many_parser())
+                    char('[')
+                    .with(lambda_params_parser())
+                    .skip(char(']'))
+                ),
+            ),
+            lambda_params_parser()
             .skip(string("->"))
             .skip(skip_many_parser()),
             expr_parser()
         )
-        .map(move|(_pos,_params,_expr):(_,Option<Vec<String>>,ast::ExprAST)|{
-            ast::ExprAST::create_num_ast("4545".to_string())
-        })
+        .map(move|(pos,env,params,body)|
+            ast::ExprAST::create_lambda_ast(env.unwrap_or(vec![]),params,body,pos)
+        )
     }
 }
 
+parser! {
+    fn lambda_params_parser['a]()(MyStream<'a>)->Vec<ast::VariableAST>
+    {
+        skip_many_parser()
+        .with(
+            try(
+                sep_by(
+                    (position(),id_parser()),
+                    (skip_many_parser(),char(','),skip_many_parser())
+                )
+            )
+            .skip(skip_many_parser())
+        )
+        .map(|x:Vec<_>|
+                x.into_iter().map(|(pos,id)|ast::VariableAST{id: id,pos: pos}).collect()
+        )
+    }
+}
 
 //<dec_func>
 parser! {
