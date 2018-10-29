@@ -66,7 +66,7 @@ impl<'a> TypeGet for &'a FuncIr {
                 acc
             });
         let (ty_info, ret_ty) = (&self.body).ty_get(ty_info)?;
-        let (func_ty_id, ty_info) = ty_info.get(self.name.clone());
+        let (func_ty_id, ty_info) = ty_info.global_get(self.name.clone());
         let ty_info = ty_info.unify(
             Type::TyVar(func_ty_id.clone()),
             Type::create_func_type(
@@ -91,7 +91,8 @@ impl<'a> TypeGet for &'a ExprIr {
             ExprIr::OpIr(x) => x.ty_get(ty_info),
             ExprIr::VariableIr(x) => x.ty_get(ty_info),
             ExprIr::GlobalVariableIr(x) => x.ty_get(ty_info),
-            ExprIr::TupleIr(x) => x.ty_get(ty_info)
+            ExprIr::TupleIr(x) => x.ty_get(ty_info),
+            ExprIr::LambdaIr(x) => x.ty_get(ty_info)
         }
     }
 }
@@ -133,7 +134,7 @@ impl TypeGet for OpIr {
     }
 }
 
-impl TypeGet for VariableIr {
+impl<'a> TypeGet for &'a VariableIr {
     fn ty_get(&self, ty_info: TypeInfo) -> TyCheckResult<(TypeInfo, Type)> {
         let (ty_var_id, ty_info) = ty_info.get(self.id.to_string());
         Ok((ty_info, Type::TyVar(ty_var_id)))
@@ -153,5 +154,41 @@ impl TypeGet for TupleIr {
             ty_get_all(self.elements.iter(), ty_info)?;
         let ret_ty = Type::TupleType(Box::new(TupleType { element_tys: elements_ty }));
         Ok((ty_info, ret_ty))
+    }
+}
+
+impl TypeGet for LambdaIr {
+    fn ty_get(&self, ty_info: TypeInfo) -> TyCheckResult<(TypeInfo, Type)> {
+        let (mut ty_info, envs_ty) =
+            ty_get_all(self.env.iter(), ty_info)?;
+        ty_info.in_nest();
+        let (ty_info, mut params_ty) =
+            (0..self.func.params_len)
+                .fold((ty_info, vec![]), move |mut acc, id| {
+                    let id = self.func.params_len - id - 1;
+                    let (ty_id, ty_info) = acc.0.get((id).to_string());
+                    acc.1.push(Type::TyVar(ty_id));
+                    acc.0 = ty_info;
+                    acc
+                });
+        let (ty_info, func_ty) = (&self.func).ty_get(ty_info)?;
+        let mut ty_info =
+            (0..self.func.params_len)
+                .fold(ty_info, |acc, x| acc.remove(&(x).to_string()));
+        ty_info.out_nest();
+        let (ret_id, ty_info) = ty_info.no_name_get();
+        let ty_info =
+            envs_ty.iter().zip(&params_ty)
+                .fold(Ok(ty_info),
+                      |acc, (x, y)| acc?.unify(x.clone(), y.clone()))
+                .map_err(|msg| Error::new(self.func.pos, &msg))?;
+
+        let func_ty2 = FuncType { param_types: params_ty, ret_type: Type::TyVar(ret_id) };
+
+        let lambda_ty = Type::create_lambda_type(envs_ty, func_ty2.clone());
+        let (func_id, ty_info) = ty_info.global_get(self.func.name.clone());
+        let ty_info = ty_info.unify(func_ty, Type::FuncType(Box::new(func_ty2)))
+            .map_err(|msg| Error::new(self.func.pos, &msg))?;
+        Ok((ty_info, lambda_ty))
     }
 }
