@@ -33,3 +33,15 @@ pub fn type_of(val: LLVMValueRef) -> *mut llvm::LLVMType {
         llvm::core::LLVMTypeOf(val)
     }
 }
+
+pub fn dump_val(val:LLVMValueRef){
+    unsafe {
+        llvm::core::LLVMDumpValue(val);
+    }
+}
+
+pub fn dump_ty(ty:*mut llvm::LLVMType){
+    unsafe {
+        llvm::core::LLVMDumpType(ty)
+    }
+}
