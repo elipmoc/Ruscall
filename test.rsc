@@ -1,13 +1,6 @@
-infixl 0 +;
+infixl 1 +;
+ex print::Int32->Int32;
 
-main=(f 4)+\n,m->4+5;
+main = print(((add 1)2)3);
 
-f x= g x;
-
-g x= x;
-
-
-
-
-
-
+add a= \[a]b->\[a,b]c->a+b+c;
