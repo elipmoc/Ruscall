@@ -22,8 +22,7 @@ fn ty_get_all<Item: TypeGet, T: Iterator<Item=Item>>(iter: T, ty_info: TypeInfo)
 }
 
 impl ProgramIr {
-    pub fn ty_get(&self) -> TyCheckResult<TypeInfo> {
-        let ty_info = TypeInfo::new();
+    pub fn ty_get(&self, ty_info: TypeInfo) -> TyCheckResult<TypeInfo> {
         //外部関数宣言の型チェック
         let ty_info =
             ty_get_all(
@@ -43,42 +42,42 @@ impl ProgramIr {
 use super::super::ast::DecFuncAST;
 
 impl<'a> TypeGet for &'a DecFuncAST {
-    fn ty_get(&self, ty_info: TypeInfo) -> TyCheckResult<(TypeInfo, Type)> {
-        let (ty_id, ty_info) = ty_info.get(self.name.clone());
+    fn ty_get(&self, mut ty_info: TypeInfo) -> TyCheckResult<(TypeInfo, Type)> {
+        let func_ty_id = ty_info.get(self.name.clone());
 
+        let ty_id = ty_info.no_name_get();
         let ty_info = ty_info.unify(
-            Type::TyVar(ty_id.clone()),
-            Type::FuncType(Box::new(self.ty.clone())),
+            Type::TyVar(func_ty_id.clone(), vec![]),
+            Type::create_func_type(self.ty.param_types.clone(), self.ty.ret_type.clone(), ty_id),
         ).map_err(|msg| Error::new(self.pos, &msg))?;
-        Ok((ty_info, Type::TyVar(ty_id)))
+        Ok((ty_info, Type::TyVar(func_ty_id, vec![])))
     }
 }
 
 impl<'a> TypeGet for &'a FuncIr {
-    fn ty_get(&self, ty_info: TypeInfo) -> TyCheckResult<(TypeInfo, Type)> {
-        let (ty_info, params_ty): (_, Vec<Type>)
+    fn ty_get(&self, mut ty_info: TypeInfo) -> TyCheckResult<(TypeInfo, Type)> {
+        let params_ty: Vec<Type>
         = (0..self.params_len)
-            .fold((ty_info, vec![]), move |mut acc, id| {
+            .map(|id| {
                 let id = self.params_len - id - 1;
-                let (ty_id, ty_info) = acc.0.get(id.to_string());
-                acc.1.push(Type::TyVar(ty_id));
-                acc.0 = ty_info;
-                acc
-            });
-        let (ty_info, ret_ty) = (&self.body).ty_get(ty_info)?;
-        let (func_ty_id, ty_info) = ty_info.global_get(self.name.clone());
-        let ty_info = ty_info.unify(
-            Type::TyVar(func_ty_id.clone()),
+                let ty_id = ty_info.get(id.to_string());
+                Type::TyVar(ty_id, vec![])
+            }).collect();
+        let (mut ty_info, ret_ty) = (&self.body).ty_get(ty_info)?;
+        let func_ty_id = ty_info.global_get(self.name.clone());
+        let ty_id = ty_info.no_name_get();
+        let mut ty_info = ty_info.unify(
+            Type::TyVar(func_ty_id.clone(), vec![]),
             Type::create_func_type(
                 params_ty,
                 ret_ty,
+                ty_id,
             ),
         ).map_err(|msg| Error::new(self.pos, &msg))?;
 
-        let ty_info =
-            (0..self.params_len)
-                .fold(ty_info, |acc, x| acc.remove(&x.to_string()));
-        Ok((ty_info, Type::TyVar(func_ty_id)))
+        (0..self.params_len)
+            .for_each(|x| ty_info.remove(&x.to_string()));
+        Ok((ty_info, Type::TyVar(func_ty_id, vec![])))
     }
 }
 
@@ -106,13 +105,17 @@ impl TypeGet for NumIr {
 impl TypeGet for CallIr {
     fn ty_get(&self, ty_info: TypeInfo) -> TyCheckResult<(TypeInfo, Type)> {
         use combine::stream::state::SourcePosition;
-        let (ty_info, params_ty) =
+        let (mut ty_info, params_ty) =
             ty_get_all(self.params.iter(), ty_info)?;
-        let (ret_ty_id, ty_info) = ty_info.no_name_get();
-        let ret_ty = Type::TyVar(ret_ty_id);
-        let (ty_info, func_ty) = (&self.func).ty_get(ty_info)?;
+        let ret_ty_id = self.ty_id.clone();
+        let ret_ty = Type::TyVar(ret_ty_id, vec![]);
+        let (mut ty_info, func_ty) = (&self.func).ty_get(ty_info)?;
+        let ty_id = ty_info.no_name_get();
         let ty_info =
-            ty_info.unify(func_ty, Type::create_func_type(params_ty, ret_ty.clone()))
+            ty_info.unify(
+                func_ty,
+                Type::TyVar(ty_id, vec![TypeCondition::Call(FuncType { param_types: params_ty, ret_type: ret_ty.clone() })]),
+            )
                 .map_err(|msg| Error::new(SourcePosition::new(), &msg))?;
         Ok((ty_info, ret_ty))
     }
@@ -135,16 +138,18 @@ impl TypeGet for OpIr {
 }
 
 impl<'a> TypeGet for &'a VariableIr {
-    fn ty_get(&self, ty_info: TypeInfo) -> TyCheckResult<(TypeInfo, Type)> {
-        let (ty_var_id, ty_info) = ty_info.get(self.id.to_string());
-        Ok((ty_info, Type::TyVar(ty_var_id)))
+    fn ty_get(&self, mut ty_info: TypeInfo) -> TyCheckResult<(TypeInfo, Type)> {
+        let ty_id = ty_info.get(self.id.to_string());
+        let ty_info = ty_info.unify(Type::TyVar(ty_id, vec![]), Type::TyVar(self.ty_id.clone(), vec![]))
+            .map_err(|msg| Error::new(self.pos, &msg))?;
+        Ok((ty_info, Type::TyVar(self.ty_id.clone(), vec![])))
     }
 }
 
 impl TypeGet for GlobalVariableIr {
-    fn ty_get(&self, ty_info: TypeInfo) -> TyCheckResult<(TypeInfo, Type)> {
-        let (ty_var_id, ty_info) = ty_info.get(self.id.clone());
-        Ok((ty_info, Type::TyVar(ty_var_id)))
+    fn ty_get(&self, mut ty_info: TypeInfo) -> TyCheckResult<(TypeInfo, Type)> {
+        let ty_var_id = ty_info.get(self.id.clone());
+        Ok((ty_info, Type::TyVar(ty_var_id, vec![])))
     }
 }
 
@@ -152,8 +157,10 @@ impl TypeGet for TupleIr {
     fn ty_get(&self, ty_info: TypeInfo) -> TyCheckResult<(TypeInfo, Type)> {
         let (ty_info, elements_ty) =
             ty_get_all(self.elements.iter(), ty_info)?;
-        let ret_ty = Type::TupleType(Box::new(TupleType { element_tys: elements_ty }));
-        Ok((ty_info, ret_ty))
+        let tuple_ty = Type::TupleType(Box::new(TupleType { element_tys: elements_ty }));
+        let ty_info = ty_info.unify(tuple_ty.clone(), Type::TyVar(self.ty_id.clone(), vec![]))
+            .map_err(|msg| Error::new(self.pos, &msg))?;
+        Ok((ty_info, tuple_ty))
     }
 }
 
@@ -162,33 +169,38 @@ impl TypeGet for LambdaIr {
         let (mut ty_info, envs_ty) =
             ty_get_all(self.env.iter(), ty_info)?;
         ty_info.in_nest();
-        let (ty_info, mut params_ty) =
-            (0..self.func.params_len)
-                .fold((ty_info, vec![]), move |mut acc, id| {
-                    let id = self.func.params_len - id - 1;
-                    let (ty_id, ty_info) = acc.0.get((id).to_string());
-                    acc.1.push(Type::TyVar(ty_id));
-                    acc.0 = ty_info;
-                    acc
-                });
-        let (ty_info, func_ty) = (&self.func).ty_get(ty_info)?;
-        let mut ty_info =
-            (0..self.func.params_len)
-                .fold(ty_info, |acc, x| acc.remove(&(x).to_string()));
+        let mut params_ty: Vec<Type> =
+            (0..self.params_len)
+                .map(|id| {
+                    let id = self.params_len - id - 1;
+                    let ty_id = ty_info.get((id).to_string());
+                    Type::TyVar(ty_id, vec![])
+                }).collect();
+        let func_ty = Type::TyVar(ty_info.global_get(self.func_name.clone()), vec![]);
+        (0..self.params_len).for_each(|x| ty_info.remove(&(x).to_string()));
         ty_info.out_nest();
-        let (ret_id, ty_info) = ty_info.no_name_get();
-        let ty_info =
+        let ret_id = ty_info.no_name_get();
+        let mut ty_info =
             envs_ty.iter().zip(&params_ty)
                 .fold(Ok(ty_info),
                       |acc, (x, y)| acc?.unify(x.clone(), y.clone()))
-                .map_err(|msg| Error::new(self.func.pos, &msg))?;
+                .map_err(|msg| Error::new(self.pos, &msg))?;
 
-        let func_ty2 = FuncType { param_types: params_ty, ret_type: Type::TyVar(ret_id) };
+        let func_ty2 = FuncType { param_types: params_ty, ret_type: Type::TyVar(ret_id, vec![]) };
 
-        let lambda_ty = Type::create_lambda_type(envs_ty, func_ty2.clone());
-        let (func_id, ty_info) = ty_info.global_get(self.func.name.clone());
-        let ty_info = ty_info.unify(func_ty, Type::FuncType(Box::new(func_ty2)))
-            .map_err(|msg| Error::new(self.func.pos, &msg))?;
+        let lambda_ty = if envs_ty.len() == 0 {
+            Type::LambdaType(Box::new(LambdaType {
+                func_ty: func_ty2.clone(),
+                env_ty: None,
+            }))
+        } else {
+            Type::create_lambda_type(envs_ty, func_ty2.clone())
+        };
+        let ty_id = ty_info.no_name_get();
+        let ty_info = ty_info.unify(func_ty, Type::create_func_type(func_ty2.param_types, func_ty2.ret_type, ty_id))
+            .map_err(|msg| Error::new(self.pos, &msg))?;
+        let ty_info = ty_info.unify(lambda_ty.clone(), Type::TyVar(self.ty_id.clone(), vec![]))
+            .map_err(|msg| Error::new(self.pos, &msg))?;
         Ok((ty_info, lambda_ty))
     }
 }

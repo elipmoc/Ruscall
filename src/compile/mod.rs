@@ -12,12 +12,12 @@ use self::output_file::output_file;
 use self::semantic_analysis::ir as ir;
 use std::fs;
 use std::io::{BufReader, Read};
-use self::semantic_analysis::type_env::TypeResolved;
+use self::semantic_analysis::type_env::TypeInfo;
 
 pub fn compile(file_name: &str) {
     println!("input:{}", file_name);
     match parse(&src_file_to_str(file_name)) {
-        Ok((program_ir, ty_resolved)) => output_file(program_ir.code_gen("compiled", ty_resolved)),
+        Ok((program_ir, ty_info)) => output_file(program_ir.code_gen("compiled", ty_info)),
         Err(err) => println!("{}", err),
     };
 }
@@ -29,7 +29,7 @@ pub fn src_file_to_str(file_name: &str) -> String {
     src_str
 }
 
-pub fn parse(src_str: &str) -> Result<(ir::ProgramIr, TypeResolved), String> {
+pub fn parse(src_str: &str) -> Result<(ir::ProgramIr, TypeInfo), String> {
     match parser::parse(src_str) {
         Ok(ast) => {
             println!("\nparse\n{:?}\n", ast);

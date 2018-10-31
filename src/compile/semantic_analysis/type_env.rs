@@ -1,9 +1,9 @@
 use super::super::types::*;
 use std::collections::HashMap;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 struct TypeEnv {
-    env: HashMap<String, usize>,
+    env: HashMap<String, TypeId>,
     id: usize,
     nest: usize,
 }
@@ -27,68 +27,67 @@ impl TypeEnv {
     }
 
     //変数名に対応した型変数を生成する
-    fn global_get(mut self, symbol: String) -> (usize, TypeEnv) {
+    fn global_get(&mut self, symbol: String) -> TypeId {
         match self.env.remove(&symbol) {
             Some(x) => {
                 self.env.insert(symbol, x.clone());
-                (x, self)
+                x
             }
             _ => {
-                self.env.insert(symbol, self.id);
+                self.env.insert(symbol, TypeId::new(self.id));
                 self.id += 1;
-                (self.id - 1, self)
+                TypeId::new(self.id - 1)
             }
         }
     }
 
     //変数名に対応した型変数を生成する
-    fn get(mut self, symbol: String) -> (usize, TypeEnv) {
+    fn get(&mut self, symbol: String) -> TypeId {
         let symbol = if self.nest != 0 { self.nest.to_string() + "&" + &symbol } else { symbol };
         match self.env.remove(&symbol) {
             Some(x) => {
                 self.env.insert(symbol, x.clone());
-                (x, self)
+                x
             }
             _ => {
-                self.env.insert(symbol, self.id);
+                self.env.insert(symbol, TypeId::new(self.id));
                 self.id += 1;
-                (self.id - 1, self)
+                TypeId::new(self.id - 1)
             }
         }
     }
 
     //無名の変数に対応した型変数を生成する
-    fn no_name_get(mut self) -> (usize, TypeEnv) {
+    fn no_name_get(&mut self) -> TypeId {
         self.id += 1;
-        (self.id - 1, self)
+        TypeId::new(self.id - 1)
     }
 
     //変数名と型変数との対応を取り除く
-    fn remove(mut self, symbol: &String) -> TypeEnv {
+    fn remove(&mut self, symbol: &String) {
         let symbol = if self.nest != 0 { self.nest.to_string() + "&" + &symbol } else { symbol.clone() };
         self.env.remove(&symbol);
-        self
     }
 }
 
 //型代入環境
-#[derive(Debug)]
-struct TypeSubstitute(pub HashMap<usize, Type>);
+#[derive(Debug, PartialEq)]
+struct TypeSubstitute(pub HashMap<TypeId, Type>);
 
 impl TypeSubstitute {
     fn new() -> TypeSubstitute {
         TypeSubstitute(HashMap::new())
     }
 
-    fn insert(mut self, id: usize, ty: Type) -> Result<TypeSubstitute, String> {
-        match self.0.remove(&id) {
+    fn insert(mut self, ty_id: TypeId, ty: Type) -> Result<TypeSubstitute, String> {
+        match self.0.remove(&ty_id) {
             Some(ty2) => {
                 let mut ty_subst = self.unify(ty, ty2.clone())?;
-                ty_subst.0.insert(id, ty2);
+                ty_subst.0.insert(ty_id, ty2);
                 Ok(ty_subst)
             }
             None => {
-                self.0.insert(id, ty);
+                self.0.insert(ty_id, ty);
                 Ok(self)
             }
         }
@@ -97,19 +96,58 @@ impl TypeSubstitute {
     fn unify(self, ty1: Type, ty2: Type) -> Result<TypeSubstitute, String> {
         match (ty1, ty2) {
             (ref ty1, ref ty2) if ty1 == ty2 => Ok(self),
-            (Type::TyVar(id), ty) => self.insert(id.clone(), ty),
-            (ty, Type::TyVar(id)) => self.insert(id.clone(), ty),
-            (Type::FuncType(ty1), Type::FuncType(ty2)) => self.fn_unify(*ty1, *ty2),
+            (Type::TyVar(id, conds), ty) => self.ty_var_unify(id, conds, ty),
+            (ty, Type::TyVar(id, conds)) => self.ty_var_unify(id, conds, ty),
+            (Type::LambdaType(ty1), Type::LambdaType(ty2)) => self.lambda_unify(*ty1, *ty2),
             (Type::TupleType(ty1), Type::TupleType(ty2)) => self.tuple_unify(*ty1, *ty2),
-            (Type::LambdaType(ty1), Type::FuncType(ty2)) => self.lambda_call_unify(*ty1, *ty2),
-            (Type::FuncType(ty2), Type::LambdaType(ty1)) => self.lambda_call_unify(*ty1, *ty2),
             (ty1, ty2) => {
-                return Err(format!(
+                Err(format!(
                     "TypeSubstitute insert error! \n expect:{:?} \n actual:{:?}",
                     ty1, ty2
-                ));
+                ))
             }
         }
+    }
+
+    fn ty_var_unify(mut self, ty_id: TypeId, conds: Vec<TypeCondition>, ty: Type) -> Result<TypeSubstitute, String> {
+        match ty {
+            Type::TyVar(id, conds2) => {
+                for cond in conds.iter() {
+                    for cond2 in conds2.iter() {
+                        match (cond, cond2) {
+                            (TypeCondition::Call(x), TypeCondition::Call(y)) => {
+                                self = self.fn_unify(x.clone(), y.clone())?;
+                            }
+                        };
+                    }
+                }
+                self = self.insert(ty_id, Type::TyVar(id, conds2))?;
+            }
+            Type::LambdaType(mut x) => {
+                for cond in conds.into_iter() {
+                    match cond {
+                        TypeCondition::Call(c) => {
+                            let env_len = x.env_ty.clone().map(|t| t.element_tys.len()).unwrap_or(0);
+                            let mut func_ty = x.func_ty.clone();
+                            func_ty.param_types = func_ty.param_types.clone().into_iter().skip(env_len).collect::<Vec<_>>();
+                            self = self.fn_unify(func_ty, c)?;
+                        }
+                    }
+                };
+                self = self.insert(ty_id, Type::LambdaType(x))?;
+            }
+            ty => {
+                if conds.len() != 0 {
+                    return Err(format!(
+                        "TypeSubstitute insert error! \n expect:{:?} \n actual:{:?}",
+                        Type::TyVar(ty_id, conds), ty
+                    ));
+                } else {
+                    self = self.insert(ty_id, ty)?;
+                }
+            }
+        };
+        Ok(self)
     }
 
     fn fn_unify(mut self, ty1: FuncType, ty2: FuncType) -> Result<TypeSubstitute, String> {
@@ -138,16 +176,25 @@ impl TypeSubstitute {
         Ok(self)
     }
 
-    fn lambda_call_unify(mut self, mut ty1: LambdaType, mut ty2: FuncType) -> Result<TypeSubstitute, String> {
-        let mut params_tys = ty1.env_tys.clone();
-        params_tys.append(&mut ty2.param_types);
-        ty2.param_types = params_tys;
-        self.fn_unify(ty1.func_ty, ty2)
+    fn lambda_unify(mut self, mut ty1: LambdaType, mut ty2: LambdaType) -> Result<TypeSubstitute, String> {
+        match (ty1.env_ty, ty2.env_ty) {
+            (Some(x), Some(y)) => {
+                self = self.tuple_unify(x, y)?;
+            }
+            (None, None) => (),
+            (None, x) | (x, None) => {
+                return Err(format!(
+                    "TypeSubstitute insert error! \n expect:{:?} \n actual:{:?}",
+                    "void", x
+                ));
+            }
+        }
+        self.fn_unify(ty1.func_ty, ty2.func_ty)
     }
 
     // 型変数に対応する単相型を見つけて返す。見つからなかったら空タプルの型を返す
-    fn look_up(&self, id: &usize) -> Type {
-        match self.0.get(&id) {
+    fn look_up(&self, ty_id: &TypeId) -> Type {
+        match self.0.get(ty_id) {
             Some(ty) => self.type_look_up(ty),
             None => Type::TupleType(Box::new(TupleType {
                 element_tys: vec![],
@@ -157,9 +204,8 @@ impl TypeSubstitute {
 
     fn type_look_up(&self, ty: &Type) -> Type {
         match ty {
-            Type::TyVar(id) => self.look_up(id),
-            Type::FuncType(x) => Type::FuncType(Box::new(self.func_look_up(x))),
-            Type::TupleType(x) => self.tuple_look_up(x),
+            Type::TyVar(ty_id, _) => self.look_up(ty_id),
+            Type::TupleType(x) => Type::TupleType(Box::new(self.tuple_look_up(x))),
             Type::LambdaType(x) => self.lambda_look_up(x),
             ty => ty.clone(),
         }
@@ -175,23 +221,21 @@ impl TypeSubstitute {
         }
     }
 
-    fn tuple_look_up(&self, ty: &TupleType) -> Type {
-        Type::create_tuple_type(
+    fn tuple_look_up(&self, ty: &TupleType) -> TupleType {
+        TupleType {
+            element_tys:
             ty.element_tys
                 .iter()
                 .map(|ty| self.type_look_up(ty))
                 .collect(),
-        )
+        }
     }
 
     fn lambda_look_up(&self, ty: &LambdaType) -> Type {
-        Type::create_lambda_type(
-            ty.env_tys
-                .iter()
-                .map(|ty| self.type_look_up(ty))
-                .collect(),
-            self.func_look_up(&ty.func_ty),
-        )
+        Type::LambdaType(Box::new(LambdaType {
+            env_ty: ty.env_ty.clone().map(|x| self.tuple_look_up(&x)),
+            func_ty: self.func_look_up(&ty.func_ty),
+        }))
     }
 }
 
@@ -199,12 +243,12 @@ impl TypeSubstitute {
 pub struct TypeResolved(HashMap<String, Type>);
 
 impl TypeResolved {
-    fn new(ty_env: TypeEnv, ty_subst: TypeSubstitute) -> TypeResolved {
+    fn new(ty_env: &TypeEnv, ty_subst: &TypeSubstitute) -> TypeResolved {
         TypeResolved(
             ty_env
                 .env
-                .into_iter()
-                .map(|(k, v)| (k, ty_subst.look_up(&v)))
+                .iter()
+                .map(|(k, v)| (k.clone(), ty_subst.look_up(&v)))
                 .collect(),
         )
     }
@@ -227,8 +271,8 @@ impl fmt::Debug for TypeResolved
     }
 }
 
-
 //型環境と型代入をひとまとめにした
+#[derive(Debug, PartialEq)]
 pub struct TypeInfo(TypeEnv, TypeSubstitute);
 
 impl TypeInfo {
@@ -236,19 +280,24 @@ impl TypeInfo {
         TypeInfo(TypeEnv::new(), TypeSubstitute::new())
     }
 
-    pub fn get(self, id: String) -> (usize, TypeInfo) {
-        let (id, ty_env) = self.0.get(id);
-        (id, TypeInfo(ty_env, self.1))
+    pub fn look_up(&self, ty_id: &TypeId) -> Type {
+        self.1.look_up(ty_id)
     }
 
-    pub fn global_get(self, id: String) -> (usize, TypeInfo) {
-        let (id, ty_env) = self.0.global_get(id);
-        (id, TypeInfo(ty_env, self.1))
+    pub fn look_up_name(&mut self, name: String) -> Type {
+        self.1.look_up(&self.0.get(name))
     }
 
-    pub fn no_name_get(self) -> (usize, TypeInfo) {
-        let (id, ty_env) = self.0.no_name_get();
-        (id, TypeInfo(ty_env, self.1))
+    pub fn get(&mut self, id: String) -> TypeId {
+        self.0.get(id)
+    }
+
+    pub fn global_get(&mut self, id: String) -> TypeId {
+        self.0.global_get(id)
+    }
+
+    pub fn no_name_get(&mut self) -> TypeId {
+        self.0.no_name_get()
     }
 
     pub fn unify(mut self, ty1: Type, ty2: Type) -> Result<TypeInfo, String> {
@@ -256,20 +305,19 @@ impl TypeInfo {
         Ok(self)
     }
 
-    pub fn get_type_resolved(self) -> TypeResolved {
-        TypeResolved::new(self.0, self.1)
+    pub fn get_type_resolved(&self) -> TypeResolved {
+        TypeResolved::new(&self.0, &self.1)
     }
 
-    pub fn remove(mut self, symbol: &String) -> TypeInfo {
-        self.0 = self.0.remove(symbol);
-        self
+    pub fn remove(&mut self, symbol: &String) {
+        self.0.remove(symbol);
     }
 
     pub fn in_nest(&mut self) {
-        self.0.nest += 1;
+        self.0.in_nest();
     }
 
     pub fn out_nest(&mut self) {
-        self.0.nest -= 1;
+        self.0.out_nest();
     }
 }

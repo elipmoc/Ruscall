@@ -8,12 +8,12 @@ pub use super::ast::ProgramAST;
 
 use self::resolve_op::resolve_op;
 use super::error::Error;
-use self::type_env::TypeResolved;
+use self::type_env::TypeInfo;
 
-pub fn analysis(ast: ProgramAST) -> Result<(ir::ProgramIr, TypeResolved), Error> {
-    let ir = resolve_op(ast)?.to_ir();
-    let ty_info = ir.ty_get()?;
+pub fn analysis(ast: ProgramAST) -> Result<(ir::ProgramIr, TypeInfo), Error> {
+    let (ir, ty_info) = resolve_op(ast)?.to_ir();
+    let ty_info = ir.ty_get(ty_info)?;
     let ty_resolved = ty_info.get_type_resolved();
-    println!("{:?}",ty_resolved);
-    Result::Ok((ir, ty_resolved))
+    println!("{:?}", ty_resolved);
+    Result::Ok((ir, ty_info))
 }
