@@ -26,7 +26,7 @@ pub enum Type {
 }
 
 impl Type {
-    pub fn create_func_type(param_types: Vec<Type>, ret_type: Type, ty_id: TypeId) -> Type {
+    pub fn create_func_type(param_types: Vec<Type>, ret_type: Type) -> Type {
         Type::LambdaType(Box::new(LambdaType { env_ty: None, func_ty: FuncType { param_types, ret_type } }))
     }
     pub fn create_tuple_type(element_tys: Vec<Type>) -> Type {

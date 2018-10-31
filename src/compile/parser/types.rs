@@ -34,7 +34,7 @@ parser! {
             skip_many_parser()
             .with(ty_func_parser())
         )
-        .map(|(_vec,x):(Option<Vec<_>>,_)|Type::create_lambda_type(vec![],x))
+        .map(|(_vec,x):(Option<Vec<_>>,_)|Type::create_func_type(x.param_types,x.ret_type))
     }
 }
 
