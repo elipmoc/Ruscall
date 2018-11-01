@@ -82,9 +82,8 @@ impl TypeSubstitute {
     fn insert(mut self, ty_id: TypeId, ty: Type) -> Result<TypeSubstitute, String> {
         match self.0.remove(&ty_id) {
             Some(ty2) => {
-                let mut ty_subst = self.unify(ty, ty2.clone())?;
-                ty_subst.0.insert(ty_id, ty2);
-                Ok(ty_subst)
+                self.0.insert(ty_id, ty2.clone());
+                self.unify(ty, ty2.clone())
             }
             None => {
                 self.0.insert(ty_id, ty);
@@ -95,12 +94,15 @@ impl TypeSubstitute {
 
     fn unify(self, ty1: Type, ty2: Type) -> Result<TypeSubstitute, String> {
         match (ty1, ty2) {
-            (ref ty1, ref ty2) if ty1 == ty2 => Ok(self),
             (Type::TyVar(id, conds), ty) => self.ty_var_unify(id, conds, ty),
             (ty, Type::TyVar(id, conds)) => self.ty_var_unify(id, conds, ty),
             (Type::LambdaType(ty1), Type::LambdaType(ty2)) => self.lambda_unify(*ty1, *ty2),
             (Type::TupleType(ty1), Type::TupleType(ty2)) => self.tuple_unify(*ty1, *ty2),
             (ty1, ty2) => {
+                if(ty1==ty2){
+                    return Ok(self);
+
+                }
                 Err(format!(
                     "TypeSubstitute insert error! \n expect:{:?} \n actual:{:?}",
                     ty1, ty2
@@ -193,18 +195,30 @@ impl TypeSubstitute {
     }
 
     // 型変数に対応する単相型を見つけて返す。見つからなかったら空タプルの型を返す
-    fn look_up(&self, ty_id: &TypeId) -> Type {
+    fn look_up(&self, ty_id: &TypeId, conds: &Vec<TypeCondition>) -> Type {
         match self.0.get(ty_id) {
             Some(ty) => self.type_look_up(ty),
-            None => Type::TupleType(Box::new(TupleType {
-                element_tys: vec![],
-            })),
+            None => {
+                if conds.len() == 1 {
+                    match conds[0].clone() {
+                        TypeCondition::Call(c) =>
+                            Type::LambdaType(Box::new(LambdaType {
+                                env_ty: None,
+                                func_ty: self.func_look_up(&c)
+                            }))
+                    }
+                } else {
+                    Type::TupleType(Box::new(TupleType {
+                        element_tys: vec![],
+                    }))
+                }
+            }
         }
     }
 
     fn type_look_up(&self, ty: &Type) -> Type {
         match ty {
-            Type::TyVar(ty_id, _) => self.look_up(ty_id),
+            Type::TyVar(ty_id, conds) => self.look_up(ty_id, conds),
             Type::TupleType(x) => Type::TupleType(Box::new(self.tuple_look_up(x))),
             Type::LambdaType(x) => self.lambda_look_up(x),
             ty => ty.clone(),
@@ -248,7 +262,7 @@ impl TypeResolved {
             ty_env
                 .env
                 .iter()
-                .map(|(k, v)| (k.clone(), ty_subst.look_up(&v)))
+                .map(|(k, v)| (k.clone(), ty_subst.look_up(&v, &vec![])))
                 .collect(),
         )
     }
@@ -280,12 +294,12 @@ impl TypeInfo {
         TypeInfo(TypeEnv::new(), TypeSubstitute::new())
     }
 
-    pub fn look_up(&self, ty_id: &TypeId) -> Type {
-        self.1.look_up(ty_id)
+    pub fn look_up(&self, ty_id: &TypeId, conds: &Vec<TypeCondition>) -> Type {
+        self.1.look_up(ty_id, conds)
     }
 
     pub fn look_up_name(&mut self, name: String) -> Type {
-        self.1.look_up(&self.0.get(name))
+        self.1.look_up(&self.0.get(name), &vec![])
     }
 
     pub fn get(&mut self, id: String) -> TypeId {

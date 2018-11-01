@@ -115,11 +115,11 @@ impl ir::ExprIr {
         match self {
             ir::ExprIr::NumIr(_) => Type::Int32,
             ir::ExprIr::OpIr(_) => Type::Int32,
-            ir::ExprIr::VariableIr(x) => ty_info.look_up(&x.ty_id),
+            ir::ExprIr::VariableIr(x) => ty_info.look_up(&x.ty_id,&vec![]),
             ir::ExprIr::GlobalVariableIr(x) => ty_info.look_up_name(x.id.clone()),
-            ir::ExprIr::CallIr(x) => ty_info.look_up(&x.ty_id),
-            ir::ExprIr::TupleIr(x) => ty_info.look_up(&x.ty_id),
-            ir::ExprIr::LambdaIr(x) => ty_info.look_up(&x.ty_id)
+            ir::ExprIr::CallIr(x) => ty_info.look_up(&x.ty_id,&vec![]),
+            ir::ExprIr::TupleIr(x) => ty_info.look_up(&x.ty_id,&vec![]),
+            ir::ExprIr::LambdaIr(x) => ty_info.look_up(&x.ty_id,&vec![])
         }
     }
 }

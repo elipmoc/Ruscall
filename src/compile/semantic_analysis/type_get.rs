@@ -63,9 +63,9 @@ impl<'a> TypeGet for &'a FuncIr {
                 Type::TyVar(ty_id, vec![])
             }).collect();
         let (mut ty_info, ret_ty) = (&self.body).ty_get(ty_info)?;
-        let func_ty_id = ty_info.global_get(self.name.clone());
+        let func_ty =Type::TyVar( ty_info.global_get(self.name.clone()),vec![]);
         let mut ty_info = ty_info.unify(
-            Type::TyVar(func_ty_id.clone(), vec![]),
+            func_ty.clone(),
             Type::create_func_type(
                 params_ty,
                 ret_ty,
@@ -74,7 +74,7 @@ impl<'a> TypeGet for &'a FuncIr {
 
         (0..self.params_len)
             .for_each(|x| ty_info.remove(&x.to_string()));
-        Ok((ty_info, Type::TyVar(func_ty_id, vec![])))
+        Ok((ty_info, func_ty))
     }
 }
 
@@ -112,8 +112,7 @@ impl TypeGet for CallIr {
             ty_info.unify(
                 func_ty,
                 Type::TyVar(ty_id, vec![TypeCondition::Call(FuncType { param_types: params_ty, ret_type: ret_ty.clone() })]),
-            )
-                .map_err(|msg| Error::new(SourcePosition::new(), &msg))?;
+            ).map_err(|msg| Error::new(SourcePosition::new(), &msg))?;
         Ok((ty_info, ret_ty))
     }
 }
@@ -145,7 +144,7 @@ impl<'a> TypeGet for &'a VariableIr {
 
 impl TypeGet for GlobalVariableIr {
     fn ty_get(&self, mut ty_info: TypeInfo) -> TyCheckResult<(TypeInfo, Type)> {
-        let ty_var_id = ty_info.get(self.id.clone());
+        let ty_var_id = ty_info.global_get(self.id.clone());
         Ok((ty_info, Type::TyVar(ty_var_id, vec![])))
     }
 }
