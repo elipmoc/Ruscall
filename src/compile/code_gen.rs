@@ -25,7 +25,7 @@ impl ir::ProgramIr {
         //関数宣言のコード化
         self.func_list.iter().for_each(|x| {
             let func_type =
-                ty_info.look_up_name(x.name.clone())
+                ty_info.look_up_func_name(x.name.clone())
                     .to_llvm_type(false);
             let func = Function::new(&x.name, &module, func_type);
             set_linkage(func.llvm_function, LLVMLinkage::LLVMExternalLinkage);
@@ -49,8 +49,8 @@ impl ir::ProgramIr {
     }
 }
 
-fn ex_func_gen(dec_func_ir: ir::DecFuncIr, module: &Module, mut ty_info: &mut TypeInfo) {
-    match ty_info.look_up_name(dec_func_ir.name.clone()) {
+fn ex_func_gen(dec_func_ir: ir::DecFuncIr, module: &Module, ty_info: &mut TypeInfo) {
+    match ty_info.look_up_func_name(dec_func_ir.name.clone()) {
         Type::LambdaType(ty) => {
             let function = Function::new(
                 &dec_func_ir.name,
@@ -115,11 +115,11 @@ impl ir::ExprIr {
         match self {
             ir::ExprIr::NumIr(_) => Type::Int32,
             ir::ExprIr::OpIr(_) => Type::Int32,
-            ir::ExprIr::VariableIr(x) => ty_info.look_up(&x.ty_id,&vec![]),
-            ir::ExprIr::GlobalVariableIr(x) => ty_info.look_up_name(x.id.clone()),
-            ir::ExprIr::CallIr(x) => ty_info.look_up(&x.ty_id,&vec![]),
-            ir::ExprIr::TupleIr(x) => ty_info.look_up(&x.ty_id,&vec![]),
-            ir::ExprIr::LambdaIr(x) => ty_info.look_up(&x.ty_id,&vec![])
+            ir::ExprIr::VariableIr(x) => ty_info.look_up(&x.ty_id, &vec![]),
+            ir::ExprIr::GlobalVariableIr(x) => ty_info.look_up_func_name(x.id.clone()),
+            ir::ExprIr::CallIr(x) => ty_info.look_up(&x.ty_id, &vec![]),
+            ir::ExprIr::TupleIr(x) => ty_info.look_up(&x.ty_id, &vec![]),
+            ir::ExprIr::LambdaIr(x) => ty_info.look_up(&x.ty_id, &vec![])
         }
     }
 }
@@ -188,7 +188,7 @@ impl ir::CallIr {
                         "",
                     );
                     let mut envs_val: Vec<_> =
-                        env_ty.element_tys.into_iter().enumerate().map(|(idx, x)| {
+                        env_ty.element_tys.into_iter().enumerate().map(|(idx, _)| {
                             let pointer = codegen.build_struct_gep(envs_tuple_pointer, idx as u32, "");
                             codegen.build_load(pointer, "")
                         }).collect();
@@ -267,43 +267,43 @@ impl ir::LambdaIr {
         ty_info: &mut TypeInfo,
     ) -> LLVMValueRef {
         //ラムダ式の関数作成
-        let func_ty = ty_info.look_up_name(self.func_name.clone()).to_llvm_type(false);
+        let func_ty =
+            ty_info.look_up_func_name(self.func_name.clone()).to_llvm_type(false);
         let func = module.get_named_function(&self.func_name);
 
-            if self.env.len() == 0 {
-                func.llvm_function
-            } else {
-                //環境の値取得
-                let env_val: Vec<LLVMValueRef> = self.env.into_iter()
-                    .map(|x| params[params.len() - x.id - 1])
-                    .collect();
-                //環境の型生成
-                let env_llvm_ty = struct_type(
-                    env_val.iter().map(|x| type_of(*x)).collect()
-                );
+        if self.env.len() == 0 {
+            func.llvm_function
+        } else {
+            //環境の値取得
+            let env_val: Vec<LLVMValueRef> = self.env.into_iter()
+                .map(|x| params[params.len() - x.id - 1])
+                .collect();
+            //環境の型生成
+            let env_llvm_ty = struct_type(
+                env_val.iter().map(|x| type_of(*x)).collect()
+            );
 
 
-                //ラムダ式の型生成
-                let lambda_ty = struct_type(vec![env_llvm_ty, pointer_type(func_ty)]);
+            //ラムダ式の型生成
+            let lambda_ty = struct_type(vec![env_llvm_ty, pointer_type(func_ty)]);
 
-                //ラムダ式の生成
-                let env_tuple_val = codegen.build_alloca(env_llvm_ty, "");
-                let func_val =
-                    env_val
-                        .into_iter()
-                        .enumerate()
-                        .for_each(|(id, x)| {
-                            let ptr =
-                                codegen.build_struct_gep(env_tuple_val, id as u32, "");
-                            codegen.build_store(x, ptr);
-                        });
-                let env_tuple_val = codegen.build_load(env_tuple_val, "");
-                let lambda_val = codegen.build_alloca(lambda_ty, "");
-                let env_tuple_ptr = codegen.build_struct_gep(lambda_val, 0, "");
-                codegen.build_store(env_tuple_val, env_tuple_ptr);
-                let func_ptr = codegen.build_struct_gep(lambda_val, 1, "");
-                codegen.build_store(func.llvm_function, func_ptr);
-                codegen.build_load(lambda_val, "ret")
-            }
+            //ラムダ式の生成
+            let env_tuple_val = codegen.build_alloca(env_llvm_ty, "");
+            env_val
+                .into_iter()
+                .enumerate()
+                .for_each(|(id, x)| {
+                    let ptr =
+                        codegen.build_struct_gep(env_tuple_val, id as u32, "");
+                    codegen.build_store(x, ptr);
+                });
+            let env_tuple_val = codegen.build_load(env_tuple_val, "");
+            let lambda_val = codegen.build_alloca(lambda_ty, "");
+            let env_tuple_ptr = codegen.build_struct_gep(lambda_val, 0, "");
+            codegen.build_store(env_tuple_val, env_tuple_ptr);
+            let func_ptr = codegen.build_struct_gep(lambda_val, 1, "");
+            codegen.build_store(func.llvm_function, func_ptr);
+            codegen.build_load(lambda_val, "ret")
+        }
     }
 }

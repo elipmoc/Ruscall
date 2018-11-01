@@ -155,7 +155,6 @@ impl LambdaAST {
 
 #[test]
 fn ast_to_ir_test() {
-    use std::collections::HashMap;
     use combine::stream::state::SourcePosition;
     use compile::types::TypeId;
     let ast = ProgramAST {

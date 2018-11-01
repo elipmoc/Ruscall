@@ -1,5 +1,4 @@
 use combine::stream::state::SourcePosition;
-use std::collections::HashMap;
 use super::super::ast::*;
 use super::super::types::TypeId;
 
@@ -66,14 +65,6 @@ impl ExprIr {
     pub fn create_tupleir(elements: Vec<ExprIr>, pos: SourcePosition, ty_id: TypeId) -> ExprIr {
         ExprIr::TupleIr(Box::new(TupleIr { elements, pos, ty_id }))
     }
-
-   /* pub fn create_lambdair(env: Vec<VariableIr>, params_len: usize, body: ExprIr, pos: SourcePosition, id: String,ty_id:TypeId) -> ExprIr {
-        ExprIr::LambdaIr(Box::new(LambdaIr {
-            env,
-            func: FuncIr { name: id, params_len, body, pos },
-            ty_id
-        }))
-    }*/
 }
 
 #[derive(Debug, PartialEq)]

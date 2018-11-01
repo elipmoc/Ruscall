@@ -55,6 +55,7 @@ impl<'a> TypeGet for &'a DecFuncAST {
 
 impl<'a> TypeGet for &'a FuncIr {
     fn ty_get(&self, mut ty_info: TypeInfo) -> TyCheckResult<(TypeInfo, Type)> {
+        ty_info.in_nest();
         let params_ty: Vec<Type>
         = (0..self.params_len)
             .map(|id| {
@@ -71,9 +72,7 @@ impl<'a> TypeGet for &'a FuncIr {
                 ret_ty,
             ),
         ).map_err(|msg| Error::new(self.pos, &msg))?;
-
-        (0..self.params_len)
-            .for_each(|x| ty_info.remove(&x.to_string()));
+        ty_info.out_nest();
         Ok((ty_info, func_ty))
     }
 }
@@ -102,7 +101,7 @@ impl TypeGet for NumIr {
 impl TypeGet for CallIr {
     fn ty_get(&self, ty_info: TypeInfo) -> TyCheckResult<(TypeInfo, Type)> {
         use combine::stream::state::SourcePosition;
-        let (mut ty_info, params_ty) =
+        let (ty_info, params_ty) =
             ty_get_all(self.params.iter(), ty_info)?;
         let ret_ty_id = self.ty_id.clone();
         let ret_ty = Type::TyVar(ret_ty_id, vec![]);
@@ -165,7 +164,7 @@ impl TypeGet for LambdaIr {
         let (mut ty_info, envs_ty) =
             ty_get_all(self.env.iter(), ty_info)?;
         ty_info.in_nest();
-        let mut params_ty: Vec<Type> =
+        let params_ty: Vec<Type> =
             (0..self.params_len)
                 .map(|id| {
                     let id = self.params_len - id - 1;
@@ -173,10 +172,9 @@ impl TypeGet for LambdaIr {
                     Type::TyVar(ty_id, vec![])
                 }).collect();
         let func_ty = Type::TyVar(ty_info.global_get(self.func_name.clone()), vec![]);
-        (0..self.params_len).for_each(|x| ty_info.remove(&(x).to_string()));
         ty_info.out_nest();
         let ret_id = ty_info.no_name_get();
-        let mut ty_info =
+        let ty_info =
             envs_ty.iter().zip(&params_ty)
                 .fold(Ok(ty_info),
                       |acc, (x, y)| acc?.unify(x.clone(), y.clone()))
