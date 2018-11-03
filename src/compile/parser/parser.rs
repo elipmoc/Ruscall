@@ -79,7 +79,7 @@ parser! {
             id_parser().skip(skip_many_parser()),
             many((position(),id_parser()).skip(skip_many_parser()).map(|(pos,id)|ast::VariableAST::new(id,pos))),
             char('=').with(skip_many_parser()).with(expr_parser())
-        ).map(|(pos,func_name,params,body)|{ast::DefFuncAST{func_name,params,body,pos}})
+        ).map(|(pos,name,params,body)|{ast::DefFuncAST{name,params,body,pos}})
     }
 }
 
@@ -180,8 +180,8 @@ parser! {
         try(paren_parser())
         .or(tuple_parser())
         .or(
-            num_parser()
-            .map(ast::ExprAST::create_num_ast)
+            (position(),num_parser())
+            .map(|(pos,num)|ast::ExprAST::create_num_ast(num,pos))
         )
         .or(
             (position(),id_parser())

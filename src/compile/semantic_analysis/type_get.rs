@@ -22,11 +22,11 @@ fn ty_get_all<Item: TypeGet, T: Iterator<Item=Item>>(iter: T, ty_info: TypeInfo)
 }
 
 impl ProgramIr {
-    pub fn ty_get(&self, ty_info: TypeInfo) -> TyCheckResult<TypeInfo> {
+    pub fn ty_get(mut self) -> TyCheckResult<ProgramIr> {
         //外部関数宣言の型チェック
         let ty_info =
             ty_get_all(
-                self.ex_dec_func_list.iter(), ty_info,
+                self.ex_dec_func_list.iter(), self.ty_info,
             )?.0;
         //関数宣言の型チェック
         let ty_info =
@@ -34,8 +34,8 @@ impl ProgramIr {
         //関数定義の型チェック
         let ty_info =
             ty_get_all(self.func_list.iter().map(|x| x), ty_info)?.0;
-
-        Ok(ty_info)
+        self.ty_info = ty_info;
+        Ok(self)
     }
 }
 
@@ -47,7 +47,7 @@ impl<'a> TypeGet for &'a DecFuncAST {
 
         let ty_info = ty_info.unify(
             Type::TyVar(func_ty_id.clone(), vec![]),
-            Type::create_func_type(self.ty.param_types.clone(), self.ty.ret_type.clone() ),
+            Type::create_func_type(self.ty.param_types.clone(), self.ty.ret_type.clone()),
         ).map_err(|msg| Error::new(self.pos, &msg))?;
         Ok((ty_info, Type::TyVar(func_ty_id, vec![])))
     }
@@ -64,7 +64,7 @@ impl<'a> TypeGet for &'a FuncIr {
                 Type::TyVar(ty_id, vec![])
             }).collect();
         let (mut ty_info, ret_ty) = (&self.body).ty_get(ty_info)?;
-        let func_ty =Type::TyVar( ty_info.global_get(self.name.clone()),vec![]);
+        let func_ty = Type::TyVar(ty_info.global_get(self.name.clone()), vec![]);
         let mut ty_info = ty_info.unify(
             func_ty.clone(),
             Type::create_func_type(
@@ -100,7 +100,6 @@ impl TypeGet for NumIr {
 
 impl TypeGet for CallIr {
     fn ty_get(&self, ty_info: TypeInfo) -> TyCheckResult<(TypeInfo, Type)> {
-        use combine::stream::state::SourcePosition;
         let (ty_info, params_ty) =
             ty_get_all(self.params.iter(), ty_info)?;
         let ret_ty_id = self.ty_id.clone();
@@ -111,23 +110,22 @@ impl TypeGet for CallIr {
             ty_info.unify(
                 func_ty,
                 Type::TyVar(ty_id, vec![TypeCondition::Call(FuncType { param_types: params_ty, ret_type: ret_ty.clone() })]),
-            ).map_err(|msg| Error::new(SourcePosition::new(), &msg))?;
+            ).map_err(|msg| Error::new(self.func.get_pos(), &msg))?;
         Ok((ty_info, ret_ty))
     }
 }
 
 impl TypeGet for OpIr {
     fn ty_get(&self, ty_info: TypeInfo) -> TyCheckResult<(TypeInfo, Type)> {
-        use combine::stream::state::SourcePosition;
         let (ty_info, l_expr_ty) = (&self.l_expr)
             .ty_get(ty_info)?;
         let ty_info = ty_info.unify(l_expr_ty, Type::Int32)
-            .map_err(|msg| Error::new(SourcePosition::new(), &msg))?;
+            .map_err(|msg| Error::new(self.l_expr.get_pos(), &msg))?;
 
         let (ty_info, r_expr_ty) = (&self.r_expr)
             .ty_get(ty_info)?;
         let ty_info = ty_info.unify(r_expr_ty, Type::Int32)
-            .map_err(|msg| Error::new(SourcePosition::new(), &msg))?;
+            .map_err(|msg| Error::new(self.r_expr.get_pos(), &msg))?;
         Ok((ty_info, Type::Int32))
     }
 }

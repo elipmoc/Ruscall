@@ -11,12 +11,13 @@ pub struct CodeGenResult<'a> {
 
 //コード生成する関数
 impl ir::ProgramIr {
-    pub fn code_gen(self, file_name: &str, mut ty_info: TypeInfo) -> CodeGenResult {
+    pub fn code_gen(mut self, file_name: &str) -> CodeGenResult {
         //llvm初期化
         init_llvm_all_target();
         let code_gen = CodeGenerator::new();
         let module = Module::new(file_name);
 
+        let mut ty_info = self.ty_info;
         //外部関数宣言のコード化
         self.ex_dec_func_list
             .into_iter()

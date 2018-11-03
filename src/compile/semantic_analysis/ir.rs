@@ -1,14 +1,18 @@
 use combine::stream::state::SourcePosition;
 use super::super::ast::*;
 use super::super::types::TypeId;
+use super::type_env::TypeInfo;
 
 #[derive(Debug, PartialEq)]
 pub struct ProgramIr {
+    //関数宣言のリスト
     pub dec_func_list: Vec<DecFuncIr>,
-
+    //関数定義のリスト
     pub func_list: Vec<FuncIr>,
     //extern　宣言された関数のリスト
     pub ex_dec_func_list: Vec<DecFuncIr>,
+
+    pub ty_info: TypeInfo,
 }
 
 impl ProgramIr {
@@ -17,6 +21,7 @@ impl ProgramIr {
             dec_func_list: vec![],
             func_list: vec![],
             ex_dec_func_list: vec![],
+            ty_info: TypeInfo::new(),
         }
     }
 }
@@ -42,6 +47,18 @@ pub enum ExprIr {
 }
 
 impl ExprIr {
+    pub fn get_pos(&self) -> SourcePosition {
+        match self {
+            ExprIr::OpIr(x) => x.l_expr.get_pos(),
+            ExprIr::NumIr(x) => x.pos,
+            ExprIr::TupleIr(x) => x.pos,
+            ExprIr::VariableIr(x) => x.pos,
+            ExprIr::GlobalVariableIr(x) => x.pos,
+            ExprIr::CallIr(x) => x.func.get_pos(),
+            ExprIr::LambdaIr(x) => x.pos
+        }
+    }
+
     pub fn create_opir(op: String, l_expr: ExprIr, r_expr: ExprIr) -> ExprIr {
         ExprIr::OpIr(Box::new(OpIr {
             op,
@@ -103,8 +120,8 @@ pub struct CallIr {
 pub struct LambdaIr {
     pub env: Vec<VariableIr>,
     pub func_name: String,
-    pub params_len:usize,
-    pub pos:SourcePosition,
+    pub params_len: usize,
+    pub pos: SourcePosition,
     pub ty_id: TypeId,
 }
 

@@ -50,8 +50,8 @@ impl ExprAST {
     ) -> ExprAST {
         ExprAST::OpAST(Box::new(OpAST::new(op, pos, l_expr, r_expr)))
     }
-    pub fn create_num_ast(num: String) -> ExprAST {
-        ExprAST::NumAST(NumAST::new(num))
+    pub fn create_num_ast(num: String, pos: SourcePosition) -> ExprAST {
+        ExprAST::NumAST(NumAST::new(num, pos))
     }
     pub fn create_paren_ast(expr_ast: ExprAST) -> ExprAST {
         ExprAST::ParenAST(Box::new(ParenAST { expr: expr_ast }))
@@ -73,12 +73,14 @@ impl ExprAST {
 #[derive(Debug, Clone, PartialEq)]
 pub struct NumAST {
     pub num: i32,
+    pub pos: SourcePosition,
 }
 
 impl NumAST {
-    pub fn new(num: String) -> NumAST {
+    pub fn new(num: String, pos: SourcePosition) -> NumAST {
         NumAST {
             num: num.parse().unwrap(),
+            pos,
         }
     }
 }
@@ -127,7 +129,7 @@ pub struct FuncCallAST {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct DefFuncAST {
-    pub func_name: String,
+    pub name: String,
     pub params: Vec<VariableAST>,
     pub body: ExprAST,
     pub pos: SourcePosition,

@@ -17,7 +17,7 @@ use self::semantic_analysis::type_env::TypeInfo;
 pub fn compile(file_name: &str) {
     println!("input:{}", file_name);
     match parse(&src_file_to_str(file_name)) {
-        Ok((program_ir, ty_info)) => output_file(program_ir.code_gen("compiled", ty_info)),
+        Ok(program_ir) => output_file(program_ir.code_gen("compiled")),
         Err(err) => println!("{}", err),
     };
 }
@@ -29,14 +29,14 @@ pub fn src_file_to_str(file_name: &str) -> String {
     src_str
 }
 
-pub fn parse(src_str: &str) -> Result<(ir::ProgramIr, TypeInfo), String> {
+pub fn parse(src_str: &str) -> Result<ir::ProgramIr, String> {
     match parser::parse(src_str) {
         Ok(ast) => {
             println!("\nparse\n{:?}\n", ast);
             let result = semantic_analysis::analysis(ast.0);
             match result {
                 Ok(x) => {
-                    println!("resolve_op\n{:?}\n", x.0);
+                    println!("resolve_op\n{:?}\n", x);
                     Result::Ok(x)
                 }
                 Err(err) => Result::Err(err.to_string()),
