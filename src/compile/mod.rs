@@ -2,17 +2,16 @@ pub mod ast;
 pub mod code_gen;
 pub mod error;
 pub mod output_file;
-pub mod semantic_analysis;
-pub mod types;
-pub mod show_type;
 pub mod parser;
+pub mod semantic_analysis;
+pub mod show_type;
+pub mod types;
 
 use self::error::Error;
 use self::output_file::output_file;
-use self::semantic_analysis::ir as ir;
+use self::semantic_analysis::ir;
 use std::fs;
 use std::io::{BufReader, Read};
-use self::semantic_analysis::type_env::TypeInfo;
 
 pub fn compile(file_name: &str) {
     println!("input:{}", file_name);
