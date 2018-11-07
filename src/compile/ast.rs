@@ -1,4 +1,4 @@
-use super::types::FuncType;
+use super::types::*;
 use combine::stream::state::SourcePosition;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -138,7 +138,7 @@ pub struct DefFuncAST {
 #[derive(Debug, Clone, PartialEq)]
 pub struct DecFuncAST {
     pub name: String,
-    pub ty: FuncType,
+    pub ty: FuncTypeAST,
     pub extern_flag: bool,
     pub pos: SourcePosition,
 }
@@ -156,3 +156,25 @@ pub struct LambdaAST {
     pub body: ExprAST,
     pub pos: SourcePosition,
 }
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum TypeAST {
+    Type(Type),
+    FuncTypeAST(Box<FuncTypeAST>),
+    TupleTypeAST(Box<TupleTypeAST>),
+    TypeVarName(String),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct FuncTypeAST {
+    pub params_ty: Vec<TypeAST>,
+    pub ret_ty: TypeAST,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct TupleTypeAST {
+    pub elements_ty: Vec<TypeAST>
+}
+
+
+

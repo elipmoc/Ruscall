@@ -39,9 +39,7 @@ impl ProgramIr {
     }
 }
 
-use super::super::ast::DecFuncAST;
-
-impl<'a> TypeGet for &'a DecFuncAST {
+impl<'a> TypeGet for &'a DecFuncIr{
     fn ty_get(&self, mut ty_info: TypeInfo) -> TyCheckResult<(TypeInfo, Type)> {
         let func_ty_id = ty_info.get(self.name.clone());
 

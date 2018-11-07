@@ -4,6 +4,7 @@ mod resolve_op;
 pub mod type_env;
 pub mod type_get;
 pub mod variable_table;
+pub mod type_variable_table;
 
 use super::ast::ProgramAST;
 

@@ -27,7 +27,7 @@ impl Error {
     }
     pub fn new(pos: SourcePosition, msg: &str) -> Error {
         Error {
-            pos: pos,
+            pos,
             msg: msg.to_string(),
         }
     }

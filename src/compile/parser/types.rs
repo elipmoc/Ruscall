@@ -1,16 +1,21 @@
-use combine::char::{char, string};
-use combine::optional;
-use combine::parser::combinator::try;
-use combine::{many, many1,sep_by1};
 use super::super::types::*;
+use super::ast::*;
 use super::parser::MyStream;
 use super::skipper::skip_many_parser;
+use combine::char::{char, string};
+use combine::optional;
+use combine::parser::char::{alpha_num, lower};
+use combine::parser::combinator::try;
+use combine::{many, many1, sep_by1};
 
 //<ty_term>
 parser! {
-   fn ty_term_parser['a]()(MyStream<'a>) ->Type
+   fn ty_term_parser['a]()(MyStream<'a>) ->TypeAST
     {
-       string("Int32").map(|_|Type::Int32)
+       string("Int32").map(|_|TypeAST::Type(Type::Int32) )
+       .or((
+            lower(),many(alpha_num())
+        ).map(|(x,xs):(char,String)|TypeAST::TypeVarName(x.to_string()+&xs)))
        .or(try(ty_paren_parser()))
        .or(ty_tuple_parser())
        .or(ty_func_pointer_parser())
@@ -18,7 +23,7 @@ parser! {
 }
 //<ty_func_pointer>
 parser! {
-   fn ty_func_pointer_parser['a]()(MyStream<'a>) ->Type
+   fn ty_func_pointer_parser['a]()(MyStream<'a>) ->TypeAST
     {
         (
             string("Fn")
@@ -34,13 +39,13 @@ parser! {
             skip_many_parser()
             .with(ty_func_parser())
         )
-        .map(|(_vec,x):(Option<Vec<_>>,_)|Type::create_func_type(x.param_types,x.ret_type))
+        .map(|(_vec,x):(Option<Vec<_>>,_)|TypeAST::FuncTypeAST(Box::new(x)))
     }
 }
 
 //<ty_paren>
 parser! {
-   fn ty_paren_parser['a]()(MyStream<'a>) ->Type
+   fn ty_paren_parser['a]()(MyStream<'a>) ->TypeAST
     {
         char('(')
         .with(skip_many_parser())
@@ -52,7 +57,7 @@ parser! {
 
 //<ty_tuple>
 parser! {
-   fn ty_tuple_parser['a]()(MyStream<'a>) ->Type
+   fn ty_tuple_parser['a]()(MyStream<'a>) ->TypeAST
     {
         char('(')
             .with(skip_many_parser())
@@ -73,7 +78,7 @@ parser! {
                 ))
             )
             .skip(char(')'))
-            .map(move|x:Option<(Type,Vec<Type>)>|{
+            .map(move|x:Option<(TypeAST,Vec<TypeAST>)>|{
                 let mut elements=vec![];
                 match x{
                     Some((x,mut xs))=>{
@@ -82,14 +87,14 @@ parser! {
                     }
                     _=>()
                 }
-                Type::TupleType(Box::new( TupleType{ element_tys: elements }) )
+                TypeAST::TupleTypeAST(Box::new( TupleTypeAST{ elements_ty: elements }) )
             })
     }
 }
 
 //<ty_func>
 parser! {
-   pub fn ty_func_parser['a]()(MyStream<'a>) ->FuncType
+   pub fn ty_func_parser['a]()(MyStream<'a>) ->FuncTypeAST
     {
         (
             ty_term_parser(),
@@ -100,13 +105,13 @@ parser! {
                 .with(ty_term_parser())
             )
         )
-        .map(|(x,mut xs):(Type,Vec<Type>)|{
+        .map(|(x,mut xs):(TypeAST,Vec<TypeAST>)|{
             let ret_type = xs.pop().unwrap();
             let mut param_types=vec![x];
             param_types.append(&mut xs);
-            FuncType{
-                ret_type: ret_type,
-                param_types: param_types
+            FuncTypeAST{
+                ret_ty: ret_type,
+                params_ty: param_types
             }
         })
     }

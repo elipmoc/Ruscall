@@ -1,7 +1,10 @@
 use super::super::ast::*;
 use super::ir::*;
 use super::variable_table::VariableTable;
+use super::super::types::*;
+use super::type_env::TypeInfo;
 use super::Error;
+use super::type_variable_table::TypeVariableTable;
 use std::collections::HashMap;
 
 type AstToIrResult<T> = Result<T, Error>;
@@ -76,13 +79,57 @@ impl DefFuncAST {
 
 impl DecFuncAST {
     fn to_ir(self, mut program_ir: ProgramIr) -> ProgramIr {
+        let mut ty_var_table = TypeVariableTable::new();
+        let dec_func_ir = DecFuncIr {
+            name: self.name,
+            extern_flag: self.extern_flag,
+            pos: self.pos,
+            ty: self.ty.to_ty(&mut ty_var_table, &mut program_ir.ty_info),
+        };
         match self.extern_flag {
             true => {
-                program_ir.ex_dec_func_list.push(self);
+                program_ir.ex_dec_func_list.push(dec_func_ir);
             }
-            _ => program_ir.dec_func_list.push(self),
+            _ => program_ir.dec_func_list.push(dec_func_ir),
         }
         program_ir
+    }
+}
+
+impl FuncTypeAST {
+    fn to_ty(self, ty_var_table: &mut TypeVariableTable, ty_info: &mut TypeInfo) -> FuncType {
+        FuncType {
+            ret_type: self.ret_ty.to_ty(ty_var_table, ty_info),
+            param_types: self.params_ty.into_iter()
+                .map(|x| x.to_ty(ty_var_table, ty_info)).collect(),
+        }
+    }
+}
+
+impl TupleTypeAST {
+    fn to_ty(self, ty_var_table: &mut TypeVariableTable, ty_info: &mut TypeInfo) -> TupleType {
+        TupleType {
+            element_tys: self.elements_ty.into_iter()
+                .map(|x| x.to_ty(ty_var_table, ty_info)).collect()
+        }
+    }
+}
+
+impl TypeAST {
+    fn to_ty(self, ty_var_table: &mut TypeVariableTable, ty_info: &mut TypeInfo) -> Type {
+        match self {
+            TypeAST::Type(x) => x,
+            TypeAST::FuncTypeAST(x) => Type::LambdaType(
+                Box::new(LambdaType {
+                    env_ty: None,
+                    func_ty: x.to_ty(ty_var_table, ty_info),
+                })
+            ),
+            TypeAST::TupleTypeAST(x) => Type::TupleType(
+                Box::new(x.to_ty(ty_var_table, ty_info))
+            ),
+            TypeAST::TypeVarName(ty_name) => ty_var_table.get_ty(ty_name, ty_info)
+        }
     }
 }
 

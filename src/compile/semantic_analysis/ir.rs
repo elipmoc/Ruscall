@@ -1,6 +1,6 @@
 use combine::stream::state::SourcePosition;
 use super::super::ast::*;
-use super::super::types::TypeId;
+use super::super::types::{TypeId, FuncType};
 use super::type_env::TypeInfo;
 
 #[derive(Debug, PartialEq)]
@@ -125,4 +125,10 @@ pub struct LambdaIr {
     pub ty_id: TypeId,
 }
 
-pub type DecFuncIr = DecFuncAST;
+#[derive(Debug, Clone, PartialEq)]
+pub struct DecFuncIr {
+    pub name: String,
+    pub ty: FuncType,
+    pub extern_flag: bool,
+    pub pos: SourcePosition,
+}
