@@ -74,6 +74,40 @@ impl TypeSubstitute {
         TypeSubstitute(HashMap::new())
     }
 
+    //TypeにTypeIdが出現するか検査
+    fn occurs_check(&self, ty: &Type, ty_id: &TypeId) -> bool {
+        match ty {
+            Type::TyVar(id, conds) => {
+                conds.iter().any(|x|
+                    match x {
+                        TypeCondition::Call(x) =>
+                            self.occurs_check(&x.ret_type, &ty_id)
+                                ||
+                                x.param_types.iter().any(|x| self.occurs_check(x, &ty_id))
+                    }
+                );
+                if id == ty_id { true } else {
+                    if self.0.contains_key(&id) {
+                        self.occurs_check(&self.0[id], &ty_id)
+                    } else {
+                        false
+                    }
+                }
+            }
+            Type::Int32 => false,
+            Type::TupleType(x) => x.element_tys.iter().any(|e| self.occurs_check(e, ty_id)),
+            Type::LambdaType(x) => {
+                let x = &**x;
+                x.env_ty.as_ref().unwrap_or(&TupleType { element_tys: vec![] })
+                    .element_tys.iter().any(|e| self.occurs_check(e, ty_id))
+                    ||
+                    x.func_ty.param_types.iter().any(|e| self.occurs_check(e, ty_id))
+                    ||
+                    self.occurs_check(&x.func_ty.ret_type, ty_id)
+            }
+        }
+    }
+
     fn insert(mut self, ty_id: TypeId, ty: Type) -> Result<TypeSubstitute, String> {
         match self.0.remove(&ty_id) {
             Some(ty2) => {
@@ -81,11 +115,14 @@ impl TypeSubstitute {
                 self.unify(ty, ty2.clone())
             }
             None => {
-                self.0.insert(ty_id, ty);
+                if self.occurs_check(&ty, &ty_id) == false {
+                    self.0.insert(ty_id, ty);
+                }
                 Ok(self)
             }
         }
     }
+
 
     fn unify(self, ty1: Type, ty2: Type) -> Result<TypeSubstitute, String> {
         match (ty1, ty2) {
