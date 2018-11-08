@@ -283,7 +283,7 @@ parser! {
             try(
                 sep_by(
                     (position(),id_parser()),
-                    (skip_many_parser(),char(','),skip_many_parser())
+                    try((skip_many_parser(),char(','),skip_many_parser()))
                 )
             )
             .skip(skip_many_parser())
