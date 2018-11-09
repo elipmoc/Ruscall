@@ -37,8 +37,8 @@ impl ir::ProgramIr {
             .into_iter()
             .for_each(|func| func.code_gen(&module, &code_gen, &mut ty_info));
 
-        module.dump_module();
         if let Some(err_msg) = module.verify_module() {
+            module.dump_module();
             panic!("llvm error:{}", err_msg);
         }
 
