@@ -17,7 +17,7 @@ pub fn compile(file_name: &str) {
     println!("input:{}", file_name);
     match parse(&src_file_to_str(file_name)) {
         Ok(program_ir) => output_file(program_ir.code_gen("compiled")),
-        Err(err) => println!("{}", err),
+        Err(err) => eprintln!("{}", err),
     };
 }
 
