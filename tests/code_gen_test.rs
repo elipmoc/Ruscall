@@ -20,4 +20,7 @@ fn code_gen_test() {
     helper!("test4");
     helper!("test5");
     helper!("test6");
+    helper!("test7");
+    helper!("test8");
+    helper!("test9");
 }
