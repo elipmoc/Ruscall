@@ -12,7 +12,7 @@ impl TypeId {
 }
 
 //型制約
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq,Debug)]
 pub enum TypeCondition {
     Call(FuncType)
 }

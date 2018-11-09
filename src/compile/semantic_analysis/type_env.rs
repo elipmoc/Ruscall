@@ -36,6 +36,7 @@ impl TypeEnv {
                 x
             }
             _ => {
+                println!("{:?}:={:?}", symbol, self.id);
                 self.env[0].insert(symbol, TypeId::new(self.id));
                 self.id += 1;
                 TypeId::new(self.id - 1)
@@ -51,6 +52,7 @@ impl TypeEnv {
                 x
             }
             _ => {
+                println!("{:?}:={:?}", symbol, self.id);
                 self.env[self.nest].insert(symbol, TypeId::new(self.id));
                 self.id += 1;
                 TypeId::new(self.id - 1)
@@ -61,6 +63,7 @@ impl TypeEnv {
     //無名の変数に対応した型変数を生成する
     fn no_name_get(&mut self) -> TypeId {
         self.id += 1;
+        println!("{{no_symbol}}:={:?}", self.id-1);
         TypeId::new(self.id - 1)
     }
 }
@@ -85,14 +88,14 @@ impl TypeSubstitute {
                                 ||
                                 x.param_types.iter().any(|x| self.occurs_check(x, &ty_id))
                     }
-                );
-                if id == ty_id { true } else {
-                    if self.0.contains_key(&id) {
-                        self.occurs_check(&self.0[id], &ty_id)
-                    } else {
-                        false
+                ) ||
+                    if id == ty_id { true } else {
+                        if self.0.contains_key(&id) {
+                            self.occurs_check(&self.0[id], &ty_id)
+                        } else {
+                            false
+                        }
                     }
-                }
             }
             Type::Int32 => false,
             Type::TupleType(x) => x.element_tys.iter().any(|e| self.occurs_check(e, ty_id)),
@@ -116,7 +119,10 @@ impl TypeSubstitute {
             }
             None => {
                 if self.occurs_check(&ty, &ty_id) == false {
+                    println!("{:?}=>{:?}", ty_id, ty);
                     self.0.insert(ty_id, ty);
+                } else {
+                    println!("occurs! {:?}=>{:?}", ty_id, ty);
                 }
                 Ok(self)
             }
@@ -154,7 +160,11 @@ impl TypeSubstitute {
                         };
                     }
                 }
-                self = self.insert(ty_id, Type::TyVar(id, conds2))?;
+                if conds.len()>conds2.len(){
+                    self = self.insert(id, Type::TyVar(ty_id, conds))?;
+                }else{
+                    self = self.insert(ty_id, Type::TyVar(id, conds2))?;
+                }
             }
             Type::LambdaType(x) => {
                 for cond in conds.into_iter() {
