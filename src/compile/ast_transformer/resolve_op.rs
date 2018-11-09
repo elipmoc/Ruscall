@@ -24,7 +24,7 @@ impl ast::StmtAST {
                 ast::StmtAST::DefFuncAST(def_func_ast.resolve_op(infix_hash)?)
             }
             ast::StmtAST::InfixAST(infix) => {
-                regist_infix(infix_hash, infix);
+                register_infix(infix_hash, infix);
                 ast::StmtAST::NoneAST
             }
             x => x,
@@ -42,7 +42,7 @@ impl ast::DefFuncAST {
     }
 }
 
-fn regist_infix(infix_hash: &mut InfixHash, infix: ast::InfixAST) {
+fn register_infix(infix_hash: &mut InfixHash, infix: ast::InfixAST) {
     infix_hash.insert(infix.op.clone(), infix);
 }
 
