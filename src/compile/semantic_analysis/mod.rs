@@ -1,6 +1,5 @@
 pub mod ast_to_ir;
 pub mod ir;
-mod resolve_op;
 pub mod type_env;
 pub mod type_get;
 pub mod variable_table;
@@ -8,7 +7,7 @@ pub mod type_variable_table;
 
 use super::ast::ProgramAST;
 
-use self::resolve_op::resolve_op;
+use self::super::ast_transformer::resolve_op::resolve_op;
 use super::error::Error;
 
 pub fn analysis(ast: ProgramAST) -> Result<ir::ProgramIr, Error> {

@@ -6,6 +6,7 @@ pub mod parser;
 pub mod semantic_analysis;
 pub mod show_type;
 pub mod types;
+pub mod ast_transformer;
 
 use self::error::Error;
 use self::output_file::output_file;

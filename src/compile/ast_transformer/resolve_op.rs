@@ -5,7 +5,7 @@ use std::collections::HashMap;
 type InfixHash = HashMap<String, ast::InfixAST>;
 type ResolveResult<T> = Result<T, Error>;
 
-//RawExprをOpASTに置き換えたProgramASTを得る
+//OpASTをinfixの定義によって優先順位を置き換えたProgramASTを得る
 pub fn resolve_op(ast: ast::ProgramAST) -> ResolveResult<ast::ProgramAST> {
     let mut infix_hash: InfixHash = HashMap::new();
     let mut new_stmt_list = Vec::with_capacity(ast.stmt_list.len());
