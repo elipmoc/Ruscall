@@ -1,4 +1,4 @@
-use super::types::*;
+use super::super::types::types::*;
 use combine::stream::state::SourcePosition;
 
 #[derive(Debug, Clone, PartialEq)]

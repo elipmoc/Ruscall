@@ -1,7 +1,7 @@
-use super::super::ast::*;
-use super::ir::*;
+use super::super::ir::ast::*;
+use super::mir::*;
 use super::variable_table::VariableTable;
-use super::super::types::*;
+use super::super::types::types::*;
 use super::type_env::TypeInfo;
 use super::Error;
 use super::type_variable_table::TypeVariableTable;
@@ -11,14 +11,14 @@ type AstToIrResult<T> = Result<T, Error>;
 
 impl ProgramAST {
     //ASTをIRに変換
-    pub fn to_ir(self) -> AstToIrResult<ProgramIr> {
+    pub fn to_ir(self) -> AstToIrResult<ProgramMir> {
         let mut lambda_count: usize = 0;
         let mut var_table = VariableTable::new(self.get_global_var_names());
 
         let program_ir = self
             .stmt_list
             .into_iter()
-            .fold(Ok(ProgramIr::empty()), |acc, stmt| {
+            .fold(Ok(ProgramMir::empty()), |acc, stmt| {
                 stmt.to_ir(acc?, &mut lambda_count, &mut var_table)
             })?;
         Ok(program_ir)
@@ -40,10 +40,10 @@ impl ProgramAST {
 impl StmtAST {
     fn to_ir(
         self,
-        program_ir: ProgramIr,
+        program_ir: ProgramMir,
         lambda_count: &mut usize,
         var_table: &mut VariableTable,
-    ) -> AstToIrResult<ProgramIr> {
+    ) -> AstToIrResult<ProgramMir> {
         match self {
             StmtAST::DefFuncAST(x) => x.to_ir(program_ir, lambda_count, var_table),
             StmtAST::DecFuncAST(x) => Ok(x.to_ir(program_ir)),
@@ -55,17 +55,17 @@ impl StmtAST {
 impl DefFuncAST {
     fn to_ir(
         self,
-        mut program_ir: ProgramIr,
+        mut program_ir: ProgramMir,
         lambda_count: &mut usize,
         var_table: &mut VariableTable,
-    ) -> AstToIrResult<ProgramIr> {
+    ) -> AstToIrResult<ProgramMir> {
         let params_len: usize = if self.params.len() == 0 {
             1
         } else {
             self.params.len()
         };
         var_table.in_nest(self.params.into_iter().map(|x| x.id));
-        let func_ir = FuncIr {
+        let func_ir = FuncMir {
             name: self.name,
             body: self.body.to_ir(&mut program_ir, var_table, lambda_count)?,
             params_len,
@@ -78,9 +78,9 @@ impl DefFuncAST {
 }
 
 impl DecFuncAST {
-    fn to_ir(self, mut program_ir: ProgramIr) -> ProgramIr {
+    fn to_ir(self, mut program_ir: ProgramMir) -> ProgramMir {
         let mut ty_var_table = TypeVariableTable::new();
-        let dec_func_ir = DecFuncIr {
+        let dec_func_ir = DecFuncMir {
             name: self.name,
             extern_flag: self.extern_flag,
             pos: self.pos,
@@ -131,12 +131,12 @@ impl TypeAST {
 impl ExprAST {
     fn to_ir(
         self,
-        program_ir: &mut ProgramIr,
+        program_ir: &mut ProgramMir,
         var_table: &mut VariableTable,
         lambda_count: &mut usize,
-    ) -> AstToIrResult<ExprIr> {
+    ) -> AstToIrResult<ExprMir> {
         match self {
-            ExprAST::NumAST(x) => Ok(ExprIr::NumIr(x)),
+            ExprAST::NumAST(x) => Ok(ExprMir::NumMir(x)),
             ExprAST::OpAST(x) => x.to_ir(program_ir, var_table, lambda_count),
             ExprAST::VariableAST(x) => {
                 match var_table.get_variable_ir(x.clone(), &mut program_ir.ty_info) {
@@ -155,11 +155,11 @@ impl ExprAST {
 impl OpAST {
     fn to_ir(
         self,
-        program_ir: &mut ProgramIr,
+        program_ir: &mut ProgramMir,
         var_table: &mut VariableTable,
         lambda_count: &mut usize,
-    ) -> AstToIrResult<ExprIr> {
-        Ok(ExprIr::create_opir(
+    ) -> AstToIrResult<ExprMir> {
+        Ok(ExprMir::create_op_mir(
             self.op,
             self.l_expr.to_ir(program_ir, var_table, lambda_count)?,
             self.r_expr.to_ir(program_ir, var_table, lambda_count)?,
@@ -170,10 +170,10 @@ impl OpAST {
 impl FuncCallAST {
     fn to_ir(
         self,
-        program_ir: &mut ProgramIr,
+        program_ir: &mut ProgramMir,
         var_table: &mut VariableTable,
         lambda_count: &mut usize,
-    ) -> AstToIrResult<ExprIr> {
+    ) -> AstToIrResult<ExprMir> {
         let func = self.func.to_ir(program_ir, var_table, lambda_count);
         if self.params.len() == 0 {
             func
@@ -182,8 +182,8 @@ impl FuncCallAST {
                 .params
                 .into_iter()
                 .map(|x| x.to_ir(program_ir, var_table, lambda_count))
-                .collect::<AstToIrResult<Vec<ExprIr>>>()?;
-            Ok(ExprIr::create_callir(
+                .collect::<AstToIrResult<Vec<ExprMir>>>()?;
+            Ok(ExprMir::create_call_mir(
                 func?,
                 params,
                 program_ir.ty_info.no_name_get(),
@@ -195,15 +195,15 @@ impl FuncCallAST {
 impl TupleAST {
     fn to_ir(
         self,
-        program_ir: &mut ProgramIr,
+        program_ir: &mut ProgramMir,
         var_table: &mut VariableTable,
         lambda_count: &mut usize,
-    ) -> AstToIrResult<ExprIr> {
-        Ok(ExprIr::create_tupleir(
+    ) -> AstToIrResult<ExprMir> {
+        Ok(ExprMir::create_tuple_mir(
             self.elements
                 .into_iter()
                 .map(|x| x.to_ir(program_ir, var_table, lambda_count))
-                .collect::<AstToIrResult<Vec<ExprIr>>>()?,
+                .collect::<AstToIrResult<Vec<ExprMir>>>()?,
             self.pos,
             program_ir.ty_info.no_name_get(),
         ))
@@ -213,19 +213,19 @@ impl TupleAST {
 impl LambdaAST {
     fn to_ir(
         self,
-        program_ir: &mut ProgramIr,
+        program_ir: &mut ProgramMir,
         var_table: &mut VariableTable,
         lambda_count: &mut usize,
-    ) -> AstToIrResult<ExprIr> {
+    ) -> AstToIrResult<ExprMir> {
         let env = self
             .env
             .iter()
             .map(
                 |x| match var_table.get_variable_ir(x.clone(), &mut program_ir.ty_info) {
-                    Some(ExprIr::VariableIr(x)) => Ok(x),
+                    Some(ExprMir::VariableMir(x)) => Ok(x),
                     _ => Err(Error::new(x.pos, "Lambda capture not Local Variable")),
                 },
-            ).collect::<AstToIrResult<Vec<VariableIr>>>()?;
+            ).collect::<AstToIrResult<Vec<VariableMir>>>()?;
         let params_len: usize = if self.params.len() == 0 {
             1
         } else {
@@ -239,13 +239,13 @@ impl LambdaAST {
         var_table.out_nest();
         *lambda_count += 1;
         let lambda_name = "#".to_string() + &(*lambda_count - 1).to_string();
-        program_ir.func_list.push(FuncIr {
+        program_ir.func_list.push(FuncMir {
             params_len,
             body,
             pos: self.pos,
             name: lambda_name.clone(),
         });
-        Ok(ExprIr::LambdaIr(Box::new(LambdaIr {
+        Ok(ExprMir::LambdaMir(Box::new(LambdaMir {
             env,
             func_name: lambda_name,
             ty_id: program_ir.ty_info.no_name_get(),
@@ -259,7 +259,7 @@ impl LambdaAST {
 fn ast_to_ir_test() {
     use super::type_env::TypeInfo;
     use combine::stream::state::SourcePosition;
-    use compile::types::TypeId;
+    use compile::types::types::TypeId;
     let ast = ProgramAST {
         stmt_list: vec![StmtAST::DefFuncAST(DefFuncAST {
             name: "hoge".to_string(),
@@ -275,13 +275,13 @@ fn ast_to_ir_test() {
         })],
     };
     let mut func_list = vec![];
-    func_list.push(FuncIr {
+    func_list.push(FuncMir {
         name: "hoge".to_string(),
-        body: ExprIr::create_variableir(0, SourcePosition { line: 0, column: 0 }, TypeId::new(0)),
+        body: ExprMir::create_variable_mir(0, SourcePosition { line: 0, column: 0 }, TypeId::new(0)),
         params_len: 2,
         pos: SourcePosition { column: 0, line: 0 },
     });
-    let ir = ProgramIr {
+    let ir = ProgramMir {
         dec_func_list: vec![],
         func_list,
         ex_dec_func_list: vec![],

@@ -1,16 +1,15 @@
-pub mod ast;
 pub mod code_gen;
 pub mod error;
 pub mod output_file;
 pub mod parser;
 pub mod semantic_analysis;
-pub mod show_type;
 pub mod types;
 pub mod ast_transformer;
+pub mod ir;
 
 use self::error::Error;
 use self::output_file::output_file;
-use self::semantic_analysis::ir;
+use self::ir::mir;
 use std::fs;
 use std::io::{BufReader, Read};
 
@@ -29,7 +28,7 @@ pub fn src_file_to_str(file_name: &str) -> String {
     src_str
 }
 
-pub fn parse(src_str: &str) -> Result<ir::ProgramIr, String> {
+pub fn parse(src_str: &str) -> Result<mir::ProgramMir, String> {
     match parser::parse(src_str) {
         Ok(ast) => {
             println!("\nparse\n{:?}\n", ast);

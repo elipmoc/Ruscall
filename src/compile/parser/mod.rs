@@ -2,7 +2,7 @@ mod parser;
 mod types;
 mod skipper;
 
-use super::ast;
+use super::ir::ast;
 use combine::easy;
 use combine::Parser;
 use combine::stream::state::{SourcePosition, State};

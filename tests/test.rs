@@ -34,7 +34,7 @@ fn parse_cmd_args_test() {
     );
 }
 
-use ruscall::compile::ast;
+use ruscall::compile::ir::ast;
 //helper
 fn create_infixl_ast(op: &str, priority: i8) -> ast::StmtAST {
     ast::StmtAST::InfixAST(ast::InfixAST {

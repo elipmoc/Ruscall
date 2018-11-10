@@ -1,7 +1,7 @@
 use super::super::my_llvm::easy::*;
-use super::semantic_analysis::ir;
+use super::ir::mir;
 use super::semantic_analysis::type_env::TypeInfo;
-use super::types::*;
+use super::types::types::*;
 
 pub struct CodeGenResult<'a> {
     pub file_name: &'a str,
@@ -10,7 +10,7 @@ pub struct CodeGenResult<'a> {
 }
 
 //コード生成する関数
-impl ir::ProgramIr {
+impl mir::ProgramMir {
     pub fn code_gen(self, file_name: &str) -> CodeGenResult {
         //llvm初期化
         init_llvm_all_target();
@@ -50,7 +50,7 @@ impl ir::ProgramIr {
     }
 }
 
-fn ex_func_gen(dec_func_ir: ir::DecFuncIr, module: &Module, ty_info: &mut TypeInfo) {
+fn ex_func_gen(dec_func_ir: mir::DecFuncMir, module: &Module, ty_info: &mut TypeInfo) {
     match ty_info.look_up_func_name(dec_func_ir.name.clone()) {
         Type::LambdaType(ty) => {
             let function = Function::new(&dec_func_ir.name, &module, ty.to_llvm_type(false));
@@ -110,21 +110,21 @@ impl LambdaType {
     }
 }
 
-impl ir::ExprIr {
+impl mir::ExprMir {
     fn get_ty(&self, ty_info: &mut TypeInfo) -> Type {
         match self {
-            ir::ExprIr::NumIr(_) => Type::Int32,
-            ir::ExprIr::OpIr(_) => Type::Int32,
-            ir::ExprIr::VariableIr(x) => ty_info.look_up(&x.ty_id, &vec![]),
-            ir::ExprIr::GlobalVariableIr(x) => ty_info.look_up_func_name(x.id.clone()),
-            ir::ExprIr::CallIr(x) => ty_info.look_up(&x.ty_id, &vec![]),
-            ir::ExprIr::TupleIr(x) => ty_info.look_up(&x.ty_id, &vec![]),
-            ir::ExprIr::LambdaIr(x) => ty_info.look_up(&x.ty_id, &vec![]),
+            mir::ExprMir::NumMir(_) => Type::Int32,
+            mir::ExprMir::OpMir(_) => Type::Int32,
+            mir::ExprMir::VariableMir(x) => ty_info.look_up(&x.ty_id, &vec![]),
+            mir::ExprMir::GlobalVariableMir(x) => ty_info.look_up_func_name(x.id.clone()),
+            mir::ExprMir::CallMir(x) => ty_info.look_up(&x.ty_id, &vec![]),
+            mir::ExprMir::TupleMir(x) => ty_info.look_up(&x.ty_id, &vec![]),
+            mir::ExprMir::LambdaMir(x) => ty_info.look_up(&x.ty_id, &vec![]),
         }
     }
 }
 
-impl ir::FuncIr {
+impl mir::FuncMir {
     fn code_gen(self, module: &Module, codegen: &CodeGenerator, ty_info: &mut TypeInfo) {
         let function = module.get_named_function(&self.name);
         let params = function.get_params(self.params_len);
@@ -136,7 +136,7 @@ impl ir::FuncIr {
     }
 }
 
-impl ir::ExprIr {
+impl mir::ExprMir {
     fn code_gen(
         self,
         module: &Module,
@@ -145,25 +145,25 @@ impl ir::ExprIr {
         ty_info: &mut TypeInfo,
     ) -> LLVMValueRef {
         match self {
-            ir::ExprIr::NumIr(num_ir) => const_int(int32_type(), num_ir.num as u64, true),
-            ir::ExprIr::OpIr(op_ir) => op_ir.code_gen(module, codegen, params, ty_info),
-            ir::ExprIr::VariableIr(var_ir) => params[params.len() - var_ir.id - 1],
-            ir::ExprIr::GlobalVariableIr(x) => x.code_gen(module),
-            ir::ExprIr::CallIr(x) => x.code_gen(module, codegen, params, ty_info),
-            ir::ExprIr::TupleIr(x) => x.code_gen(module, codegen, params, ty_info),
-            ir::ExprIr::LambdaIr(x) => x.code_gen(module, codegen, params, ty_info),
+            mir::ExprMir::NumMir(num_ir) => const_int(int32_type(), num_ir.num as u64, true),
+            mir::ExprMir::OpMir(op_ir) => op_ir.code_gen(module, codegen, params, ty_info),
+            mir::ExprMir::VariableMir(var_ir) => params[params.len() - var_ir.id - 1],
+            mir::ExprMir::GlobalVariableMir(x) => x.code_gen(module),
+            mir::ExprMir::CallMir(x) => x.code_gen(module, codegen, params, ty_info),
+            mir::ExprMir::TupleMir(x) => x.code_gen(module, codegen, params, ty_info),
+            mir::ExprMir::LambdaMir(x) => x.code_gen(module, codegen, params, ty_info),
         }
     }
 }
 
-impl ir::GlobalVariableIr {
+impl mir::GlobalVariableMir {
     fn code_gen(self, module: &Module) -> LLVMValueRef {
         let func = module.get_named_function(&self.id);
         func.llvm_function
     }
 }
 
-impl ir::CallIr {
+impl mir::CallMir {
     fn code_gen(
         self,
         module: &Module,
@@ -206,7 +206,7 @@ impl ir::CallIr {
     }
 }
 
-impl ir::TupleIr {
+impl mir::TupleMir {
     fn code_gen(
         self,
         module: &Module,
@@ -229,7 +229,7 @@ impl ir::TupleIr {
     }
 }
 
-impl ir::OpIr {
+impl mir::OpMir {
     fn code_gen(
         self,
         module: &Module,
@@ -253,7 +253,7 @@ impl ir::OpIr {
     }
 }
 
-impl ir::LambdaIr {
+impl mir::LambdaMir {
     fn code_gen(
         self,
         module: &Module,

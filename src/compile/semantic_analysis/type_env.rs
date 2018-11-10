@@ -1,4 +1,4 @@
-use super::super::types::*;
+use super::super::types::types::*;
 use std::collections::HashMap;
 
 #[derive(Debug, PartialEq)]
@@ -319,7 +319,7 @@ use std::fmt;
 impl fmt::Debug for TypeResolved
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use compile::show_type::ShowType;
+        use compile::types::show_type::ShowType;
         write!(f, "{}", self.0.iter().fold("".to_string(), |acc, x|
             acc + x.0 + "::" + &(x.1.show()) + "\n",
         ))

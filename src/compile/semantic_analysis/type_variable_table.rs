@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use super::super::types::{Type, TypeId};
+use super::super::types::types::{Type, TypeId};
 use super::type_env::TypeInfo;
 
 pub struct TypeVariableTable(HashMap<String, TypeId>);

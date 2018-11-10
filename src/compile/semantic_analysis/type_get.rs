@@ -1,7 +1,7 @@
 use super::super::error::Error;
-use super::super::types::*;
+use super::super::types::types::*;
 use super::type_env::*;
-use super::ir::*;
+use super::mir::*;
 
 type TyCheckResult<T> = Result<T, Error>;
 
@@ -21,8 +21,8 @@ fn ty_get_all<Item: TypeGet, T: Iterator<Item=Item>>(iter: T, ty_info: TypeInfo)
     Ok((ty_info, ty_list))
 }
 
-impl ProgramIr {
-    pub fn ty_get(mut self) -> TyCheckResult<ProgramIr> {
+impl ProgramMir {
+    pub fn ty_get(mut self) -> TyCheckResult<ProgramMir> {
         //外部関数宣言の型チェック
         let ty_info =
             ty_get_all(
@@ -39,7 +39,7 @@ impl ProgramIr {
     }
 }
 
-impl<'a> TypeGet for &'a DecFuncIr {
+impl<'a> TypeGet for &'a DecFuncMir {
     fn ty_get(&self, mut ty_info: TypeInfo) -> TyCheckResult<(TypeInfo, Type)> {
         let func_ty_id = ty_info.get(self.name.clone());
 
@@ -52,7 +52,7 @@ impl<'a> TypeGet for &'a DecFuncIr {
     }
 }
 
-impl<'a> TypeGet for &'a FuncIr {
+impl<'a> TypeGet for &'a FuncMir {
     fn ty_get(&self, mut ty_info: TypeInfo) -> TyCheckResult<(TypeInfo, Type)> {
         ty_info.in_nest();
         let params_ty: Vec<Type>
@@ -77,27 +77,27 @@ impl<'a> TypeGet for &'a FuncIr {
 }
 
 
-impl<'a> TypeGet for &'a ExprIr {
+impl<'a> TypeGet for &'a ExprMir {
     fn ty_get(&self, ty_info: TypeInfo) -> TyCheckResult<(TypeInfo, Type)> {
         match self {
-            ExprIr::NumIr(x) => x.ty_get(ty_info),
-            ExprIr::CallIr(x) => x.ty_get(ty_info),
-            ExprIr::OpIr(x) => x.ty_get(ty_info),
-            ExprIr::VariableIr(x) => x.ty_get(ty_info),
-            ExprIr::GlobalVariableIr(x) => x.ty_get(ty_info),
-            ExprIr::TupleIr(x) => x.ty_get(ty_info),
-            ExprIr::LambdaIr(x) => x.ty_get(ty_info)
+            ExprMir::NumMir(x) => x.ty_get(ty_info),
+            ExprMir::CallMir(x) => x.ty_get(ty_info),
+            ExprMir::OpMir(x) => x.ty_get(ty_info),
+            ExprMir::VariableMir(x) => x.ty_get(ty_info),
+            ExprMir::GlobalVariableMir(x) => x.ty_get(ty_info),
+            ExprMir::TupleMir(x) => x.ty_get(ty_info),
+            ExprMir::LambdaMir(x) => x.ty_get(ty_info)
         }
     }
 }
 
-impl TypeGet for NumIr {
+impl TypeGet for NumMir {
     fn ty_get(&self, ty_info: TypeInfo) -> TyCheckResult<(TypeInfo, Type)> {
         Ok((ty_info, Type::Int32))
     }
 }
 
-impl TypeGet for CallIr {
+impl TypeGet for CallMir {
     fn ty_get(&self, ty_info: TypeInfo) -> TyCheckResult<(TypeInfo, Type)> {
         let (ty_info, params_ty) =
             ty_get_all(self.params.iter(), ty_info)?;
@@ -114,7 +114,7 @@ impl TypeGet for CallIr {
     }
 }
 
-impl TypeGet for OpIr {
+impl TypeGet for OpMir {
     fn ty_get(&self, ty_info: TypeInfo) -> TyCheckResult<(TypeInfo, Type)> {
         let (ty_info, l_expr_ty) = (&self.l_expr)
             .ty_get(ty_info)?;
@@ -129,7 +129,7 @@ impl TypeGet for OpIr {
     }
 }
 
-impl<'a> TypeGet for &'a VariableIr {
+impl<'a> TypeGet for &'a VariableMir {
     fn ty_get(&self, mut ty_info: TypeInfo) -> TyCheckResult<(TypeInfo, Type)> {
         let ty_id = ty_info.get(self.id.to_string());
         let ty_info = ty_info.unify(Type::TyVar(ty_id, vec![]), Type::TyVar(self.ty_id.clone(), vec![]))
@@ -138,14 +138,14 @@ impl<'a> TypeGet for &'a VariableIr {
     }
 }
 
-impl TypeGet for GlobalVariableIr {
+impl TypeGet for GlobalVariableMir {
     fn ty_get(&self, mut ty_info: TypeInfo) -> TyCheckResult<(TypeInfo, Type)> {
         let ty_var_id = ty_info.global_get(self.id.clone());
         Ok((ty_info, Type::TyVar(ty_var_id, vec![])))
     }
 }
 
-impl TypeGet for TupleIr {
+impl TypeGet for TupleMir {
     fn ty_get(&self, ty_info: TypeInfo) -> TyCheckResult<(TypeInfo, Type)> {
         let (ty_info, elements_ty) =
             ty_get_all(self.elements.iter(), ty_info)?;
@@ -156,7 +156,7 @@ impl TypeGet for TupleIr {
     }
 }
 
-impl TypeGet for LambdaIr {
+impl TypeGet for LambdaMir {
     fn ty_get(&self, ty_info: TypeInfo) -> TyCheckResult<(TypeInfo, Type)> {
         let (mut ty_info, envs_ty) =
             ty_get_all(self.env.iter(), ty_info)?;

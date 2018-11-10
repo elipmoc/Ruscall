@@ -7,9 +7,9 @@ pub struct VariableTable {
     nest_level: usize,
 }
 
-use super::super::ast::VariableAST;
+use super::super::ir::ast::VariableAST;
 use super::type_env::TypeInfo;
-use super::ir::ExprIr;
+use super::mir::ExprMir;
 
 //変数の管理
 impl VariableTable {
@@ -19,16 +19,16 @@ impl VariableTable {
 
     //de bruijn indexを割り当てたVariableIrの生成
     //またはGlobalVariableIrの生成
-    pub fn get_variable_ir(&self, var: VariableAST, ty_info: &mut TypeInfo) -> Option<ExprIr> {
+    pub fn get_variable_ir(&self, var: VariableAST, ty_info: &mut TypeInfo) -> Option<ExprMir> {
         let a = self.local_var_names[self.nest_level - 1]
             .iter().rev().enumerate()
             .find(|(_, name)| *name == &var.id)
             .map(|(id, _)| id);
         match a {
-            Some(id) => Some(ExprIr::create_variableir(id, var.pos, ty_info.no_name_get())),
+            Some(id) => Some(ExprMir::create_variable_mir(id, var.pos, ty_info.no_name_get())),
             _ => {
                 if self.global_var_names.contains_key(&var.id){
-                    Some(ExprIr::GlobalVariableIr(var))
+                    Some(ExprMir::GlobalVariableMir(var))
                 } else{
                     None
                 }

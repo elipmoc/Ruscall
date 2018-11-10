@@ -1,4 +1,4 @@
-use super::super::ast;
+use super::super::ir::ast;
 use super::skipper::*;
 use combine::char::{alpha_num, char, digit, letter, string};
 use combine::parser::combinator::try;

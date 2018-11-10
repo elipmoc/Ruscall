@@ -1,4 +1,4 @@
-use super::super::ast;
+use super::super::ir::ast;
 use super::super::Error;
 use std::collections::HashMap;
 

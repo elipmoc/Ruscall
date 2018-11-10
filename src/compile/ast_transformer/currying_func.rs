@@ -1,4 +1,4 @@
-use crate::compile::ast::*;
+use super::super::ir::ast::*;
 
 //ASTを組み替えてカリー化を行う
 

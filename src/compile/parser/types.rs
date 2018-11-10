@@ -1,5 +1,5 @@
-use super::super::types::*;
-use super::ast::*;
+use super::super::types::types::*;
+use super::super::ir::ast::*;
 use super::parser::MyStream;
 use super::skipper::skip_many_parser;
 use combine::char::{char, string};
