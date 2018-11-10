@@ -27,24 +27,26 @@ impl DefFuncAST {
             self.params.push(VariableAST { pos: self.pos, id: "_".to_string() });
         }
         let first_param = self.params[0].clone();
-        self.body = currying(self.params.into_iter().skip(1), vec![first_param.clone()], self.body);
+        self.body = self.body.currying(self.params.into_iter().skip(1), vec![first_param.clone()]);
         self.params = vec![first_param];
         self
     }
 }
 
-fn currying<I: Iterator<Item=VariableAST>>(mut iter: I, env: Vec<VariableAST>, body: ExprAST) -> ExprAST {
-    match iter.next() {
-        Some(v) => {
-            let mut next_env = env.clone();
-            next_env.push(v.clone());
-            ExprAST::LambdaAST(Box::new(LambdaAST {
-                pos: body.get_pos(),
-                body: currying(iter, next_env, body),
-                env,
-                params: vec![v],
-            }))
+impl ExprAST {
+    fn currying<I: Iterator<Item=VariableAST>>(self, mut iter: I, env: Vec<VariableAST>, ) -> ExprAST {
+        match iter.next() {
+            Some(v) => {
+                let mut next_env = env.clone();
+                next_env.push(v.clone());
+                ExprAST::LambdaAST(Box::new(LambdaAST {
+                    pos: self.get_pos(),
+                    body: self.currying(iter, next_env),
+                    env,
+                    params: vec![v],
+                }))
+            }
+            _ => self
         }
-        _ => body
     }
 }
