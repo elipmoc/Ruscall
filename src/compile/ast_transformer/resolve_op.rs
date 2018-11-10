@@ -5,16 +5,18 @@ use std::collections::HashMap;
 type InfixHash = HashMap<String, ast::InfixAST>;
 type ResolveResult<T> = Result<T, Error>;
 
-//OpASTをinfixの定義によって優先順位を置き換えたProgramASTを得る
-pub fn resolve_op(ast: ast::ProgramAST) -> ResolveResult<ast::ProgramAST> {
-    let mut infix_hash: InfixHash = HashMap::new();
-    let mut new_stmt_list = Vec::with_capacity(ast.stmt_list.len());
-    for stmt in ast.stmt_list {
-        new_stmt_list.push(stmt.resolve_op(&mut infix_hash)?);
+impl ast::ProgramAST {
+    //OpASTをinfixの定義によって優先順位を置き換えたProgramASTを得る
+    pub fn resolve_op(self) -> ResolveResult<ast::ProgramAST> {
+        let mut infix_hash: InfixHash = HashMap::new();
+        let mut new_stmt_list = Vec::with_capacity(self.stmt_list.len());
+        for stmt in self.stmt_list {
+            new_stmt_list.push(stmt.resolve_op(&mut infix_hash)?);
+        }
+        Result::Ok(ast::ProgramAST {
+            stmt_list: new_stmt_list,
+        })
     }
-    Result::Ok(ast::ProgramAST {
-        stmt_list: new_stmt_list,
-    })
 }
 
 impl ast::StmtAST {

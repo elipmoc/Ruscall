@@ -68,6 +68,18 @@ impl ExprAST {
     pub fn create_lambda_ast(env: Vec<VariableAST>, params: Vec<VariableAST>, body: ExprAST, pos: SourcePosition) -> ExprAST {
         ExprAST::LambdaAST(Box::new(LambdaAST { env, params, body, pos }))
     }
+
+    pub fn get_pos(&self) -> SourcePosition {
+        match self {
+            ExprAST::NumAST(x) => x.pos,
+            ExprAST::OpAST(x)=>x.pos,
+            ExprAST::ParenAST(x) => x.expr.get_pos(),
+            ExprAST::VariableAST(x) => x.pos,
+            ExprAST::FuncCallAST(x) => x.func.get_pos(),
+            ExprAST::TupleAST(x) => x.pos,
+            ExprAST::LambdaAST(x) => x.pos
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
