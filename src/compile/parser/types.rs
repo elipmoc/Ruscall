@@ -6,7 +6,7 @@ use combine::char::{char, string};
 use combine::optional;
 use combine::parser::char::{alpha_num, lower};
 use combine::parser::combinator::try;
-use combine::{many, many1, sep_by1};
+use combine::{many, many1};
 
 //<ty_term>
 parser! {
@@ -25,21 +25,11 @@ parser! {
 parser! {
    fn ty_func_pointer_parser['a]()(MyStream<'a>) ->TypeAST
     {
-        (
-            string("Fn")
-            .with(skip_many_parser())
-            .with(optional(
-                char('[')
-                .with(
-                    sep_by1(ty_term_parser(),char(','))
-                )
-                .skip(char(']'))
-            ))
-            ,
-            skip_many_parser()
-            .with(ty_func_parser())
-        )
-        .map(|(_vec,x):(Option<Vec<_>>,_)|TypeAST::FuncTypeAST(Box::new(x)))
+
+        string("Fn")
+        .with(skip_many_parser())
+        .with(ty_func_parser())
+        .map(|x|TypeAST::FuncTypeAST(Box::new(x)))
     }
 }
 

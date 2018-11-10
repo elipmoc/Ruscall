@@ -39,13 +39,14 @@ impl ProgramIr {
     }
 }
 
-impl<'a> TypeGet for &'a DecFuncIr{
+impl<'a> TypeGet for &'a DecFuncIr {
     fn ty_get(&self, mut ty_info: TypeInfo) -> TyCheckResult<(TypeInfo, Type)> {
         let func_ty_id = ty_info.get(self.name.clone());
 
+        let ty_var = ty_info.no_name_get();
         let ty_info = ty_info.unify(
             Type::TyVar(func_ty_id.clone(), vec![]),
-            Type::create_func_type(self.ty.param_types.clone(), self.ty.ret_type.clone()),
+            Type::TyVar(ty_var, vec![TypeCondition::Call(self.ty.clone())]),
         ).map_err(|msg| Error::new(self.pos, &msg))?;
         Ok((ty_info, Type::TyVar(func_ty_id, vec![])))
     }
