@@ -25,3 +25,4 @@ helper!(test6);
 helper!(test7);
 helper!(test8);
 helper!(test9);
+helper!(test10);
