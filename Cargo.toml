@@ -1,5 +1,5 @@
 [package]
-name = "Ruscall"
+name = "ruscall"
 version = "0.3.0"
 authors = ["elipmoc <relipmoc101@gmail.com>"]
 readme = "README.md"
