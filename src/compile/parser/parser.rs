@@ -35,7 +35,7 @@ BNF
                 := 'Fn' :skip_many [ '[' :ty_term { ',' :ty_term } ']' ] :skip_many :ty_func
 :ty_paren      := '(' :skip_many :ty_term :skip_many ')'
 :ty_tuple      := '(' :skip_many [ :ty_term :skip_many {',' :skip_many :ty_term :skip_many} [',' :skip_many]] ')'
-:ty_func       := :ty_term ( :skip_many '->' :skip_many :ty_term )+
+:ty_func       := :ty_term :skip_many '->' :skip_many  ( :ty_func | :ty_term )
 :dec_func      := :id :skip_many '::' :skip_many :ty_func
 :exturn_dec_func
                 := 'ex' :skip_many :dec_func

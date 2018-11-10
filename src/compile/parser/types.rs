@@ -6,7 +6,7 @@ use combine::char::{char, string};
 use combine::optional;
 use combine::parser::char::{alpha_num, lower};
 use combine::parser::combinator::try;
-use combine::{many, many1};
+use combine::many;
 
 //<ty_term>
 parser! {
@@ -88,20 +88,18 @@ parser! {
     {
         (
             ty_term_parser(),
-            many1(
-                skip_many_parser()
-                .with(string("->"))
-                .with(skip_many_parser())
-                .with(ty_term_parser())
+            skip_many_parser()
+            .with(string("->"))
+            .with(skip_many_parser())
+            .with(
+                try(ty_func_parser().map(|f|TypeAST::FuncTypeAST(Box::new(f) )))
+                .or(ty_term_parser())
             )
         )
-        .map(|(x,mut xs):(TypeAST,Vec<TypeAST>)|{
-            let ret_type = xs.pop().unwrap();
-            let mut param_types=vec![x];
-            param_types.append(&mut xs);
+        .map(|(x,e)|{
             FuncTypeAST{
-                ret_ty: ret_type,
-                params_ty: param_types
+                ret_ty: e,
+                params_ty: vec![x]
             }
         })
     }
