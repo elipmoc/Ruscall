@@ -18,18 +18,15 @@ parser! {
         ).map(|(x,xs):(char,String)|TypeAST::TypeVarName(x.to_string()+&xs)))
        .or(try(ty_paren_parser()))
        .or(ty_tuple_parser())
-       .or(ty_func_pointer_parser())
     }
 }
-//<ty_func_pointer>
-parser! {
-   fn ty_func_pointer_parser['a]()(MyStream<'a>) ->TypeAST
-    {
 
-        string("Fn")
-        .with(skip_many_parser())
-        .with(ty_func_parser())
-        .map(|x|TypeAST::FuncTypeAST(Box::new(x)))
+//<ty_term_with_func>
+parser! {
+   fn ty_term_with_func_parser['a]()(MyStream<'a>) ->TypeAST
+    {
+        try(ty_func_parser().map(|f|TypeAST::FuncTypeAST(Box::new(f) )))
+        .or(ty_term_parser())
     }
 }
 
@@ -39,7 +36,7 @@ parser! {
     {
         char('(')
         .with(skip_many_parser())
-        .with(ty_term_parser())
+        .with(ty_term_with_func_parser())
         .skip(skip_many_parser())
         .skip(char(')'))
     }
@@ -58,7 +55,7 @@ parser! {
                     many(try(
                         char(',')
                         .with(skip_many_parser())
-                        .with(ty_term_parser())
+                        .with(ty_term_with_func_parser())
                         .skip(skip_many_parser())
                     ))
                     .skip(optional((
