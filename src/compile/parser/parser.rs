@@ -98,11 +98,10 @@ parser! {
             try(skip_many_parser().with(term_parser()))
         ))
         .map(|(x,xs):(ast::ExprAST,Vec<ast::ExprAST>)|{
-            if xs.len()==0 {
-                x
-            }else{
-                ast::ExprAST::create_func_call_ast(x,xs)
-            }
+            xs.into_iter()
+            .fold(x,|acc,param|
+                ast::ExprAST::create_func_call_ast(acc,vec![param])
+            )
         })
     }
 }
