@@ -34,7 +34,7 @@ impl DefFuncAST {
 }
 
 impl ExprAST {
-    fn currying<I: Iterator<Item=VariableAST>>(self, mut iter: I, env: Vec<VariableAST>, ) -> ExprAST {
+    fn currying<I: Iterator<Item=VariableAST>>(self, mut iter: I, env: Vec<VariableAST>) -> ExprAST {
         match iter.next() {
             Some(v) => {
                 let mut next_env = env.clone();
@@ -46,7 +46,32 @@ impl ExprAST {
                     params: vec![v],
                 }))
             }
-            _ => self
+            _ => match self {
+                ExprAST::LambdaAST(x) => {
+                    let mut x=*x;
+                    x.body.currying(x.params.into_iter(), x.env)
+                },
+                ExprAST::TupleAST(mut x) => {
+                    x.as_mut().elements = x.to_owned().elements.into_iter()
+                        .map(|x| x.currying(vec![].into_iter(), vec![]))
+                        .collect();
+                    ExprAST::TupleAST(x)
+                }
+                ExprAST::FuncCallAST(x) => {
+                    let mut x=*x;
+                    x.func=x.func.currying(vec![].into_iter(), vec![]);
+                    ExprAST::FuncCallAST(Box::new(x))
+                },
+                ExprAST::OpAST(x) => {
+                    let mut x=*x;
+                    x.l_expr = x.l_expr.currying(vec![].into_iter(), vec![]);
+                    x.r_expr = x.r_expr.currying(vec![].into_iter(), vec![]);
+                    ExprAST::OpAST(Box::new(x))
+                }
+                ExprAST::ParenAST(x) => x.expr.currying(vec![].into_iter(), vec![]),
+                x=>x
+
+            }
         }
     }
 }

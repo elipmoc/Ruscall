@@ -26,3 +26,4 @@ helper!(test7);
 helper!(test8);
 helper!(test9);
 helper!(test10);
+helper!(test11);
