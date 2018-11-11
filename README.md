@@ -29,18 +29,27 @@ apt-get install g++
 LLVM_SYS_60_PREFIX=/usr/lib/llvm-6.0 cargo run
 ```
 
+もしくはバイナリを添付してるのでそれを使ってください
+
 ## [Windows]
-めんどくさい。書く気になれん。
+バイナリを添付してるのでそれを使ってください
 
 ## 使い方
 
 test.rscというサンプルソースファイルがあるのでそれを使ってみる。
 
+cargoを使うやり方
 ```
 cargo run -- -build test.rsc
 ```
 
-実行するとcompiled.outが生成されます。
+バイナリを使ったやり方
+
+```
+ruscall -build test.rsc
+```
+
+実行するとcompiled.outまたはcompiled.exeが生成されます。
 
 ファイル名をまだ指定できないんだ。‪本当に‬申し訳ない😢‬
 # 目的
