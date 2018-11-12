@@ -21,9 +21,10 @@ BNF
 :expr_app      := :term {:skip_many :term }
 :infix         := ('infixr' | 'infixl') :space + :num :space + :op
 :op            := '+' | '-' | '/' | '*'
-:term          := :num | :id | :paren | :tuple | :lambda
+:term          := :num | :bool | :id | :paren | :tuple | :lambda
 :paren         := '(' :skip_many :expr ')'
 :num           := [0-9]+
+:bool          := 'true' | 'false'
 :tuple         := '(' :skip_many [ :expr {',' :skip_many :expr} [',' :skip_many]] ')'
 :lambda        := '\' :skip_many [ '[' :lambda_params ']' ] :lambda_params '->' :skip_many :expr
 :lambda_params := :skip_many [ :id { :skip_many ',' :skip_many :id } :skip_many ]
@@ -182,6 +183,7 @@ parser! {
             (position(),num_parser())
             .map(|(pos,num)|ast::ExprAST::create_num_ast(num,pos))
         )
+        .or(try(bool_parser()))
         .or(
             (position(),id_parser())
             .skip(skip_many_parser())
@@ -208,6 +210,19 @@ parser! {
     fn num_parser['a]()(MyStream<'a>)->String
     {
         many1(digit())
+    }
+}
+
+//<bool>
+parser! {
+    fn bool_parser['a]()(MyStream<'a>)->ast::ExprAST
+    {
+        (
+            position(),
+            string("true").with(value(true) )
+            .or(string("false").with(value(false)))
+        )
+        .map(|(pos,b)|ast::ExprAST::create_bool_ast(b,pos))
     }
 }
 

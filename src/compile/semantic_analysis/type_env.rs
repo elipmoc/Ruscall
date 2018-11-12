@@ -63,7 +63,7 @@ impl TypeEnv {
     //無名の変数に対応した型変数を生成する
     fn no_name_get(&mut self) -> TypeId {
         self.id += 1;
-        println!("{{no_symbol}}:={:?}", self.id-1);
+        println!("{{no_symbol}}:={:?}", self.id - 1);
         TypeId::new(self.id - 1)
     }
 }
@@ -97,7 +97,7 @@ impl TypeSubstitute {
                         }
                     }
             }
-            Type::Int32 => false,
+            Type::Int32 | Type::Bool => false,
             Type::TupleType(x) => x.element_tys.iter().any(|e| self.occurs_check(e, ty_id)),
             Type::LambdaType(x) => {
                 let x = &**x;
@@ -160,9 +160,9 @@ impl TypeSubstitute {
                         };
                     }
                 }
-                if conds.len()>conds2.len(){
+                if conds.len() > conds2.len() {
                     self = self.insert(id, Type::TyVar(ty_id, conds))?;
-                }else{
+                } else {
                     self = self.insert(ty_id, Type::TyVar(id, conds2))?;
                 }
             }

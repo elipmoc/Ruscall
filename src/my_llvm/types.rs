@@ -11,6 +11,8 @@ pub fn int32_type() -> LLVMTypeRef {
     unsafe { llvm::core::LLVMInt32Type() }
 }
 
+pub fn bool_type() -> LLVMTypeRef { unsafe { llvm::core::LLVMInt1Type() } }
+
 pub fn double_type() -> LLVMTypeRef {
     unsafe { llvm::core::LLVMDoubleType() }
 }

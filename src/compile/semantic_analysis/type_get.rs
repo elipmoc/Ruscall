@@ -81,6 +81,7 @@ impl<'a> TypeGet for &'a ExprMir {
     fn ty_get(&self, ty_info: TypeInfo) -> TyCheckResult<(TypeInfo, Type)> {
         match self {
             ExprMir::NumMir(x) => x.ty_get(ty_info),
+            ExprMir::BoolMir(x) => x.ty_get(ty_info),
             ExprMir::CallMir(x) => x.ty_get(ty_info),
             ExprMir::OpMir(x) => x.ty_get(ty_info),
             ExprMir::VariableMir(x) => x.ty_get(ty_info),
@@ -94,6 +95,12 @@ impl<'a> TypeGet for &'a ExprMir {
 impl TypeGet for NumMir {
     fn ty_get(&self, ty_info: TypeInfo) -> TyCheckResult<(TypeInfo, Type)> {
         Ok((ty_info, Type::Int32))
+    }
+}
+
+impl TypeGet for BoolMir {
+    fn ty_get(&self, ty_info: TypeInfo) -> TyCheckResult<(TypeInfo, Type)> {
+        Ok((ty_info, Type::Bool))
     }
 }
 

@@ -20,6 +20,7 @@ pub enum TypeCondition {
 #[derive(Clone, PartialEq)]
 pub enum Type {
     Int32,
+    Bool,
     TupleType(Box<TupleType>),
     TyVar(TypeId, Vec<TypeCondition>),
     LambdaType(Box<LambdaType>),

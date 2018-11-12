@@ -64,6 +64,7 @@ impl Type {
     fn to_llvm_type(&self, fn_pointer_flag: bool) -> LLVMTypeRef {
         match self {
             Type::Int32 => int32_type(),
+            Type::Bool => bool_type(),
             Type::TupleType(x) => x.to_llvm_type(),
             Type::TyVar(_, _) => panic!("TyVar type!"),
             Type::LambdaType(x) => x.to_llvm_type(fn_pointer_flag),
@@ -114,6 +115,7 @@ impl mir::ExprMir {
     fn get_ty(&self, ty_info: &mut TypeInfo) -> Type {
         match self {
             mir::ExprMir::NumMir(_) => Type::Int32,
+            mir::ExprMir::BoolMir(_) => Type::Bool,
             mir::ExprMir::OpMir(_) => Type::Int32,
             mir::ExprMir::VariableMir(x) => ty_info.look_up(&x.ty_id, &vec![]),
             mir::ExprMir::GlobalVariableMir(x) => ty_info.look_up_func_name(x.id.clone()),
@@ -146,6 +148,11 @@ impl mir::ExprMir {
     ) -> LLVMValueRef {
         match self {
             mir::ExprMir::NumMir(num_ir) => const_int(int32_type(), num_ir.num as u64, true),
+            mir::ExprMir::BoolMir(bool_ir) => const_int(
+                bool_type(),
+                if bool_ir.bool { 1 } else { 0 },
+                false,
+            ),
             mir::ExprMir::OpMir(op_ir) => op_ir.code_gen(module, codegen, params, ty_info),
             mir::ExprMir::VariableMir(var_ir) => params[params.len() - var_ir.id - 1],
             mir::ExprMir::GlobalVariableMir(x) => x.code_gen(module),

@@ -39,6 +39,7 @@ pub struct FuncMir {
 pub enum ExprMir {
     OpMir(Box<OpMir>),
     NumMir(NumMir),
+    BoolMir(BoolMir),
     TupleMir(Box<TupleMir>),
     VariableMir(VariableMir),
     GlobalVariableMir(GlobalVariableMir),
@@ -51,6 +52,7 @@ impl ExprMir {
         match self {
             ExprMir::OpMir(x) => x.l_expr.get_pos(),
             ExprMir::NumMir(x) => x.pos,
+            ExprMir::BoolMir(x) => x.pos,
             ExprMir::TupleMir(x) => x.pos,
             ExprMir::VariableMir(x) => x.pos,
             ExprMir::GlobalVariableMir(x) => x.pos,
@@ -92,6 +94,7 @@ pub struct OpMir {
 }
 
 pub type NumMir = NumAST;
+pub type BoolMir = BoolAST;
 
 #[derive(Debug, PartialEq)]
 pub struct TupleMir {

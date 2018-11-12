@@ -34,6 +34,7 @@ pub enum InfixType {
 pub enum ExprAST {
     OpAST(Box<OpAST>),
     NumAST(NumAST),
+    BoolAST(BoolAST),
     VariableAST(VariableAST),
     ParenAST(Box<ParenAST>),
     FuncCallAST(Box<FuncCallAST>),
@@ -52,6 +53,9 @@ impl ExprAST {
     }
     pub fn create_num_ast(num: String, pos: SourcePosition) -> ExprAST {
         ExprAST::NumAST(NumAST::new(num, pos))
+    }
+    pub fn create_bool_ast(bool: bool, pos: SourcePosition) -> ExprAST{
+        ExprAST::BoolAST(BoolAST{bool, pos})
     }
     pub fn create_paren_ast(expr_ast: ExprAST) -> ExprAST {
         ExprAST::ParenAST(Box::new(ParenAST { expr: expr_ast }))
@@ -72,7 +76,8 @@ impl ExprAST {
     pub fn get_pos(&self) -> SourcePosition {
         match self {
             ExprAST::NumAST(x) => x.pos,
-            ExprAST::OpAST(x)=>x.pos,
+            ExprAST::BoolAST(x) => x.pos,
+            ExprAST::OpAST(x) => x.pos,
             ExprAST::ParenAST(x) => x.expr.get_pos(),
             ExprAST::VariableAST(x) => x.pos,
             ExprAST::FuncCallAST(x) => x.func.get_pos(),
@@ -95,6 +100,12 @@ impl NumAST {
             pos,
         }
     }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct BoolAST {
+    pub bool: bool,
+    pub pos: SourcePosition,
 }
 
 #[derive(Debug, Clone, PartialEq)]

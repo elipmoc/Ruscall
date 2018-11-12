@@ -20,9 +20,10 @@ impl ShowType for Type {
     fn show(&self) -> String {
         match self {
             Type::Int32 => "Int32".to_string(),
+            Type::Bool => "Bool".to_string(),
             Type::TupleType(x) => x.show(),
-            Type::TyVar(ty_id,_) => ty_id.get_id().to_string(),
-            Type::LambdaType(x)=>x.show()
+            Type::TyVar(ty_id, _) => ty_id.get_id().to_string(),
+            Type::LambdaType(x) => x.show()
         }
     }
 }
@@ -46,11 +47,11 @@ impl ShowType for TupleType {
     }
 }
 
-impl ShowType for LambdaType{
+impl ShowType for LambdaType {
     fn show(&self) -> String {
         "Lambda( env:".to_string()
-            + &self.env_ty.clone().map(|x|x.show()).unwrap_or("void".to_string())
+            + &self.env_ty.clone().map(|x| x.show()).unwrap_or("void".to_string())
             + ","
-            + "func:"+&self.func_ty.show()+")"
+            + "func:" + &self.func_ty.show() + ")"
     }
 }

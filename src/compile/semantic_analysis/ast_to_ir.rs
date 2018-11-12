@@ -137,6 +137,7 @@ impl ExprAST {
     ) -> AstToIrResult<ExprMir> {
         match self {
             ExprAST::NumAST(x) => Ok(ExprMir::NumMir(x)),
+            ExprAST::BoolAST(x)=> Ok(ExprMir::BoolMir(x)),
             ExprAST::OpAST(x) => x.to_ir(program_ir, var_table, lambda_count),
             ExprAST::VariableAST(x) => {
                 match var_table.get_variable_ir(x.clone(), &mut program_ir.ty_info) {
