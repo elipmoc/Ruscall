@@ -119,7 +119,7 @@ impl TypeAST {
     fn to_ty(self, ty_var_table: &mut TypeVariableTable, ty_info: &mut TypeInfo) -> Type {
         match self {
             TypeAST::Type(x) => x,
-            TypeAST::FuncTypeAST(x) =>Type::TyVar(ty_info.no_name_get(),vec![TypeCondition::Call(x.to_ty(ty_var_table,ty_info))]),
+            TypeAST::FuncTypeAST(x) => Type::TyVar(ty_info.no_name_get(), vec![TypeCondition::Call(x.to_ty(ty_var_table, ty_info))]),
             TypeAST::TupleTypeAST(x) => Type::TupleType(
                 Box::new(x.to_ty(ty_var_table, ty_info))
             ),
@@ -137,7 +137,8 @@ impl ExprAST {
     ) -> AstToIrResult<ExprMir> {
         match self {
             ExprAST::NumAST(x) => Ok(ExprMir::NumMir(x)),
-            ExprAST::BoolAST(x)=> Ok(ExprMir::BoolMir(x)),
+            ExprAST::BoolAST(x) => Ok(ExprMir::BoolMir(x)),
+            ExprAST::IfAST(x) => x.to_ir(program_ir, var_table, lambda_count),
             ExprAST::OpAST(x) => x.to_ir(program_ir, var_table, lambda_count),
             ExprAST::VariableAST(x) => {
                 match var_table.get_variable_ir(x.clone(), &mut program_ir.ty_info) {
@@ -150,6 +151,23 @@ impl ExprAST {
             ExprAST::TupleAST(x) => x.to_ir(program_ir, var_table, lambda_count),
             ExprAST::LambdaAST(x) => x.to_ir(program_ir, var_table, lambda_count),
         }
+    }
+}
+
+impl IfAST {
+    fn to_ir(
+        self,
+        program_ir: &mut ProgramMir,
+        var_table: &mut VariableTable,
+        lambda_count: &mut usize,
+    ) -> AstToIrResult<ExprMir> {
+        Ok(ExprMir::create_if_mir(
+            self.cond.to_ir(program_ir, var_table, lambda_count)?,
+            self.t_expr.to_ir(program_ir, var_table, lambda_count)?,
+            self.f_expr.to_ir(program_ir, var_table, lambda_count)?,
+            self.pos,
+            program_ir.ty_info.no_name_get(),
+        ))
     }
 }
 

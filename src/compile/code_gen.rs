@@ -118,6 +118,7 @@ impl mir::ExprMir {
             mir::ExprMir::BoolMir(_) => Type::Bool,
             mir::ExprMir::OpMir(_) => Type::Int32,
             mir::ExprMir::VariableMir(x) => ty_info.look_up(&x.ty_id, &vec![]),
+            mir::ExprMir::IfMir(x) => ty_info.look_up(&x.ty_id, &vec![]),
             mir::ExprMir::GlobalVariableMir(x) => ty_info.look_up_func_name(x.id.clone()),
             mir::ExprMir::CallMir(x) => ty_info.look_up(&x.ty_id, &vec![]),
             mir::ExprMir::TupleMir(x) => ty_info.look_up(&x.ty_id, &vec![]),
@@ -132,8 +133,7 @@ impl mir::FuncMir {
         let params = function.get_params(self.params_len);
         let entry_block = function.append_basic_block(&"entry");
         codegen.position_builder_at_end(entry_block);
-        let value = self.body.code_gen(&module, &codegen, &params, ty_info);
-        codegen.position_builder_at_end(entry_block);
+        let value = self.body.code_gen(&module, &codegen, &params, ty_info, function);
         codegen.build_ret(value);
     }
 }
@@ -145,6 +145,7 @@ impl mir::ExprMir {
         codegen: &CodeGenerator,
         params: &Vec<LLVMValueRef>,
         ty_info: &mut TypeInfo,
+        function: Function,
     ) -> LLVMValueRef {
         match self {
             mir::ExprMir::NumMir(num_ir) => const_int(int32_type(), num_ir.num as u64, true),
@@ -153,11 +154,12 @@ impl mir::ExprMir {
                 if bool_ir.bool { 1 } else { 0 },
                 false,
             ),
-            mir::ExprMir::OpMir(op_ir) => op_ir.code_gen(module, codegen, params, ty_info),
+            mir::ExprMir::IfMir(x) => x.code_gen(module, codegen, params, ty_info, function),
+            mir::ExprMir::OpMir(op_ir) => op_ir.code_gen(module, codegen, params, ty_info, function),
             mir::ExprMir::VariableMir(var_ir) => params[params.len() - var_ir.id - 1],
             mir::ExprMir::GlobalVariableMir(x) => x.code_gen(module),
-            mir::ExprMir::CallMir(x) => x.code_gen(module, codegen, params, ty_info),
-            mir::ExprMir::TupleMir(x) => x.code_gen(module, codegen, params, ty_info),
+            mir::ExprMir::CallMir(x) => x.code_gen(module, codegen, params, ty_info, function),
+            mir::ExprMir::TupleMir(x) => x.code_gen(module, codegen, params, ty_info, function),
             mir::ExprMir::LambdaMir(x) => x.code_gen(module, codegen, params, ty_info),
         }
     }
@@ -170,6 +172,35 @@ impl mir::GlobalVariableMir {
     }
 }
 
+impl mir::IfMir {
+    fn code_gen(
+        self,
+        module: &Module,
+        codegen: &CodeGenerator,
+        params: &Vec<LLVMValueRef>,
+        ty_info: &mut TypeInfo,
+        function: Function,
+    ) -> LLVMValueRef {
+        let cond_value = self.cond.code_gen(&module, &codegen, &params, ty_info, function);
+        let then_block = function.append_basic_block(&"then");
+        let else_block = function.append_basic_block(&"else");
+        let merge_block = function.append_basic_block(&"merge");
+        codegen.build_cond_br(cond_value, then_block, else_block);
+        codegen.position_builder_at_end(then_block);
+        let t_value = self.t_expr.code_gen(&module, &codegen, &params, ty_info, function);
+        codegen.build_br(merge_block);
+        let then_block=codegen.get_insert_block();
+        codegen.position_builder_at_end(else_block);
+        let f_value = self.f_expr.code_gen(&module, &codegen, &params, ty_info, function);
+        codegen.build_br(merge_block);
+        let else_block=codegen.get_insert_block();
+        codegen.position_builder_at_end(merge_block);
+        let phi_node = codegen.build_phi(ty_info.look_up(&self.ty_id, &vec![]).to_llvm_type(true), "");
+        add_incoming(phi_node, vec![t_value, f_value], vec![then_block, else_block]);
+        phi_node
+    }
+}
+
 impl mir::CallMir {
     fn code_gen(
         self,
@@ -177,16 +208,17 @@ impl mir::CallMir {
         codegen: &CodeGenerator,
         params: &Vec<LLVMValueRef>,
         ty_info: &mut TypeInfo,
+        function: Function,
     ) -> LLVMValueRef {
         let mut params_val: Vec<_> = self
             .params
             .into_iter()
-            .map(|x| x.code_gen(module, codegen, params, ty_info))
+            .map(|x| x.code_gen(module, codegen, params, ty_info, function))
             .collect();
         match self.func.get_ty(ty_info) {
             Type::LambdaType(x) => {
                 if let Some(env_ty) = x.env_ty {
-                    let lambda = self.func.code_gen(module, codegen, params, ty_info);
+                    let lambda = self.func.code_gen(module, codegen, params, ty_info, function);
                     let lambda_ptr = codegen.build_alloca(type_of(lambda), "");
                     codegen.build_store(lambda, lambda_ptr);
                     let envs_tuple_pointer = codegen.build_struct_gep(lambda_ptr, 0, "");
@@ -204,7 +236,7 @@ impl mir::CallMir {
                     envs_val.append(&mut params_val);
                     codegen.build_call(func_pointer, envs_val, "")
                 } else {
-                    let func = self.func.code_gen(module, codegen, params, ty_info);
+                    let func = self.func.code_gen(module, codegen, params, ty_info, function);
                     codegen.build_call(func, params_val, "")
                 }
             }
@@ -220,11 +252,12 @@ impl mir::TupleMir {
         codegen: &CodeGenerator,
         params: &Vec<LLVMValueRef>,
         ty_info: &mut TypeInfo,
+        function: Function,
     ) -> LLVMValueRef {
         let elements_val: Vec<LLVMValueRef> = self
             .elements
             .into_iter()
-            .map(|x| x.code_gen(module, codegen, params, ty_info))
+            .map(|x| x.code_gen(module, codegen, params, ty_info, function))
             .collect();
         let ty = struct_type(elements_val.iter().map(|x| type_of(*x)).collect());
         let val = codegen.build_alloca(ty, "");
@@ -243,9 +276,10 @@ impl mir::OpMir {
         codegen: &CodeGenerator,
         params: &Vec<LLVMValueRef>,
         ty_info: &mut TypeInfo,
+        function: Function,
     ) -> LLVMValueRef {
-        let lhs = self.l_expr.code_gen(module, codegen, params, ty_info);
-        let rhs = self.r_expr.code_gen(module, codegen, params, ty_info);
+        let lhs = self.l_expr.code_gen(module, codegen, params, ty_info, function);
+        let rhs = self.r_expr.code_gen(module, codegen, params, ty_info, function);
         match &self.op as &str {
             "+" => codegen.build_add(lhs, rhs, ""),
             "-" => codegen.build_sub(lhs, rhs, ""),

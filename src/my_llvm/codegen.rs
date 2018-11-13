@@ -50,7 +50,15 @@ impl CodeGenerator {
     pub fn build_ret(&self, val: LLVMValueRef) -> LLVMValueRef {
         unsafe { llvm::core::LLVMBuildRet(self.builder, val) }
     }
-
+    pub fn build_br(&self, dest: LLVMBasicBlockRef) -> LLVMValueRef {
+        unsafe { llvm::core::LLVMBuildBr(self.builder, dest) }
+    }
+    pub fn build_cond_br(&self, cond: LLVMValueRef, t: LLVMBasicBlockRef, e: LLVMBasicBlockRef) -> LLVMValueRef {
+        unsafe { llvm::core::LLVMBuildCondBr(self.builder, cond, t, e) }
+    }
+    pub fn build_phi(&self, ty: LLVMTypeRef, name: &str) -> LLVMValueRef {
+        unsafe { llvm::core::LLVMBuildPhi(self.builder, ty, string_cast(name).as_ptr()) }
+    }
     pub fn build_add(&self, lhs: LLVMValueRef, rhs: LLVMValueRef, name: &str) -> LLVMValueRef {
         unsafe { llvm::core::LLVMBuildAdd(self.builder, lhs, rhs, string_cast(name).as_ptr()) }
     }
@@ -107,6 +115,11 @@ impl CodeGenerator {
                 args.len() as u32,
                 string_cast(name).as_ptr(),
             )
+        }
+    }
+    pub fn get_insert_block(&self) -> LLVMBasicBlockRef {
+        unsafe {
+            llvm::core::LLVMGetInsertBlock(self.builder)
         }
     }
 }

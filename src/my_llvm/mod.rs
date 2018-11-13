@@ -9,6 +9,7 @@ pub mod target;
 pub mod types;
 pub mod value;
 pub mod value_ref;
+pub mod block;
 
 pub mod easy {
     pub use my_llvm::codegen::*;
@@ -21,4 +22,5 @@ pub mod easy {
     pub use my_llvm::types::*;
     pub use my_llvm::value::*;
     pub use my_llvm::value_ref::*;
+    pub use my_llvm::block::*;
 }

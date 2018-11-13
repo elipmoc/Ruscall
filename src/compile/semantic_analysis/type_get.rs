@@ -82,6 +82,7 @@ impl<'a> TypeGet for &'a ExprMir {
         match self {
             ExprMir::NumMir(x) => x.ty_get(ty_info),
             ExprMir::BoolMir(x) => x.ty_get(ty_info),
+            ExprMir::IfMir(x) => x.ty_get(ty_info),
             ExprMir::CallMir(x) => x.ty_get(ty_info),
             ExprMir::OpMir(x) => x.ty_get(ty_info),
             ExprMir::VariableMir(x) => x.ty_get(ty_info),
@@ -101,6 +102,22 @@ impl TypeGet for NumMir {
 impl TypeGet for BoolMir {
     fn ty_get(&self, ty_info: TypeInfo) -> TyCheckResult<(TypeInfo, Type)> {
         Ok((ty_info, Type::Bool))
+    }
+}
+
+impl TypeGet for IfMir {
+    fn ty_get(&self, ty_info: TypeInfo) -> TyCheckResult<(TypeInfo, Type)> {
+        let (ty_info, cond_ty) = (&self.cond).ty_get(ty_info)?;
+        let (ty_info, t_expr_ty) = (&self.t_expr).ty_get(ty_info)?;
+        let (ty_info, f_expr_ty) = (&self.t_expr).ty_get(ty_info)?;
+        let ty_info = ty_info.unify(cond_ty, Type::Bool)
+            .map_err(|msg| Error::new(self.pos, &msg))?;
+        let ty_info = ty_info.unify(t_expr_ty, f_expr_ty.clone())
+            .map_err(|msg| Error::new(self.pos, &msg))?;
+        let ret_ty = Type::TyVar(self.ty_id.clone(), vec![]);
+        let ty_info = ty_info.unify(ret_ty.clone(), f_expr_ty)
+            .map_err(|msg| Error::new(self.pos, &msg))?;
+        Ok((ty_info, ret_ty))
     }
 }
 

@@ -8,6 +8,7 @@ extern crate libc;
 
 use std::mem;
 
+#[derive(Clone, Copy)]
 pub struct Function {
     pub llvm_function: LLVMValueRef,
 }
@@ -27,9 +28,12 @@ impl Function {
     pub fn append_basic_block(&self, name: &str) -> *mut llvm::LLVMBasicBlock {
         unsafe { llvm::core::LLVMAppendBasicBlock(self.llvm_function, string_cast(name).as_ptr()) }
     }
+    pub fn get_last_basic_block(&self) -> *mut llvm::LLVMBasicBlock {
+        unsafe { llvm::core::LLVMGetLastBasicBlock(self.llvm_function) }
+    }
     pub fn get_params(&self, count: usize) -> Vec<LLVMValueRef> {
         unsafe {
-            let params: *mut LLVMValueRef = libc::malloc(mem::size_of::<LLVMValueRef>()*count) as *mut LLVMValueRef;
+            let params: *mut LLVMValueRef = libc::malloc(mem::size_of::<LLVMValueRef>() * count) as *mut LLVMValueRef;
             llvm::core::LLVMGetParams(self.llvm_function, params);
             Vec::from_raw_parts(params, count, count)
         }

@@ -48,9 +48,9 @@ impl ExprAST {
             }
             _ => match self {
                 ExprAST::LambdaAST(x) => {
-                    let mut x=*x;
+                    let mut x = *x;
                     x.body.currying(x.params.into_iter(), x.env)
-                },
+                }
                 ExprAST::TupleAST(mut x) => {
                     x.as_mut().elements = x.to_owned().elements.into_iter()
                         .map(|x| x.currying(vec![].into_iter(), vec![]))
@@ -58,19 +58,25 @@ impl ExprAST {
                     ExprAST::TupleAST(x)
                 }
                 ExprAST::FuncCallAST(x) => {
-                    let mut x=*x;
-                    x.func=x.func.currying(vec![].into_iter(), vec![]);
+                    let mut x = *x;
+                    x.func = x.func.currying(vec![].into_iter(), vec![]);
                     ExprAST::FuncCallAST(Box::new(x))
-                },
+                }
                 ExprAST::OpAST(x) => {
-                    let mut x=*x;
+                    let mut x = *x;
                     x.l_expr = x.l_expr.currying(vec![].into_iter(), vec![]);
                     x.r_expr = x.r_expr.currying(vec![].into_iter(), vec![]);
                     ExprAST::OpAST(Box::new(x))
                 }
                 ExprAST::ParenAST(x) => x.expr.currying(vec![].into_iter(), vec![]),
-                x=>x
-
+                ExprAST::IfAST(x) => {
+                    let mut x = *x;
+                    x.cond = x.cond.currying(vec![].into_iter(), vec![]);
+                    x.t_expr = x.t_expr.currying(vec![].into_iter(), vec![]);
+                    x.f_expr = x.f_expr.currying(vec![].into_iter(), vec![]);
+                    ExprAST::IfAST(Box::new(x))
+                }
+                x => x
             }
         }
     }

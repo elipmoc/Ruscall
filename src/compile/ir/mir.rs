@@ -40,6 +40,7 @@ pub enum ExprMir {
     OpMir(Box<OpMir>),
     NumMir(NumMir),
     BoolMir(BoolMir),
+    IfMir(Box<IfMir>),
     TupleMir(Box<TupleMir>),
     VariableMir(VariableMir),
     GlobalVariableMir(GlobalVariableMir),
@@ -53,6 +54,7 @@ impl ExprMir {
             ExprMir::OpMir(x) => x.l_expr.get_pos(),
             ExprMir::NumMir(x) => x.pos,
             ExprMir::BoolMir(x) => x.pos,
+            ExprMir::IfMir(x) => x.pos,
             ExprMir::TupleMir(x) => x.pos,
             ExprMir::VariableMir(x) => x.pos,
             ExprMir::GlobalVariableMir(x) => x.pos,
@@ -67,6 +69,11 @@ impl ExprMir {
             l_expr,
             r_expr,
         }))
+    }
+    pub fn create_if_mir(cond: ExprMir, t_expr: ExprMir, f_expr: ExprMir, pos: SourcePosition, ty_id: TypeId) -> ExprMir {
+        ExprMir::IfMir(Box::new(
+            IfMir { cond, t_expr, f_expr, ty_id, pos }
+        ))
     }
     pub fn create_variable_mir(id: usize, pos: SourcePosition, ty_id: TypeId) -> ExprMir {
         ExprMir::VariableMir(VariableMir { id, pos, ty_id })
@@ -95,6 +102,15 @@ pub struct OpMir {
 
 pub type NumMir = NumAST;
 pub type BoolMir = BoolAST;
+
+#[derive(Debug, PartialEq)]
+pub struct IfMir {
+    pub cond: ExprMir,
+    pub t_expr: ExprMir,
+    pub f_expr: ExprMir,
+    pub pos: SourcePosition,
+    pub ty_id: TypeId,
+}
 
 #[derive(Debug, PartialEq)]
 pub struct TupleMir {

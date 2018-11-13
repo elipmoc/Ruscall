@@ -70,4 +70,5 @@ impl Module {
             llvm::bit_writer::LLVMWriteBitcodeToFile(self.llvm_module, string_cast(path).as_ptr())
         }
     }
+
 }

@@ -35,6 +35,7 @@ pub enum ExprAST {
     OpAST(Box<OpAST>),
     NumAST(NumAST),
     BoolAST(BoolAST),
+    IfAST(Box<IfAST>),
     VariableAST(VariableAST),
     ParenAST(Box<ParenAST>),
     FuncCallAST(Box<FuncCallAST>),
@@ -54,8 +55,13 @@ impl ExprAST {
     pub fn create_num_ast(num: String, pos: SourcePosition) -> ExprAST {
         ExprAST::NumAST(NumAST::new(num, pos))
     }
-    pub fn create_bool_ast(bool: bool, pos: SourcePosition) -> ExprAST{
-        ExprAST::BoolAST(BoolAST{bool, pos})
+    pub fn create_bool_ast(bool: bool, pos: SourcePosition) -> ExprAST {
+        ExprAST::BoolAST(BoolAST { bool, pos })
+    }
+    pub fn create_if_ast(cond: ExprAST, t_expr: ExprAST, f_expr: ExprAST, pos: SourcePosition) -> ExprAST {
+        ExprAST::IfAST(Box::new(
+            IfAST { cond, t_expr, f_expr, pos }
+        ))
     }
     pub fn create_paren_ast(expr_ast: ExprAST) -> ExprAST {
         ExprAST::ParenAST(Box::new(ParenAST { expr: expr_ast }))
@@ -77,6 +83,7 @@ impl ExprAST {
         match self {
             ExprAST::NumAST(x) => x.pos,
             ExprAST::BoolAST(x) => x.pos,
+            ExprAST::IfAST(x)=>x.pos,
             ExprAST::OpAST(x) => x.pos,
             ExprAST::ParenAST(x) => x.expr.get_pos(),
             ExprAST::VariableAST(x) => x.pos,
@@ -105,6 +112,14 @@ impl NumAST {
 #[derive(Debug, Clone, PartialEq)]
 pub struct BoolAST {
     pub bool: bool,
+    pub pos: SourcePosition,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct IfAST {
+    pub cond: ExprAST,
+    pub t_expr: ExprAST,
+    pub f_expr: ExprAST,
     pub pos: SourcePosition,
 }
 

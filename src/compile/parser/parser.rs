@@ -229,7 +229,6 @@ parser! {
 }
 
 //<if>
-//:if            := 'if' :skip_many :expr '{' :skip_many :expr '}' :skip_many 'else' :skip_many '{' :skip_many :expr '}'
 parser! {
     fn if_parser['a]()(MyStream<'a>)->ast::ExprAST
     {
@@ -251,7 +250,7 @@ parser! {
             .skip(char('}'))
         )
         .map(|(pos,cond,t_expr,f_expr)|
-            ast::ExprAST::create_bool_ast(false,pos)
+            ast::ExprAST::create_if_ast(cond,t_expr,f_expr,pos)
         )
     }
 }
