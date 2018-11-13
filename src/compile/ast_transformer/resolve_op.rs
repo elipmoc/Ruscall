@@ -48,13 +48,13 @@ fn register_infix(infix_hash: &mut InfixHash, infix: ast::InfixAST) {
     infix_hash.insert(infix.op.clone(), infix);
 }
 
- enum Resolved {
+enum Resolved {
     OtherExprAST(ast::ExprAST),
     OpAST(ast::OpAST, ast::InfixAST),
 }
 
 impl Resolved {
-     fn get_expr_ast(self) -> ast::ExprAST {
+    fn get_expr_ast(self) -> ast::ExprAST {
         match self {
             Resolved::OpAST(x, _) => ast::ExprAST::OpAST(Box::new(x)),
             Resolved::OtherExprAST(x) => x,
@@ -109,15 +109,45 @@ impl ast::OpAST {
 }
 
 impl ast::ExprAST {
-     fn resolve_op(self, infix_hash: &InfixHash) -> ResolveResult<Resolved> {
+    fn resolve_op(self, infix_hash: &InfixHash) -> ResolveResult<Resolved> {
+        use super::super::ir::ast::*;
         let resolved = match self {
-            ast::ExprAST::OpAST(op_ast) => op_ast.swap_op(infix_hash)?,
-            ast::ExprAST::ParenAST(paren_ast) => {
-                Resolved::OtherExprAST(ast::ExprAST::create_paren_ast(
+            ExprAST::OpAST(op_ast) => op_ast.swap_op(infix_hash)?,
+            ExprAST::ParenAST(paren_ast) => {
+                Resolved::OtherExprAST(ExprAST::create_paren_ast(
                     paren_ast.expr.resolve_op(infix_hash)?.get_expr_ast(),
                 ))
             }
-            x => Resolved::OtherExprAST(x),
+            ExprAST::FuncCallAST(x) => {
+                let mut x = *x;
+                x.params =
+                    x.params.into_iter()
+                        .map(|e| e.resolve_op(infix_hash).map(|e| e.get_expr_ast()))
+                        .collect::<ResolveResult<Vec<ExprAST>>>()?;
+                x.func = x.func.resolve_op(infix_hash)?.get_expr_ast();
+                Resolved::OtherExprAST(ExprAST::FuncCallAST(Box::new(x)))
+            }
+            ExprAST::LambdaAST(x) => {
+                let mut x = *x;
+                x.body = x.body.resolve_op(infix_hash)?.get_expr_ast();
+                Resolved::OtherExprAST(ExprAST::LambdaAST(Box::new(x)))
+            }
+            ExprAST::TupleAST(x) => {
+                let mut x = *x;
+                x.elements =
+                    x.elements.into_iter()
+                        .map(|e| e.resolve_op(infix_hash).map(|e| e.get_expr_ast()))
+                        .collect::<ResolveResult<Vec<ExprAST>>>()?;
+                Resolved::OtherExprAST(ExprAST::TupleAST(Box::new(x)))
+            }
+            ExprAST::IfAST(x) => {
+                let mut x = *x;
+                x.t_expr = x.t_expr.resolve_op(infix_hash)?.get_expr_ast();
+                x.f_expr = x.f_expr.resolve_op(infix_hash)?.get_expr_ast();
+                x.cond = x.cond.resolve_op(infix_hash)?.get_expr_ast();
+                Resolved::OtherExprAST(ExprAST::IfAST(Box::new(x)))
+            }
+            ExprAST::NumAST(_) | ExprAST::BoolAST(_) | ExprAST::VariableAST(_) => Resolved::OtherExprAST(self),
         };
         Result::Ok(resolved)
     }
