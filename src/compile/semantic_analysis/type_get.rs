@@ -109,7 +109,7 @@ impl TypeGet for IfMir {
     fn ty_get(&self, ty_info: TypeInfo) -> TyCheckResult<(TypeInfo, Type)> {
         let (ty_info, cond_ty) = (&self.cond).ty_get(ty_info)?;
         let (ty_info, t_expr_ty) = (&self.t_expr).ty_get(ty_info)?;
-        let (ty_info, f_expr_ty) = (&self.t_expr).ty_get(ty_info)?;
+        let (ty_info, f_expr_ty) = (&self.f_expr).ty_get(ty_info)?;
         let ty_info = ty_info.unify(cond_ty, Type::Bool)
             .map_err(|msg| Error::new(self.pos, &msg))?;
         let ty_info = ty_info.unify(t_expr_ty, f_expr_ty.clone())
