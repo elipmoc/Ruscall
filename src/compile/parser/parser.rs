@@ -19,7 +19,7 @@ BNF
 :id            := [a-z]{ [a-z] | [0-9] | '_' }
 :expr          := :expr_app :skip_many { :op :skip_many :expr_app :skip_many }
 :expr_app      := :term {:skip_many :term }
-:infix         := ('infixr' | 'infixl') :space + :num :space + :op
+:infix         := ('infixr' | 'infixl') :skip_many1 :num :skip_many1 :op
 :op            := '+' | '-' | '/' | '*' | '=='
 :term          := :num | :bool | :if |:id | :paren | :tuple | :lambda
 :paren         := '(' :skip_many :expr ')'
@@ -29,9 +29,11 @@ BNF
 :tuple         := '(' :skip_many [ :expr {',' :skip_many :expr} [',' :skip_many]] ')'
 :lambda        := '\' :skip_many [ '[' :lambda_params ']' ] :lambda_params '->' :skip_many :expr
 :lambda_params := :skip_many [ :id { :skip_many ',' :skip_many :id } :skip_many ]
-:skip          := '\n' | :space
+:skip          := '\n' | :space | ' ' | '\t'
+:comment       := '//' [^ \n ]*
+:comments      := '/*' {:comments |[^(/*)(*/)]} '*/'
 :skip_many     := {:skip}
-:space         := ' ' | '\t'
+:skip_many1    := :skip +
 :ty_term       := 'Int32'| :ty_paren | :ty_tuple
 :ty_term_with_func
                := :ty_term | :ty_func
@@ -142,7 +144,7 @@ parser! {
                 ast::InfixType::Left
             }
         }).
-        skip(many1::<Vec<_>,_>(space_parser())),
+        skip(many1::<Vec<_>,_>(skip_many1_parser())),
         num_parser().
         then(|num_s|
             match num_s.parse::<i8>(){
@@ -150,7 +152,7 @@ parser! {
                 _=>unexpected("not 0 <= number <= 30 ").map(|_|0).right()
             }
         ).
-        skip(many1::<Vec<_>,_>(space_parser())),
+        skip(many1::<Vec<_>,_>(skip_many1_parser())),
         op_parser()
         ).
         map(|(ty,priority,op)|{
