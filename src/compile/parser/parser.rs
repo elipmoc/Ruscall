@@ -20,7 +20,7 @@ BNF
 :expr          := :expr_app :skip_many { :op :skip_many :expr_app :skip_many }
 :expr_app      := :term {:skip_many :term }
 :infix         := ('infixr' | 'infixl') :space + :num :space + :op
-:op            := '+' | '-' | '/' | '*'
+:op            := '+' | '-' | '/' | '*' | '=='
 :term          := :num | :bool | :if |:id | :paren | :tuple | :lambda
 :paren         := '(' :skip_many :expr ')'
 :num           := [0-9]+
@@ -170,7 +170,9 @@ parser! {
         string("+").
         or(string("-")).
         or(string("/")).
-        or(string("*")).map(|s|s.to_string())
+        or(string("*")).
+        or(string("=="))
+        .map(|s|s.to_string())
     }
 }
 

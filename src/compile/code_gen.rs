@@ -189,11 +189,11 @@ impl mir::IfMir {
         codegen.position_builder_at_end(then_block);
         let t_value = self.t_expr.code_gen(&module, &codegen, &params, ty_info, function);
         codegen.build_br(merge_block);
-        let then_block=codegen.get_insert_block();
+        let then_block = codegen.get_insert_block();
         codegen.position_builder_at_end(else_block);
         let f_value = self.f_expr.code_gen(&module, &codegen, &params, ty_info, function);
         codegen.build_br(merge_block);
-        let else_block=codegen.get_insert_block();
+        let else_block = codegen.get_insert_block();
         codegen.position_builder_at_end(merge_block);
         let phi_node = codegen.build_phi(ty_info.look_up(&self.ty_id, &vec![]).to_llvm_type(true), "");
         add_incoming(phi_node, vec![t_value, f_value], vec![then_block, else_block]);
@@ -284,6 +284,7 @@ impl mir::OpMir {
             "+" => codegen.build_add(lhs, rhs, ""),
             "-" => codegen.build_sub(lhs, rhs, ""),
             "*" => codegen.build_mul(lhs, rhs, ""),
+            "==" => codegen.build_ieq(lhs, rhs, ""),
             "/" => {
                 let lhs = codegen.build_si_to_fp(lhs, double_type(), "");
                 let rhs = codegen.build_si_to_fp(rhs, double_type(), "");

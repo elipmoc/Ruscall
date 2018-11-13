@@ -140,6 +140,11 @@ impl TypeGet for CallMir {
 
 impl TypeGet for OpMir {
     fn ty_get(&self, ty_info: TypeInfo) -> TyCheckResult<(TypeInfo, Type)> {
+        let ret_ty = match &(self.op) as &str {
+            "==" => Type::Bool,
+            _ => Type::Int32,
+        };
+
         let (ty_info, l_expr_ty) = (&self.l_expr)
             .ty_get(ty_info)?;
         let ty_info = ty_info.unify(l_expr_ty, Type::Int32)
@@ -149,7 +154,7 @@ impl TypeGet for OpMir {
             .ty_get(ty_info)?;
         let ty_info = ty_info.unify(r_expr_ty, Type::Int32)
             .map_err(|msg| Error::new(self.r_expr.get_pos(), &msg))?;
-        Ok((ty_info, Type::Int32))
+        Ok((ty_info, ret_ty))
     }
 }
 

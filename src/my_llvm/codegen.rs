@@ -71,6 +71,15 @@ impl CodeGenerator {
     pub fn build_fdiv(&self, lhs: LLVMValueRef, rhs: LLVMValueRef, name: &str) -> LLVMValueRef {
         unsafe { llvm::core::LLVMBuildFDiv(self.builder, lhs, rhs, string_cast(name).as_ptr()) }
     }
+    pub fn build_ieq(&self, lhs: LLVMValueRef, rhs: LLVMValueRef, name: &str) -> LLVMValueRef {
+        unsafe {
+            llvm::core::LLVMBuildICmp(
+                self.builder,
+                llvm::LLVMIntPredicate::LLVMIntEQ,
+                lhs, rhs,
+                string_cast(name).as_ptr())
+        }
+    }
     //浮動小数点数から符号付整数へのキャスト
     pub fn build_fp_to_si(
         &self,
