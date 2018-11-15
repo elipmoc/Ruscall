@@ -1,33 +1,33 @@
-use super::super::ir::ast;
+use super::super::ir::ast::*;
 use super::super::Error;
 use std::collections::HashMap;
 
-type InfixHash = HashMap<String, ast::InfixAST>;
+type InfixHash = HashMap<String, InfixAST>;
 type ResolveResult<T> = Result<T, Error>;
 
-impl ast::ProgramAST {
+impl ProgramAST {
     //OpASTをinfixの定義によって優先順位を置き換えたProgramASTを得る
-    pub fn resolve_op(self) -> ResolveResult<ast::ProgramAST> {
+    pub fn resolve_op(self) -> ResolveResult<ProgramAST> {
         let mut infix_hash: InfixHash = HashMap::new();
-        let mut new_stmt_list = Vec::with_capacity(self.stmt_list.len());
-        for stmt in self.stmt_list {
-            new_stmt_list.push(stmt.resolve_op(&mut infix_hash)?);
-        }
-        Result::Ok(ast::ProgramAST {
+        let new_stmt_list =
+            self.stmt_list.into_iter()
+                .map(|stmt| stmt.resolve_op(&mut infix_hash))
+                .collect::<ResolveResult<Vec<StmtAST>>>()?;
+        Ok(ProgramAST {
             stmt_list: new_stmt_list,
         })
     }
 }
 
-impl ast::StmtAST {
-    fn resolve_op(self, infix_hash: &mut InfixHash) -> ResolveResult<ast::StmtAST> {
+impl StmtAST {
+    fn resolve_op(self, infix_hash: &mut InfixHash) -> ResolveResult<StmtAST> {
         let new_stmt = match self {
-            ast::StmtAST::DefFuncAST(def_func_ast) => {
-                ast::StmtAST::DefFuncAST(def_func_ast.resolve_op(infix_hash)?)
+            StmtAST::DefFuncAST(def_func_ast) => {
+                StmtAST::DefFuncAST(def_func_ast.resolve_op(infix_hash)?)
             }
-            ast::StmtAST::InfixAST(infix) => {
+            StmtAST::InfixAST(infix) => {
                 register_infix(infix_hash, infix);
-                ast::StmtAST::NoneAST
+                StmtAST::NoneAST
             }
             x => x,
         };
@@ -35,50 +35,50 @@ impl ast::StmtAST {
     }
 }
 
-impl ast::DefFuncAST {
-    fn resolve_op(self, infix_hash: &InfixHash) -> ResolveResult<ast::DefFuncAST> {
-        Result::Ok(ast::DefFuncAST {
+impl DefFuncAST {
+    fn resolve_op(self, infix_hash: &InfixHash) -> ResolveResult<DefFuncAST> {
+        Result::Ok(DefFuncAST {
             body: self.body.resolve_op(infix_hash)?.get_expr_ast(),
             ..self
         })
     }
 }
 
-fn register_infix(infix_hash: &mut InfixHash, infix: ast::InfixAST) {
+fn register_infix(infix_hash: &mut InfixHash, infix: InfixAST) {
     infix_hash.insert(infix.op.clone(), infix);
 }
 
 enum Resolved {
-    OtherExprAST(ast::ExprAST),
-    OpAST(ast::OpAST, ast::InfixAST),
+    OtherExprAST(ExprAST),
+    OpAST(OpAST, InfixAST),
 }
 
 impl Resolved {
-    fn get_expr_ast(self) -> ast::ExprAST {
+    fn get_expr_ast(self) -> ExprAST {
         match self {
-            Resolved::OpAST(x, _) => ast::ExprAST::OpAST(Box::new(x)),
+            Resolved::OpAST(x, _) => ExprAST::OpAST(Box::new(x)),
             Resolved::OtherExprAST(x) => x,
         }
     }
 }
 
-impl ast::InfixAST {
+impl InfixAST {
     //自分より左にある演算子と比べて優先順位が高かったらtrue
-    fn is_priority_greater(&self, child: &ast::InfixAST) -> bool {
+    fn is_priority_greater(&self, child: &InfixAST) -> bool {
         if self.priority > child.priority {
             return true;
         }
         if self.priority == child.priority && self.ty == child.ty {
             return match self.ty {
-                ast::InfixType::Left => false,
-                ast::InfixType::Right => true,
+                InfixType::Left => false,
+                InfixType::Right => true,
             };
         }
         return false;
     }
 }
 
-impl ast::OpAST {
+impl OpAST {
     fn swap_op(mut self, infix_hash: &InfixHash) -> ResolveResult<Resolved> {
         let self_infix = match infix_hash.get(&self.op) {
             None => return Result::Err(Error::new(self.pos, "no declare op")),
@@ -89,12 +89,12 @@ impl ast::OpAST {
             Resolved::OpAST(mut child_op_ast, child_infix) => {
                 if self_infix.is_priority_greater(&child_infix) {
                     self.l_expr = child_op_ast.r_expr;
-                    child_op_ast.r_expr = ast::ExprAST::OpAST(Box::new(self))
+                    child_op_ast.r_expr = ExprAST::OpAST(Box::new(self))
                         .resolve_op(infix_hash)?
                         .get_expr_ast();
                     Resolved::OpAST(child_op_ast, child_infix)
                 } else {
-                    self.l_expr = ast::ExprAST::OpAST(Box::new(child_op_ast));
+                    self.l_expr = ExprAST::OpAST(Box::new(child_op_ast));
                     Resolved::OpAST(self, self_infix)
                 }
             }
@@ -104,11 +104,11 @@ impl ast::OpAST {
                 Resolved::OpAST(self, self_infix)
             }
         };
-        Result::Ok(resolved)
+        Ok(resolved)
     }
 }
 
-impl ast::ExprAST {
+impl ExprAST {
     fn resolve_op(self, infix_hash: &InfixHash) -> ResolveResult<Resolved> {
         use super::super::ir::ast::*;
         let resolved = match self {
@@ -149,6 +149,6 @@ impl ast::ExprAST {
             }
             ExprAST::NumAST(_) | ExprAST::BoolAST(_) | ExprAST::VariableAST(_) => Resolved::OtherExprAST(self),
         };
-        Result::Ok(resolved)
+        Ok(resolved)
     }
 }
