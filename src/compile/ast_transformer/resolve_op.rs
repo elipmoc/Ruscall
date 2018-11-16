@@ -1,37 +1,22 @@
 use super::super::ir::ast::*;
+use super::super::ir::hir::*;
 use super::super::Error;
 use std::collections::HashMap;
 
 type InfixHash = HashMap<String, InfixAST>;
 type ResolveResult<T> = Result<T, Error>;
 
-impl ProgramAST {
+impl ProgramHir {
     //OpASTをinfixの定義によって優先順位を置き換えたProgramASTを得る
-    pub fn resolve_op(self) -> ResolveResult<ProgramAST> {
-        let mut infix_hash: InfixHash = HashMap::new();
-        let new_stmt_list =
-            self.stmt_list.into_iter()
-                .map(|stmt| stmt.resolve_op(&mut infix_hash))
-                .collect::<ResolveResult<Vec<StmtAST>>>()?;
-        Ok(ProgramAST {
-            stmt_list: new_stmt_list,
-        })
-    }
-}
+    pub fn resolve_op(mut self) -> ResolveResult<ProgramHir> {
+        let mut infix_list = self.infix_list;
+        self.def_func_list =
+            self.def_func_list.into_iter()
+                .map(|stmt| stmt.resolve_op(&mut infix_list))
+                .collect::<ResolveResult<Vec<DefFuncAST>>>()?;
+        self.infix_list = infix_list;
 
-impl StmtAST {
-    fn resolve_op(self, infix_hash: &mut InfixHash) -> ResolveResult<StmtAST> {
-        let new_stmt = match self {
-            StmtAST::DefFuncAST(def_func_ast) => {
-                StmtAST::DefFuncAST(def_func_ast.resolve_op(infix_hash)?)
-            }
-            StmtAST::InfixAST(infix) => {
-                register_infix(infix_hash, infix);
-                StmtAST::NoneAST
-            }
-            x => x,
-        };
-        Result::Ok(new_stmt)
+        Ok(self)
     }
 }
 
@@ -42,10 +27,6 @@ impl DefFuncAST {
             ..self
         })
     }
-}
-
-fn register_infix(infix_hash: &mut InfixHash, infix: InfixAST) {
-    infix_hash.insert(infix.op.clone(), infix);
 }
 
 enum Resolved {

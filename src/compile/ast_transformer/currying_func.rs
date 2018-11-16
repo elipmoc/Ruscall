@@ -1,28 +1,21 @@
+use super::super::ir::hir::*;
 use super::super::ir::ast::*;
 
-//ASTを組み替えてカリー化を行う
+//Hirを組み替えてカリー化を行う
 
-impl ProgramAST {
-    pub fn currying(mut self) -> ProgramAST {
-        self.stmt_list =
-            self.stmt_list
+impl ProgramHir {
+    pub fn currying(mut self) -> ProgramHir{
+        self.def_func_list=
+            self.def_func_list
                 .into_iter()
-                .map(StmtAST::currying).collect();
+                .map(DefFuncHir::currying).collect();
         self
     }
 }
 
-impl StmtAST {
-    fn currying(self) -> StmtAST {
-        match self {
-            StmtAST::DefFuncAST(x) => StmtAST::DefFuncAST(x.currying()),
-            _ => self
-        }
-    }
-}
 
-impl DefFuncAST {
-    fn currying(mut self) -> DefFuncAST {
+impl DefFuncHir {
+    fn currying(mut self) -> DefFuncHir {
         if self.params.len() == 0 {
             self.params.push(VariableAST { pos: self.pos, id: "_".to_string() });
         }
