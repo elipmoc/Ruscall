@@ -8,7 +8,7 @@ impl ProgramHir {
         self.def_func_list =
             self.def_func_list
                 .into_iter()
-                .map(DefFuncHir::currying)
+                .map(|(k, f)| (k, f.currying()))
                 .collect();
         self
     }

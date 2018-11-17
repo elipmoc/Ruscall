@@ -20,7 +20,7 @@ impl ProgramHir {
 
         program_mir = self.def_func_list
             .into_iter()
-            .fold(Ok(program_mir), |acc, x| {
+            .fold(Ok(program_mir), |acc, (_, x)| {
                 x.to_mir(acc?, &mut lambda_count, &mut var_table)
             })?;
 
@@ -35,11 +35,11 @@ impl ProgramHir {
     //グローバル変数の名前一覧を取得（関数名しかないけど）
     fn get_global_var_names(&self) -> HashMap<String, ()> {
         self.def_func_list.iter()
-            .map(|x| x.name.clone())
+            .map(|(_, x)| x.name.clone())
             .chain(
                 self.dec_func_list.iter()
                     .chain(self.ex_dec_func_list.iter())
-                    .map(|(_,x)| x.name.clone())
+                    .map(|(_, x)| x.name.clone())
             )
             .map(|x| (x, ()))
             .collect()

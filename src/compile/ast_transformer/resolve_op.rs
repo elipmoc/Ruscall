@@ -12,8 +12,8 @@ impl ProgramHir {
         let mut infix_list = self.infix_list;
         self.def_func_list =
             self.def_func_list.into_iter()
-                .map(|stmt| stmt.resolve_op(&mut infix_list))
-                .collect::<ResolveResult<Vec<DefFuncAST>>>()?;
+                .map(|(k, f)| Ok((k, f.resolve_op(&mut infix_list)?)))
+                .collect::<ResolveResult<HashMap<String, DefFuncAST>>>()?;
         self.infix_list = infix_list;
 
         Ok(self)
