@@ -4,11 +4,12 @@ use super::super::ir::ast::*;
 //Hirを組み替えてカリー化を行う
 
 impl ProgramHir {
-    pub fn currying(mut self) -> ProgramHir{
-        self.def_func_list=
+    pub fn currying(mut self) -> ProgramHir {
+        self.def_func_list =
             self.def_func_list
                 .into_iter()
-                .map(DefFuncHir::currying).collect();
+                .map(DefFuncHir::currying)
+                .collect();
         self
     }
 }

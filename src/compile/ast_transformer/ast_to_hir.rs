@@ -10,9 +10,9 @@ impl ProgramAST {
     pub fn to_hir(self) -> AstToHirResult<ProgramHir> {
         let mut program_hir = ProgramHir {
             infix_list: HashMap::new(),
-            dec_func_list: vec![],
+            dec_func_list: HashMap::new(),
             def_func_list: vec![],
-            ex_dec_func_list: vec![],
+            ex_dec_func_list: HashMap::new(),
         };
         self
             .stmt_list
@@ -23,9 +23,9 @@ impl ProgramAST {
                     StmtAST::DefFuncAST(x) => program_hir.def_func_list.push(x),
                     StmtAST::DecFuncAST(x) => {
                         if x.extern_flag {
-                            program_hir.ex_dec_func_list.push(x);
+                            program_hir.ex_dec_func_list.insert(x.name.clone(),x);
                         } else {
-                            program_hir.dec_func_list.push(x);
+                            program_hir.dec_func_list.insert(x.name.clone(),x);
                         }
                     }
                     StmtAST::NoneAST => ()

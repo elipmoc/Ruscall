@@ -27,7 +27,7 @@ impl ProgramHir {
         program_mir = self.dec_func_list
             .into_iter()
             .chain(self.ex_dec_func_list.into_iter())
-            .fold(Ok(program_mir), |acc, x| {
+            .fold(Ok(program_mir), |acc, (_, x)| {
                 Ok(x.to_mir(acc?))
             })?;
         Ok(program_mir)
@@ -39,7 +39,7 @@ impl ProgramHir {
             .chain(
                 self.dec_func_list.iter()
                     .chain(self.ex_dec_func_list.iter())
-                    .map(|x| x.name.clone())
+                    .map(|(_,x)| x.name.clone())
             )
             .map(|x| (x, ()))
             .collect()
