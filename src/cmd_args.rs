@@ -27,7 +27,11 @@ impl CmdArgsKind {
             }
             CmdArgsKind::Version => println!("\nRuscall version 0.5.0\n"),
             CmdArgsKind::Hello => hello::hello(),
-            CmdArgsKind::Compile(ref file_name) => compile::compile(file_name),
+            CmdArgsKind::Compile(ref file_name) => {
+                if let Err(err) = compile::compile(file_name) {
+                    eprintln!("{}", err);
+                }
+            }
             CmdArgsKind::Error => println!("\nerror cmd args\n"),
         }
     }
