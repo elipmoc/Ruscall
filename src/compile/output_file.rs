@@ -28,12 +28,14 @@ pub fn output_file(code_gen_result:CodeGenResult) {
     target_machine.dispose();
 
     let current_dir = env::current_dir().unwrap().to_str().unwrap().to_string();
+
     if cfg!(target_os = "windows") {
+        let compile_bat_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
         command_exec(
             "cmd",
             &[
                 "/C",
-                &(current_dir.clone() + "\\compile.bat"),
+                &(compile_bat_dir + "\\compile.bat"),
                 &(current_dir + "\\" + file_name + ".obj"),
             ],
         );
