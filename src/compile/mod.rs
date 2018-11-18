@@ -15,7 +15,11 @@ use std::io::{BufReader, Read};
 
 pub fn compile(file_name: &str) {
     println!("input:{}", file_name);
-    match parse(&src_file_to_str(file_name)) {
+    compile_from_str(&src_file_to_str(file_name), file_name);
+}
+
+pub fn compile_from_str(str: &str, file_name: &str) {
+    match parse(str) {
         Ok(program_ir) => output_file(program_ir.code_gen("compiled")),
         Err(err) => eprintln!("{}", err),
     };
