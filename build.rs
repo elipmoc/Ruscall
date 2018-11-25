@@ -4,7 +4,10 @@ extern crate cc;
 fn main() {
     use std::env;
     use std::path::Path;
-    println!("cargo:rustc-link-lib=dylib={}", "ffi");
+    //windows以外でのみffilibを明示的にリンク
+    if cfg!(not(target_os = "windows")) {
+        println!("cargo:rustc-link-lib=dylib={}", "ffi");
+    }
 
     //親プロジェクトのpathを取得
     let current_dir = Path::new(&env::var("OUT_DIR").unwrap())
