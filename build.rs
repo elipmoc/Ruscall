@@ -4,6 +4,7 @@ extern crate cc;
 fn main() {
     use std::env;
     use std::path::Path;
+    println!("cargo:rustc-link-lib=dylib={}", "ffi");
 
     //親プロジェクトのpathを取得
     let current_dir = Path::new(&env::var("OUT_DIR").unwrap())
