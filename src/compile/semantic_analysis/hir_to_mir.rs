@@ -276,7 +276,7 @@ fn ast_to_ir_test() {
     use compile::types::types::TypeId;
     let ast = ProgramAST {
         stmt_list: vec![StmtAST::DefFuncAST(DefFuncAST {
-            name: "hoge".to_string(),
+            name: "main".to_string(),
             params: vec![
                 VariableAST::new("a".to_string(), SourcePosition { column: 0, line: 0 }),
                 VariableAST::new("b".to_string(), SourcePosition { column: 0, line: 0 }),
@@ -290,7 +290,7 @@ fn ast_to_ir_test() {
     };
     let mut func_list = vec![];
     func_list.push(FuncMir {
-        name: "hoge".to_string(),
+        name: "main".to_string(),
         body: ExprMir::create_variable_mir(0, SourcePosition { line: 0, column: 0 }, TypeId::new(0)),
         params_len: 2,
         pos: SourcePosition { column: 0, line: 0 },

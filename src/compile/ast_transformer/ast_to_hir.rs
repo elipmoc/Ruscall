@@ -2,6 +2,7 @@ use super::super::ir::ast::*;
 use super::super::ir::hir::*;
 use super::Error;
 use std::collections::HashMap;
+use combine::stream::state::SourcePosition;
 
 type AstToHirResult<T> = Result<T, Error>;
 
@@ -31,7 +32,7 @@ impl ProgramAST {
                         program_hir.ex_dec_func_list.insert(x.name.clone(), x);
                     } else {
                         if program_hir.dec_func_list.contains_key(&x.name) {
-                            return Err(Error::new(x.pos, &"Duplicate function declare"));
+                            return Err(Error::new(x.pos, "Duplicate function declare"));
                         }
                         program_hir.dec_func_list.insert(x.name.clone(), x);
                     }
@@ -39,6 +40,10 @@ impl ProgramAST {
                 StmtAST::NoneAST => ()
             };
         };
-        Ok(program_hir)
+        if program_hir.def_func_list.contains_key("main"){
+            Ok(program_hir)
+        }else{
+            Err(Error::new(SourcePosition::new(),"not found main function!"))
+        }
     }
 }
