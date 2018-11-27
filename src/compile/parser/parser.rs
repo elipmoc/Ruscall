@@ -13,10 +13,14 @@ BNF
                         :infix |
                         :def_func |
                         :dec_func |
-                        :exturn_dec_func
+                        :exturn_dec_func |
+                        :struct
                    ) :skip_many ';'
+:struct        := 'struct' :skip_many :upper_id :skip_many :ty_tuple | :struct_record
+:struct_record :='{' :skip_many   { :id :skip_many ':' :skip_many :ty_term_with_func :skip_many } '}'
 :def_func      := :id {:skip_many :id} :skip_many '=' :skip_many :expr
 :id            := [a-z]{ [a-z] | [0-9] | '_' }
+:upper_id      := [A-Z]{ [a-z] | [0-9] | '_' }
 :expr          := :expr_app :skip_many { :op :skip_many :expr_app :skip_many }
 :expr_app      := :term {:skip_many :term }
 :infix         := ('infixr' | 'infixl') :skip_many1 :num :skip_many1 :op
