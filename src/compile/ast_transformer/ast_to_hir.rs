@@ -37,7 +37,8 @@ impl ProgramAST {
                         program_hir.dec_func_list.insert(x.name.clone(), x);
                     }
                 }
-                StmtAST::NoneAST => ()
+                StmtAST::NoneAST => (),
+                _=>panic!("undefined!")
             };
         };
         if program_hir.def_func_list.contains_key("main"){

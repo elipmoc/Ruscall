@@ -9,6 +9,7 @@ pub struct ProgramAST {
 #[derive(Debug, Clone, PartialEq)]
 pub enum StmtAST {
     InfixAST(InfixAST),
+    DecStructAST(DecStructAST),
     DefFuncAST(DefFuncAST),
     DecFuncAST(DecFuncAST),
     NoneAST,
@@ -28,6 +29,12 @@ pub struct InfixAST {
 pub enum InfixType {
     Left,
     Right,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct DecStructAST {
+    pos: SourcePosition,
+    ty: StructType,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -83,7 +90,7 @@ impl ExprAST {
         match self {
             ExprAST::NumAST(x) => x.pos,
             ExprAST::BoolAST(x) => x.pos,
-            ExprAST::IfAST(x)=>x.pos,
+            ExprAST::IfAST(x) => x.pos,
             ExprAST::OpAST(x) => x.pos,
             ExprAST::ParenAST(x) => x.expr.get_pos(),
             ExprAST::VariableAST(x) => x.pos,
