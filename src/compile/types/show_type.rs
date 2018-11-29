@@ -23,7 +23,9 @@ impl ShowType for Type {
             Type::Bool => "Bool".to_string(),
             Type::TupleType(x) => x.show(),
             Type::TyVar(ty_id, _) => ty_id.get_id().to_string(),
-            Type::LambdaType(x) => x.show()
+            Type::LambdaType(x) => x.show(),
+            Type::RecordType(x)=>panic!(""),
+            Type::StructType(x)=>panic!("")
         }
     }
 }

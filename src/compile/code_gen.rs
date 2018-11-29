@@ -68,6 +68,7 @@ impl Type {
             Type::TupleType(x) => x.to_llvm_type(),
             Type::TyVar(_, _) => panic!("TyVar type!"),
             Type::LambdaType(x) => x.to_llvm_type(fn_pointer_flag),
+            _=>panic!("undefined type!")
         }
     }
 }

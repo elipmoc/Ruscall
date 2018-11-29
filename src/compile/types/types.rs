@@ -12,7 +12,7 @@ impl TypeId {
 }
 
 //型制約
-#[derive(Clone, PartialEq,Debug)]
+#[derive(Clone, PartialEq, Debug)]
 pub enum TypeCondition {
     Call(FuncType)
 }
@@ -24,6 +24,8 @@ pub enum Type {
     TupleType(Box<TupleType>),
     TyVar(TypeId, Vec<TypeCondition>),
     LambdaType(Box<LambdaType>),
+    RecordType(Box<RecordType>),
+    StructType(Box<StructType>),
 }
 
 impl Type {
@@ -48,6 +50,17 @@ pub struct FuncType {
 #[derive(Debug, Clone, PartialEq)]
 pub struct TupleType {
     pub element_tys: Vec<Type>
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct StructType {
+    pub ty: Type,
+    pub name: String,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct RecordType {
+    pub element_tys: Vec<(String, Type)>
 }
 
 #[derive(Debug, Clone, PartialEq)]

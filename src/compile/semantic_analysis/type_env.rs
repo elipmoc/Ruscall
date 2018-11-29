@@ -108,6 +108,7 @@ impl TypeSubstitute {
                     ||
                     self.occurs_check(&x.func_ty.ret_type, ty_id)
             }
+            _=>panic!("undefined type!")
         }
     }
 
