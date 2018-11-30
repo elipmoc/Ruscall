@@ -95,7 +95,7 @@ parser! {
 parser! {
    fn id_parser['a]()(MyStream<'a>) ->String
     {
-        (letter(),many(alpha_num().or(char('_')))).map(|(x,y):(char,String)|x.to_string()+&y)
+        (lower(),many(alpha_num().or(char('_')))).map(|(x,y):(char,String)|x.to_string()+&y)
     }
 }
 
