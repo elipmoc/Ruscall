@@ -1,6 +1,8 @@
 use super::super::ir::ast;
+use super::super::types::types::*;
 use super::skipper::*;
-use combine::char::{alpha_num, char, digit, letter, string};
+use super::types::{struct_record_parser,ty_tuple_parser};
+use combine::char::{alpha_num, char, digit, lower, string, upper};
 use combine::parser::combinator::try;
 use combine::stream::state::{DefaultPositioned, SourcePosition, State};
 use combine::{easy, optional, sep_by};
@@ -18,9 +20,9 @@ BNF
                    ) :skip_many ';'
 :struct        := 'struct' :skip_many :upper_id :skip_many :ty_tuple | :struct_record
 :struct_record :='{' :skip_many   { :id :skip_many ':' :skip_many :ty_term_with_func :skip_many } '}'
+:upper_id      := [A-Z]{ [a-z] | [0-9] | '_' }
 :def_func      := :id {:skip_many :id} :skip_many '=' :skip_many :expr
 :id            := [a-z]{ [a-z] | [0-9] | '_' }
-:upper_id      := [A-Z]{ [a-z] | [0-9] | '_' }
 :expr          := :expr_app :skip_many { :op :skip_many :expr_app :skip_many }
 :expr_app      := :term {:skip_many :term }
 :infix         := ('infixr' | 'infixl') :skip_many1 :num :skip_many1 :op
@@ -66,15 +68,45 @@ parser! {
         try(
             skip_many_parser().
             with (
-                try(infix_parser().map(|x|ast::StmtAST::InfixAST(x)))
-                .or(try(def_func_parser().map(|x|ast::StmtAST::DefFuncAST(x))))
-                .or(try(dec_func_parser().map(|x|ast::StmtAST::DecFuncAST(x))))
-                .or(extern_dec_func_parser().map(|x|ast::StmtAST::DecFuncAST(x)))
+                try(infix_parser().map(ast::StmtAST::InfixAST))
+                .or(try(def_func_parser().map(ast::StmtAST::DefFuncAST)))
+                .or(try(dec_func_parser().map(ast::StmtAST::DecFuncAST)))
+                .or(extern_dec_func_parser().map(ast::StmtAST::DecFuncAST))
+                .or(struct_parser().map(ast::StmtAST::DecStructAST))
             ).
             skip(
                 skip_many_parser()
             ).skip(char(';'))
         )
+    }
+}
+
+//<struct>
+parser! {
+    fn struct_parser['a]()(MyStream<'a>)->ast::DecStructAST{
+        (
+            position(),
+            string("struct")
+            .with(skip_many_parser())
+            .with(upper_id_parser()),
+            skip_many_parser()
+            .with(ty_tuple_parser().or(struct_record_parser()))
+        )
+        .map(|(pos,name,ty)|
+            ast::DecStructAST{
+                ty,
+                pos,
+                name
+            }
+        )
+
+    }
+}
+
+//<upper_id>
+parser! {
+    fn upper_id_parser['a]()(MyStream<'a>)->String{
+        (upper(),many(alpha_num().or(char('_')))).map(|(x,y):(char,String)|x.to_string()+&y)
     }
 }
 
@@ -93,7 +125,7 @@ parser! {
 
 //<id>
 parser! {
-   fn id_parser['a]()(MyStream<'a>) ->String
+   pub fn id_parser['a]()(MyStream<'a>) ->String
     {
         (lower(),many(alpha_num().or(char('_')))).map(|(x,y):(char,String)|x.to_string()+&y)
     }

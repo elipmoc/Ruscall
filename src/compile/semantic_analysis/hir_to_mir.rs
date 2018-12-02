@@ -118,7 +118,8 @@ impl TypeAST {
             TypeAST::TupleTypeAST(x) => Type::TupleType(
                 Box::new(x.to_ty(ty_var_table, ty_info))
             ),
-            TypeAST::TypeVarName(ty_name) => ty_var_table.get_ty(ty_name, ty_info)
+            TypeAST::TypeVarName(ty_name) => ty_var_table.get_ty(ty_name, ty_info),
+            _=>panic!("undefined")
         }
     }
 }

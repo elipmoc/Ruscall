@@ -33,8 +33,9 @@ pub enum InfixType {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct DecStructAST {
-    pos: SourcePosition,
-    ty: StructType,
+    pub pos: SourcePosition,
+    pub ty: TypeAST,
+    pub name: String,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -208,6 +209,7 @@ pub enum TypeAST {
     FuncTypeAST(Box<FuncTypeAST>),
     TupleTypeAST(Box<TupleTypeAST>),
     TypeVarName(String),
+    StructRecordTypeAST(StructRecordTypeAST)
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -219,6 +221,11 @@ pub struct FuncTypeAST {
 #[derive(Debug, Clone, PartialEq)]
 pub struct TupleTypeAST {
     pub elements_ty: Vec<TypeAST>
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct StructRecordTypeAST {
+    pub elements_ty: Vec<(String, TypeAST)>,
 }
 
 

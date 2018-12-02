@@ -1,6 +1,6 @@
 use super::super::types::types::*;
 use super::super::ir::ast::*;
-use super::parser::MyStream;
+use super::parser::{MyStream, id_parser};
 use super::skipper::skip_many_parser;
 use combine::char::{char, string};
 use combine::optional;
@@ -44,7 +44,7 @@ parser! {
 
 //<ty_tuple>
 parser! {
-   fn ty_tuple_parser['a]()(MyStream<'a>) ->TypeAST
+   pub fn ty_tuple_parser['a]()(MyStream<'a>) ->TypeAST
     {
         char('(')
             .with(skip_many_parser())
@@ -99,5 +99,25 @@ parser! {
                 params_ty: vec![x]
             }
         })
+    }
+}
+
+//<struct_record>
+parser! {
+    pub fn struct_record_parser['a]()(MyStream<'a>)->TypeAST{
+        char('{')
+        .with(skip_many_parser())
+        .with(many((
+            id_parser()
+            .skip(skip_many_parser())
+            .skip(char(':'))
+            .skip(skip_many_parser()),
+            ty_term_with_func_parser()
+            .skip(skip_many_parser())
+        )))
+        .skip(char('}'))
+        .map(|v:Vec<_>|TypeAST::StructRecordTypeAST(
+            StructRecordTypeAST{elements_ty:v}
+        ))
     }
 }
