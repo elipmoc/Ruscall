@@ -14,6 +14,7 @@ impl ProgramAST {
             dec_func_list: HashMap::new(),
             def_func_list: HashMap::new(),
             ex_dec_func_list: HashMap::new(),
+            struct_list: HashMap::new(),
         };
         for stmt in self.stmt_list.into_iter() {
             match stmt {
@@ -38,13 +39,19 @@ impl ProgramAST {
                     }
                 }
                 StmtAST::NoneAST => (),
-                _=>panic!("undefined!")
+                StmtAST::DecStructAST(x) => {
+                    if program_hir.struct_list.contains_key(&x.name) {
+                        return Err(Error::new(x.pos, &"Duplicate struct declare"));
+                    }
+                    program_hir.struct_list.insert(x.name.clone(), x);
+                }
+                _ => panic!("undefined!")
             };
         };
-        if program_hir.def_func_list.contains_key("main"){
+        if program_hir.def_func_list.contains_key("main") {
             Ok(program_hir)
-        }else{
-            Err(Error::new(SourcePosition::new(),"not found main function!"))
+        } else {
+            Err(Error::new(SourcePosition::new(), "not found main function!"))
         }
     }
 }
