@@ -19,7 +19,9 @@ BNF
                         :struct
                    ) :skip_many ';'
 :struct        := 'struct' :skip_many :upper_id :skip_many :ty_tuple | :struct_record
-:struct_record :='{' :skip_many   { :id :skip_many ':' :skip_many :ty_term_with_func :skip_many } '}'
+:struct_record := '{' :skip_many :struct_record_part { :skip_many ',' :skip_many :struct_record_part} [:skip_many,','] :skip_many '}'
+:struct_record_part
+               := :id :skip_many ':' :skip_many :ty_term_with_func
 :upper_id      := [A-Z]{ [a-z] | [0-9] | '_' }
 :def_func      := :id {:skip_many :id} :skip_many '=' :skip_many :expr
 :id            := [a-z]{ [a-z] | [0-9] | '_' }

@@ -3,10 +3,9 @@ use super::super::ir::ast::*;
 use super::parser::{MyStream, id_parser};
 use super::skipper::skip_many_parser;
 use combine::char::{char, string};
-use combine::optional;
 use combine::parser::char::{alpha_num, lower};
 use combine::parser::combinator::try;
-use combine::many;
+use combine::{many,optional,sep_end_by};
 
 //<ty_term>
 parser! {
@@ -107,17 +106,31 @@ parser! {
     pub fn struct_record_parser['a]()(MyStream<'a>)->TypeAST{
         char('{')
         .with(skip_many_parser())
-        .with(many((
-            id_parser()
-            .skip(skip_many_parser())
-            .skip(char(':'))
-            .skip(skip_many_parser()),
-            ty_term_with_func_parser()
-            .skip(skip_many_parser())
-        )))
+        .with(
+            sep_end_by(
+                struct_record_part_parser(),
+                skip_many_parser()
+                    .with(char(','))
+                    .skip(skip_many_parser())
+            )
+                .skip(skip_many_parser())
+        )
         .skip(char('}'))
         .map(|v:Vec<_>|TypeAST::StructRecordTypeAST(
             StructRecordTypeAST{elements_ty:v}
         ))
+    }
+}
+
+//<struct_record_part>
+parser! {
+    pub fn struct_record_part_parser['a]()(MyStream<'a>)->(String,TypeAST){
+        (
+            id_parser()
+                .skip(skip_many_parser())
+                .skip(char(':'))
+                .skip(skip_many_parser()),
+            ty_term_with_func_parser()
+        )
     }
 }
