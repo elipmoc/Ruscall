@@ -101,10 +101,7 @@ impl ExprAST {
             }
             ExprAST::FuncCallAST(x) => {
                 let mut x = *x;
-                x.params =
-                    x.params.into_iter()
-                        .map(|e| e.resolve_op(infix_hash).map(|e| e.get_expr_ast()))
-                        .collect::<ResolveResult<Vec<ExprAST>>>()?;
+                x.param =x.param.resolve_op(infix_hash).map(|e| e.get_expr_ast())?;
                 x.func = x.func.resolve_op(infix_hash)?.get_expr_ast();
                 Resolved::OtherExprAST(ExprAST::FuncCallAST(Box::new(x)))
             }

@@ -77,8 +77,9 @@ impl ExprAST {
     pub fn create_variable_ast(id: String, pos: SourcePosition) -> ExprAST {
         ExprAST::VariableAST(VariableAST { id, pos })
     }
-    pub fn create_func_call_ast(func: ExprAST, params: Vec<ExprAST>) -> ExprAST {
-        ExprAST::FuncCallAST(Box::new(FuncCallAST { func, params }))
+    pub fn create_func_call_ast(func: ExprAST, param: ExprAST) -> ExprAST {
+        ExprAST::FuncCallAST(Box::new(FuncCallAST { func, param }))
+    }
     }
     pub fn create_tuple_ast(elements: Vec<ExprAST>, pos: SourcePosition) -> ExprAST {
         ExprAST::TupleAST(Box::new(TupleAST { elements, pos }))
@@ -170,7 +171,8 @@ pub struct ParenAST {
 #[derive(Debug, Clone, PartialEq)]
 pub struct FuncCallAST {
     pub func: ExprAST,
-    pub params: Vec<ExprAST>,
+    pub param: ExprAST,
+}
 }
 
 #[derive(Debug, Clone, PartialEq)]

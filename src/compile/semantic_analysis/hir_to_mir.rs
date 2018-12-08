@@ -190,20 +190,14 @@ impl FuncCallAST {
         lambda_count: &mut usize,
     ) -> AstToIrResult<ExprMir> {
         let func = self.func.to_mir(program_ir, var_table, lambda_count);
-        if self.params.len() == 0 {
-            func
-        } else {
-            let params = self
-                .params
-                .into_iter()
-                .map(|x| x.to_mir(program_ir, var_table, lambda_count))
-                .collect::<AstToIrResult<Vec<ExprMir>>>()?;
-            Ok(ExprMir::create_call_mir(
-                func?,
-                params,
-                program_ir.ty_info.no_name_get(),
-            ))
-        }
+
+        let param = self
+            .param.to_mir(program_ir, var_table, lambda_count)?;
+        Ok(ExprMir::create_call_mir(
+            func?,
+            vec![param],
+            program_ir.ty_info.no_name_get(),
+        ))
     }
 }
 
