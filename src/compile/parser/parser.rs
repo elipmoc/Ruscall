@@ -1,11 +1,10 @@
 use super::super::ir::ast;
-use super::super::types::types::*;
 use super::skipper::*;
-use super::types::{struct_record_parser,ty_tuple_parser};
+use super::types::{struct_record_parser, ty_tuple_parser};
 use combine::char::{alpha_num, char, digit, lower, string, upper};
 use combine::parser::combinator::try;
 use combine::stream::state::{DefaultPositioned, SourcePosition, State};
-use combine::{easy, optional, sep_by};
+use combine::{easy, optional, sep_by, sep_end_by};
 use combine::{eof, many, many1, position, unexpected, value};
 
 /*
@@ -26,10 +25,12 @@ BNF
 :def_func      := :id {:skip_many :id} :skip_many '=' :skip_many :expr
 :id            := [a-z]{ [a-z] | [0-9] | '_' }
 :expr          := :expr_app :skip_many { :op :skip_many :expr_app :skip_many }
-:expr_app      := :term {:skip_many :term }
+:expr_app      := :term {:skip_many ( :term | :named_params ) }
+:named_params  := '{' :skip_many :named_param { :skip_many ',' :skip_many :named_param } [:skip_many,','] :skip_many  '}'
+:named_param   := :id :skip_many '=' :skip_many :expr
 :infix         := ('infixr' | 'infixl') :skip_many1 :num :skip_many1 :op
 :op            := '+' | '-' | '/' | '*' | '=='
-:term          := :num | :bool | :if |:id | :paren | :tuple | :lambda
+:term          := :num | :bool | :if | :id | :upper_id | :paren | :tuple | :lambda
 :paren         := '(' :skip_many :expr ')'
 :num           := [0-9]+
 :bool          := 'true' | 'false'
@@ -136,15 +137,66 @@ parser! {
 //<expr_app>
 parser! {
     fn expr_app_parser['a]()(MyStream<'a>)->ast::ExprAST{
+
+        enum Param{
+            NoNamed(ast::ExprAST),
+            Named(Vec<(String,ast::ExprAST)>)
+        }
+
         (term_parser(),many(
-            try(skip_many_parser().with(term_parser()))
+            try(
+                skip_many_parser()
+                .with(
+                    term_parser().map(Param::NoNamed)
+                    .or(named_params_parser().map(Param::Named))
+                )
+            )
         ))
-        .map(|(x,xs):(ast::ExprAST,Vec<ast::ExprAST>)|{
+        .map(|(x,xs):(ast::ExprAST,Vec<Param>)|{
             xs.into_iter()
             .fold(x,|acc,param|
-                ast::ExprAST::create_func_call_ast(acc,vec![param])
+                match param{
+                    Param::NoNamed(x) => ast::ExprAST::create_func_call_ast(acc,x),
+                    Param::Named(x)=>ast::ExprAST::create_named_params_func_call_ast(acc,x)
+                }
             )
         })
+    }
+}
+
+/*
+:named_params  := '{' :skip_many :named_param { :skip_many ',' :skip_many :named_param } [:skip_many,','] :skip_many  '}'
+:named_param   := :id :skip_many '=' :skip_many :expr
+*/
+
+//<named_params>
+parser! {
+    fn named_params_parser['a]()(MyStream<'a>)->Vec<(String,ast::ExprAST)>{
+        char('{')
+        .with(skip_many_parser())
+        .with(
+            sep_end_by(
+                named_param_parser(),
+                skip_many_parser()
+                    .with(char(','))
+                    .skip(skip_many_parser())
+            )
+                .skip(skip_many_parser())
+        )
+        .skip(char('}'))
+    }
+}
+
+//<named_param>
+parser! {
+    fn named_param_parser['a]()(MyStream<'a>)->(String,ast::ExprAST){
+        (
+            id_parser()
+            .skip(skip_many_parser())
+            .skip(char('='))
+            .skip(skip_many_parser()),
+            expr_parser()
+        )
     }
 }
 
@@ -229,7 +281,7 @@ parser! {
         .or(try(bool_parser()))
         .or(try(if_parser()))
         .or(
-            (position(),id_parser())
+            (position(),id_parser().or(upper_id_parser()))
             .skip(skip_many_parser())
             .map(|(pos,id)|ast::ExprAST::VariableAST(ast::VariableAST::new(id,pos)))
         )

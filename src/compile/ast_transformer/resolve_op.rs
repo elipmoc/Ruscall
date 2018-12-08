@@ -126,6 +126,7 @@ impl ExprAST {
                 Resolved::OtherExprAST(ExprAST::IfAST(Box::new(x)))
             }
             ExprAST::NumAST(_) | ExprAST::BoolAST(_) | ExprAST::VariableAST(_) => Resolved::OtherExprAST(self),
+            _=>panic!("undefined")
         };
         Ok(resolved)
     }

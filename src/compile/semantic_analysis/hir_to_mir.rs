@@ -119,7 +119,7 @@ impl TypeAST {
                 Box::new(x.to_ty(ty_var_table, ty_info))
             ),
             TypeAST::TypeVarName(ty_name) => ty_var_table.get_ty(ty_name, ty_info),
-            _=>panic!("undefined")
+            _ => panic!("undefined")
         }
     }
 }
@@ -146,6 +146,7 @@ impl ExprAST {
             ExprAST::FuncCallAST(x) => x.to_mir(program_ir, var_table, lambda_count),
             ExprAST::TupleAST(x) => x.to_mir(program_ir, var_table, lambda_count),
             ExprAST::LambdaAST(x) => x.to_mir(program_ir, var_table, lambda_count),
+            _ => panic!("undefined")
         }
     }
 }

@@ -47,6 +47,7 @@ pub enum ExprAST {
     VariableAST(VariableAST),
     ParenAST(Box<ParenAST>),
     FuncCallAST(Box<FuncCallAST>),
+    NamedParamsFuncCallAST(Box<NamedParamsFuncCallAST>),
     TupleAST(Box<TupleAST>),
     LambdaAST(Box<LambdaAST>),
 }
@@ -80,6 +81,8 @@ impl ExprAST {
     pub fn create_func_call_ast(func: ExprAST, param: ExprAST) -> ExprAST {
         ExprAST::FuncCallAST(Box::new(FuncCallAST { func, param }))
     }
+    pub fn create_named_params_func_call_ast(func: ExprAST, params: Vec<(String, ExprAST)>) -> ExprAST {
+        ExprAST::NamedParamsFuncCallAST(Box::new(NamedParamsFuncCallAST { func, params }))
     }
     pub fn create_tuple_ast(elements: Vec<ExprAST>, pos: SourcePosition) -> ExprAST {
         ExprAST::TupleAST(Box::new(TupleAST { elements, pos }))
@@ -97,6 +100,7 @@ impl ExprAST {
             ExprAST::ParenAST(x) => x.expr.get_pos(),
             ExprAST::VariableAST(x) => x.pos,
             ExprAST::FuncCallAST(x) => x.func.get_pos(),
+            ExprAST::NamedParamsFuncCallAST(x) => x.func.get_pos(),
             ExprAST::TupleAST(x) => x.pos,
             ExprAST::LambdaAST(x) => x.pos
         }
@@ -173,6 +177,11 @@ pub struct FuncCallAST {
     pub func: ExprAST,
     pub param: ExprAST,
 }
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct NamedParamsFuncCallAST {
+    pub func: ExprAST,
+    pub params: Vec<(String, ExprAST)>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -211,7 +220,7 @@ pub enum TypeAST {
     FuncTypeAST(Box<FuncTypeAST>),
     TupleTypeAST(Box<TupleTypeAST>),
     TypeVarName(String),
-    StructRecordTypeAST(StructRecordTypeAST)
+    StructRecordTypeAST(StructRecordTypeAST),
 }
 
 #[derive(Debug, Clone, PartialEq)]
