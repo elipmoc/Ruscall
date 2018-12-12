@@ -25,12 +25,14 @@ BNF
 :def_func      := :id {:skip_many :id} :skip_many '=' :skip_many :expr
 :id            := [a-z]{ [a-z] | [0-9] | '_' }
 :expr          := :expr_app :skip_many { :op :skip_many :expr_app :skip_many }
-:expr_app      := :term {:skip_many ( :term | :named_params ) }
+:expr_app      := :term { :skip_many :term }
+:named_params_constructor_call
+               := :upper_id  :skip_many :named_params
 :named_params  := '{' :skip_many :named_param { :skip_many ',' :skip_many :named_param } [:skip_many,','] :skip_many  '}'
 :named_param   := :id :skip_many '=' :skip_many :expr
 :infix         := ('infixr' | 'infixl') :skip_many1 :num :skip_many1 :op
 :op            := '+' | '-' | '/' | '*' | '=='
-:term          := :num | :bool | :if | :id | :upper_id | :paren | :tuple | :lambda
+:term          := :num | :bool | :if | :named_params_constructor_call | :id  | :upper_id | :paren | :tuple | :lambda
 :paren         := '(' :skip_many :expr ')'
 :num           := [0-9]+
 :bool          := 'true' | 'false'
