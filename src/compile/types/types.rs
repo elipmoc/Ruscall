@@ -24,7 +24,6 @@ pub enum Type {
     TupleType(Box<TupleType>),
     TyVar(TypeId, Vec<TypeCondition>),
     LambdaType(Box<LambdaType>),
-    RecordType(Box<RecordType>),
     StructType(Box<StructType>),
 }
 
@@ -53,10 +52,17 @@ pub struct TupleType {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub enum StructInternalType {
+    RecordType(RecordType),
+    TupleType(TupleType),
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct StructType {
-    pub ty: Type,
+    pub ty: StructInternalType,
     pub name: String,
 }
+
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct RecordType {

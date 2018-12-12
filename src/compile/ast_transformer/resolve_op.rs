@@ -101,7 +101,7 @@ impl ExprAST {
             }
             ExprAST::FuncCallAST(x) => {
                 let mut x = *x;
-                x.param =x.param.resolve_op(infix_hash).map(|e| e.get_expr_ast())?;
+                x.param = x.param.resolve_op(infix_hash).map(|e| e.get_expr_ast())?;
                 x.func = x.func.resolve_op(infix_hash)?.get_expr_ast();
                 Resolved::OtherExprAST(ExprAST::FuncCallAST(Box::new(x)))
             }
@@ -125,8 +125,17 @@ impl ExprAST {
                 x.cond = x.cond.resolve_op(infix_hash)?.get_expr_ast();
                 Resolved::OtherExprAST(ExprAST::IfAST(Box::new(x)))
             }
+            ExprAST::NamedParamsConstructorCallAST(x) => {
+                let mut x = *x;
+                x.params = x.params.into_iter()
+                    .map(|(name, e)|
+                        Ok((name, e.resolve_op(infix_hash)?.get_expr_ast()))
+                    )
+                    .collect::<ResolveResult<Vec<(String, ExprAST)>>>()?;
+                Resolved::OtherExprAST(ExprAST::NamedParamsConstructorCallAST(Box::new(x)))
+            }
             ExprAST::NumAST(_) | ExprAST::BoolAST(_) | ExprAST::VariableAST(_) => Resolved::OtherExprAST(self),
-            _=>panic!("undefined")
+            _ => panic!("undefined")
         };
         Ok(resolved)
     }

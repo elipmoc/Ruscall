@@ -79,6 +79,11 @@ impl TypeSubstitute {
 
     //TypeにTypeIdが出現するか検査
     fn occurs_check(&self, ty: &Type, ty_id: &TypeId) -> bool {
+        impl TupleType {
+            fn occurs_check(&self, ty_sub: &TypeSubstitute, ty_id: &TypeId) -> bool {
+                self.element_tys.iter().any(|e| ty_sub.occurs_check(e, ty_id))
+            }
+        }
         match ty {
             Type::TyVar(id, conds) => {
                 conds.iter().any(|x|
@@ -98,7 +103,7 @@ impl TypeSubstitute {
                     }
             }
             Type::Int32 | Type::Bool => false,
-            Type::TupleType(x) => x.element_tys.iter().any(|e| self.occurs_check(e, ty_id)),
+            Type::TupleType(x) => x.occurs_check(&self, ty_id),
             Type::LambdaType(x) => {
                 let x = &**x;
                 x.env_ty.as_ref().unwrap_or(&TupleType { element_tys: vec![] })
@@ -108,7 +113,13 @@ impl TypeSubstitute {
                     ||
                     self.occurs_check(&x.func_ty.ret_type, ty_id)
             }
-            _=>panic!("undefined type!")
+            Type::StructType(x) => {
+                match x.ty {
+                    StructInternalType::TupleType(ref x) => x.occurs_check(&self, ty_id),
+                    StructInternalType::RecordType(ref x) => x.element_tys.iter().any(|(_, e)| self.occurs_check(e, ty_id))
+                }
+            }
+            _ => panic!("undefined type!")
         }
     }
 

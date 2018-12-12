@@ -88,6 +88,7 @@ impl<'a> TypeGet for &'a ExprMir {
             ExprMir::VariableMir(x) => x.ty_get(ty_info),
             ExprMir::GlobalVariableMir(x) => x.ty_get(ty_info),
             ExprMir::TupleMir(x) => x.ty_get(ty_info),
+            ExprMir::TupleStructMir(x) => x.ty_get(ty_info),
             ExprMir::LambdaMir(x) => x.ty_get(ty_info)
         }
     }
@@ -182,6 +183,23 @@ impl TypeGet for TupleMir {
         let ty_info = ty_info.unify(tuple_ty.clone(), Type::TyVar(self.ty_id.clone(), vec![]))
             .map_err(|msg| Error::new(self.pos, &msg))?;
         Ok((ty_info, tuple_ty))
+    }
+}
+
+impl TypeGet for TupleStructMir {
+    fn ty_get(&self, ty_info: TypeInfo) -> TyCheckResult<(TypeInfo, Type)> {
+        let (ty_info, tuple_ty) = self.tuple.ty_get(ty_info)?;
+        let internal_ty = match self.ty.ty {
+            StructInternalType::RecordType(ref x) => Type::TupleType(Box::new(TupleType {
+                element_tys: x.element_tys.iter()
+                    .map(|(_, x)| x.clone())
+                    .collect()
+            })),
+            StructInternalType::TupleType(ref x) => Type::TupleType(Box::new(x.clone()))
+        };
+        let ty_info = ty_info.unify(tuple_ty.clone(), internal_ty)
+            .map_err(|msg| Error::new(self.tuple.pos, &msg))?;
+        Ok((ty_info, Type::StructType(Box::new(self.ty.clone()))))
     }
 }
 

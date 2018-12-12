@@ -16,7 +16,7 @@ parser! {
             lower(),many(alpha_num())
         ).map(|(x,xs):(char,String)|TypeAST::TypeVarName(x.to_string()+&xs)))
        .or(try(ty_paren_parser()))
-       .or(ty_tuple_parser())
+       .or(ty_tuple_parser().map(|tuple|TypeAST::TupleTypeAST(Box::new(tuple))))
     }
 }
 
@@ -43,7 +43,7 @@ parser! {
 
 //<ty_tuple>
 parser! {
-   pub fn ty_tuple_parser['a]()(MyStream<'a>) ->TypeAST
+   pub fn ty_tuple_parser['a]()(MyStream<'a>) ->TupleTypeAST
     {
         char('(')
             .with(skip_many_parser())
@@ -73,7 +73,7 @@ parser! {
                     }
                     _=>()
                 }
-                TypeAST::TupleTypeAST(Box::new( TupleTypeAST{ elements_ty: elements }) )
+                TupleTypeAST{ elements_ty: elements }
             })
     }
 }
@@ -103,7 +103,7 @@ parser! {
 
 //<struct_record>
 parser! {
-    pub fn struct_record_parser['a]()(MyStream<'a>)->TypeAST{
+    pub fn struct_record_parser['a]()(MyStream<'a>)->StructInternalTypeAST{
         char('{')
         .with(skip_many_parser())
         .with(
@@ -116,9 +116,9 @@ parser! {
                 .skip(skip_many_parser())
         )
         .skip(char('}'))
-        .map(|v:Vec<_>|TypeAST::StructRecordTypeAST(
-            StructRecordTypeAST{elements_ty:v}
-        ))
+        .map(|v:Vec<_>|
+            StructInternalTypeAST::RecordTypeAST(RecordTypeAST{elements_ty:v})
+        )
     }
 }
 

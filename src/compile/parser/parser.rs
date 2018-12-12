@@ -95,13 +95,15 @@ parser! {
             .with(skip_many_parser())
             .with(upper_id_parser()),
             skip_many_parser()
-            .with(ty_tuple_parser().or(struct_record_parser()))
+            .with(
+                ty_tuple_parser().map(|tuple|ast::StructInternalTypeAST::TupleTypeAST(tuple) )
+                .or(struct_record_parser())
+            )
         )
         .map(|(pos,name,ty)|
             ast::DecStructAST{
-                ty,
+                ty: ast::StructTypeAST{ty,name},
                 pos,
-                name
             }
         )
 
@@ -139,38 +141,34 @@ parser! {
 //<expr_app>
 parser! {
     fn expr_app_parser['a]()(MyStream<'a>)->ast::ExprAST{
-
-        enum Param{
-            NoNamed(ast::ExprAST),
-            Named(Vec<(String,ast::ExprAST)>)
-        }
-
         (term_parser(),many(
             try(
                 skip_many_parser()
                 .with(
-                    term_parser().map(Param::NoNamed)
-                    .or(named_params_parser().map(Param::Named))
+                    term_parser()
                 )
             )
         ))
-        .map(|(x,xs):(ast::ExprAST,Vec<Param>)|{
+        .map(|(x,xs):(ast::ExprAST,Vec<ast::ExprAST>)|{
             xs.into_iter()
             .fold(x,|acc,param|
-                match param{
-                    Param::NoNamed(x) => ast::ExprAST::create_func_call_ast(acc,x),
-                    Param::Named(x)=>ast::ExprAST::create_named_params_func_call_ast(acc,x)
-                }
+                ast::ExprAST::create_func_call_ast(acc,param)
             )
         })
     }
 }
 
-/*
-:named_params  := '{' :skip_many :named_param { :skip_many ',' :skip_many :named_param } [:skip_many,','] :skip_many  '}'
-:named_param   := :id :skip_many '=' :skip_many :expr
-*/
-
+//<named_params_constructor_call>
+parser! {
+    fn named_params_constructor_call_parser['a]()(MyStream<'a>)->ast::ExprAST {
+        (
+            position(),
+            upper_id_parser().skip(skip_many_parser()),
+            named_params_parser()
+        )
+        .map(|(pos,constructor_name,params)| ast::ExprAST::create_named_params_constructor_call_ast(constructor_name,params,pos) )
+    }
+}
 //<named_params>
 parser! {
     fn named_params_parser['a]()(MyStream<'a>)->Vec<(String,ast::ExprAST)>{
@@ -282,6 +280,7 @@ parser! {
         )
         .or(try(bool_parser()))
         .or(try(if_parser()))
+        .or(try(named_params_constructor_call_parser()))
         .or(
             (position(),id_parser().or(upper_id_parser()))
             .skip(skip_many_parser())

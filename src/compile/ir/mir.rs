@@ -1,6 +1,6 @@
 use combine::stream::state::SourcePosition;
 use super::ast::*;
-use super::super::types::types::{TypeId, FuncType};
+use super::super::types::types::{TypeId, FuncType, StructType};
 use super::super::semantic_analysis::type_env::TypeInfo;
 
 #[derive(Debug, PartialEq)]
@@ -42,6 +42,7 @@ pub enum ExprMir {
     BoolMir(BoolMir),
     IfMir(Box<IfMir>),
     TupleMir(Box<TupleMir>),
+    TupleStructMir(Box<TupleStructMir>),
     VariableMir(VariableMir),
     GlobalVariableMir(GlobalVariableMir),
     CallMir(Box<CallMir>),
@@ -56,6 +57,7 @@ impl ExprMir {
             ExprMir::BoolMir(x) => x.pos,
             ExprMir::IfMir(x) => x.pos,
             ExprMir::TupleMir(x) => x.pos,
+            ExprMir::TupleStructMir(x) => x.tuple.pos,
             ExprMir::VariableMir(x) => x.pos,
             ExprMir::GlobalVariableMir(x) => x.pos,
             ExprMir::CallMir(x) => x.func.get_pos(),
@@ -91,6 +93,12 @@ impl ExprMir {
     pub fn create_tuple_mir(elements: Vec<ExprMir>, pos: SourcePosition, ty_id: TypeId) -> ExprMir {
         ExprMir::TupleMir(Box::new(TupleMir { elements, pos, ty_id }))
     }
+    pub fn create_tuple_struct_mir(elements: Vec<ExprMir>, pos: SourcePosition, struct_ty: StructType, ty_id: TypeId) -> ExprMir {
+        ExprMir::TupleStructMir(Box::new(TupleStructMir {
+            tuple: TupleMir { elements, pos, ty_id },
+            ty: struct_ty,
+        }))
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -118,6 +126,13 @@ pub struct TupleMir {
     pub pos: SourcePosition,
     pub ty_id: TypeId,
 }
+
+#[derive(Debug, PartialEq)]
+pub struct TupleStructMir {
+    pub tuple: TupleMir,
+    pub ty: StructType,
+}
+
 
 #[derive(Debug, PartialEq)]
 pub struct VariableMir {

@@ -40,10 +40,10 @@ impl ProgramAST {
                 }
                 StmtAST::NoneAST => (),
                 StmtAST::DecStructAST(x) => {
-                    if program_hir.struct_list.contains_key(&x.name) {
+                    if program_hir.struct_list.contains_key(&x.ty.name) {
                         return Err(Error::new(x.pos, &"Duplicate struct declare"));
                     }
-                    program_hir.struct_list.insert(x.name.clone(), x);
+                    program_hir.struct_list.insert(x.ty.name.clone(), x);
                 }
                 _ => panic!("undefined!")
             };

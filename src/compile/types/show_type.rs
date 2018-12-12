@@ -24,8 +24,7 @@ impl ShowType for Type {
             Type::TupleType(x) => x.show(),
             Type::TyVar(ty_id, _) => ty_id.get_id().to_string(),
             Type::LambdaType(x) => x.show(),
-            Type::RecordType(x)=>panic!(""),
-            Type::StructType(x)=>panic!("")
+            Type::StructType(x) => x.show(),
         }
     }
 }
@@ -46,6 +45,26 @@ impl ShowType for TupleType {
             .iter()
             .fold("".to_string(), |acc, x| acc + &x.show() + ",")
             + ")"
+    }
+}
+
+impl ShowType for RecordType {
+    fn show(&self) -> String {
+        "{".to_string()
+            + &self.element_tys
+            .iter()
+            .fold("".to_string(), |acc, (name, ty)| acc + name + ":" + &ty.show() + ",")
+            + "}"
+    }
+}
+
+impl ShowType for StructType {
+    fn show(&self) -> String {
+        self.name.clone() +
+            &match self.ty {
+                StructInternalType::TupleType(ref x) => x.show(),
+                StructInternalType::RecordType(ref x) => x.show()
+            }
     }
 }
 

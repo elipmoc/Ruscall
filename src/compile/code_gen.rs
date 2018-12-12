@@ -68,7 +68,8 @@ impl Type {
             Type::TupleType(x) => x.to_llvm_type(),
             Type::TyVar(_, _) => panic!("TyVar type!"),
             Type::LambdaType(x) => x.to_llvm_type(fn_pointer_flag),
-            _=>panic!("undefined type!")
+            Type::StructType(x) => x.to_llvm_type(),
+            _ => panic!("undefined type!")
         }
     }
 }
@@ -112,6 +113,22 @@ impl LambdaType {
     }
 }
 
+impl StructType {
+    fn to_llvm_type(&self) -> LLVMTypeRef {
+        match self.ty {
+            StructInternalType::TupleType(ref x) => x.to_llvm_type(),
+            StructInternalType::RecordType(ref x) => {
+                struct_type(
+                    x.element_tys
+                        .iter()
+                        .map(|(_, x)| x.to_llvm_type(true))
+                        .collect(),
+                )
+            }
+        }
+    }
+}
+
 impl mir::ExprMir {
     fn get_ty(&self, ty_info: &mut TypeInfo) -> Type {
         match self {
@@ -123,6 +140,7 @@ impl mir::ExprMir {
             mir::ExprMir::GlobalVariableMir(x) => ty_info.look_up_func_name(x.id.clone()),
             mir::ExprMir::CallMir(x) => ty_info.look_up(&x.ty_id, &vec![]),
             mir::ExprMir::TupleMir(x) => ty_info.look_up(&x.ty_id, &vec![]),
+            mir::ExprMir::TupleStructMir(x) => panic!("undefined"),
             mir::ExprMir::LambdaMir(x) => ty_info.look_up(&x.ty_id, &vec![]),
         }
     }
@@ -161,6 +179,7 @@ impl mir::ExprMir {
             mir::ExprMir::GlobalVariableMir(x) => x.code_gen(module),
             mir::ExprMir::CallMir(x) => x.code_gen(module, codegen, params, ty_info, function),
             mir::ExprMir::TupleMir(x) => x.code_gen(module, codegen, params, ty_info, function),
+            mir::ExprMir::TupleStructMir(x) => x.tuple.code_gen(module, codegen, params, ty_info, function),
             mir::ExprMir::LambdaMir(x) => x.code_gen(module, codegen, params, ty_info),
         }
     }

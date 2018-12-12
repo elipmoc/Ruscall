@@ -110,6 +110,28 @@ impl TupleTypeAST {
     }
 }
 
+impl RecordTypeAST {
+    fn to_ty(self, ty_var_table: &mut TypeVariableTable, ty_info: &mut TypeInfo) -> RecordType {
+        RecordType {
+            element_tys: self.elements_ty.into_iter()
+                .map(|(name, type_ast)|
+                    (name, type_ast.to_ty(ty_var_table, ty_info))
+                ).collect()
+        }
+    }
+}
+
+impl StructTypeAST {
+    fn to_ty(self, ty_var_table: &mut TypeVariableTable, ty_info: &mut TypeInfo) -> StructType {
+        let internal_ty =
+            match self.ty {
+                StructInternalTypeAST::TupleTypeAST(x) => StructInternalType::TupleType(x.to_ty(ty_var_table, ty_info)),
+                StructInternalTypeAST::RecordTypeAST(x) => StructInternalType::RecordType(x.to_ty(ty_var_table, ty_info))
+            };
+        StructType { ty: internal_ty, name: self.name }
+    }
+}
+
 impl TypeAST {
     fn to_ty(self, ty_var_table: &mut TypeVariableTable, ty_info: &mut TypeInfo) -> Type {
         match self {
@@ -119,6 +141,7 @@ impl TypeAST {
                 Box::new(x.to_ty(ty_var_table, ty_info))
             ),
             TypeAST::TypeVarName(ty_name) => ty_var_table.get_ty(ty_name, ty_info),
+            TypeAST::StructTypeAST(x) => Type::StructType(Box::new(x.to_ty(ty_var_table, ty_info))),
             _ => panic!("undefined")
         }
     }
@@ -144,7 +167,9 @@ impl ExprAST {
             }
             ExprAST::ParenAST(x) => x.expr.to_mir(program_ir, var_table, lambda_count),
             ExprAST::FuncCallAST(x) => x.to_mir(program_ir, var_table, lambda_count),
+            ExprAST::NamedParamsConstructorCallAST(_) => panic!("bug!!"),
             ExprAST::TupleAST(x) => x.to_mir(program_ir, var_table, lambda_count),
+            ExprAST::TupleStructAST(x) => x.to_mir(program_ir, var_table, lambda_count),
             ExprAST::LambdaAST(x) => x.to_mir(program_ir, var_table, lambda_count),
             _ => panic!("undefined")
         }
@@ -215,6 +240,26 @@ impl TupleAST {
                 .map(|x| x.to_mir(program_ir, var_table, lambda_count))
                 .collect::<AstToIrResult<Vec<ExprMir>>>()?,
             self.pos,
+            program_ir.ty_info.no_name_get(),
+        ))
+    }
+}
+
+impl TupleStructAST {
+    fn to_mir(
+        self,
+        program_ir: &mut ProgramMir,
+        var_table: &mut VariableTable,
+        lambda_count: &mut usize,
+    ) -> AstToIrResult<ExprMir> {
+        let mut ty_var_table = TypeVariableTable::new();
+        Ok(ExprMir::create_tuple_struct_mir(
+            self.tuple.elements
+                .into_iter()
+                .map(|x| x.to_mir(program_ir, var_table, lambda_count))
+                .collect::<AstToIrResult<Vec<ExprMir>>>()?,
+            self.tuple.pos,
+            self.ty.to_ty(&mut ty_var_table, &mut program_ir.ty_info),
             program_ir.ty_info.no_name_get(),
         ))
     }
