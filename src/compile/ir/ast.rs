@@ -233,6 +233,7 @@ pub struct LambdaAST {
 #[derive(Debug, Clone, PartialEq)]
 pub enum TypeAST {
     Type(Type),
+    IdTypeAST(String),
     FuncTypeAST(Box<FuncTypeAST>),
     TupleTypeAST(Box<TupleTypeAST>),
     TypeVarName(String),

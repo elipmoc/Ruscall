@@ -1,6 +1,6 @@
 use super::super::types::types::*;
 use super::super::ir::ast::*;
-use super::parser::{MyStream, id_parser};
+use super::parser::{MyStream, id_parser,upper_id_parser};
 use super::skipper::skip_many_parser;
 use combine::char::{char, string};
 use combine::parser::char::{alpha_num, lower};
@@ -17,6 +17,7 @@ parser! {
         ).map(|(x,xs):(char,String)|TypeAST::TypeVarName(x.to_string()+&xs)))
        .or(try(ty_paren_parser()))
        .or(ty_tuple_parser().map(|tuple|TypeAST::TupleTypeAST(Box::new(tuple))))
+       .or(upper_id_parser().map(TypeAST::IdTypeAST))
     }
 }
 
