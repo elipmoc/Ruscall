@@ -274,7 +274,8 @@ impl TypeSubstitute {
             Type::TyVar(ty_id, conds) => self.look_up(ty_id, conds),
             Type::TupleType(x) => Type::TupleType(Box::new(self.tuple_look_up(x))),
             Type::LambdaType(x) => self.lambda_look_up(x),
-            ty => ty.clone(),
+            Type::StructType(x) => self.struct_look_up(x),
+            Type::Int32 | Type::Bool => ty.clone(),
         }
     }
     fn func_look_up(&self, ty: &FuncType) -> FuncType {
@@ -303,6 +304,26 @@ impl TypeSubstitute {
             env_ty: ty.env_ty.clone().map(|x| self.tuple_look_up(&x)),
             func_ty: self.func_look_up(&ty.func_ty),
         }))
+    }
+
+    fn record_look_up(&self, ty: &RecordType) -> RecordType {
+        RecordType {
+            element_tys:
+            ty.element_tys
+                .iter()
+                .map(|(name, ty)| (name.clone(), self.type_look_up(ty)))
+                .collect(),
+        }
+    }
+
+    fn struct_look_up(&self, ty: &StructType) -> Type {
+        let mut ty = ty.clone();
+        ty.ty =
+            match ty.ty {
+                StructInternalType::TupleType(x) => StructInternalType::TupleType(self.tuple_look_up(&x)),
+                StructInternalType::RecordType(x) => StructInternalType::RecordType(self.record_look_up(&x)),
+            };
+        Type::StructType(Box::new(ty))
     }
 }
 
