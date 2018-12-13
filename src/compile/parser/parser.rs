@@ -45,7 +45,7 @@ BNF
 :comments      := '/*' {:comments |[^(/*)(*/)]} '*/'
 :skip_many     := {:skip}
 :skip_many1    := :skip +
-:ty_term       := 'Int32'| :ty_paren | :ty_tuple | :upper_id
+:ty_term       := 'Int32'| :id | :ty_paren | :ty_tuple | :upper_id
 :ty_term_with_func
                := :ty_term | :ty_func
 :ty_paren      := '(' :skip_many :ty_term_with_func :skip_many ')'

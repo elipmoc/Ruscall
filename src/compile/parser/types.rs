@@ -110,9 +110,11 @@ parser! {
         .with(
             sep_end_by(
                 struct_record_part_parser(),
-                skip_many_parser()
+                try(
+                    skip_many_parser()
                     .with(char(','))
                     .skip(skip_many_parser())
+                )
             )
                 .skip(skip_many_parser())
         )
