@@ -14,5 +14,11 @@ path="src/lib.rs"
 llvm-sys = "60"
 libc="0.2"
 combine = "3.3.0"
+inkwell = { git = "https://github.com/TheDan64/inkwell", branch = "llvm6-0" }
+
+[patch."https://github.com/TheDan64/inkwell"]
+inkwell = { git = "https://github.com/elipmoc/inkwell", branch = "llvm6-0"}
+
 [build-dependencies]
 cc = "1.0"
+
