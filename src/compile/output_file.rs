@@ -1,31 +1,32 @@
-use super::super::my_llvm::easy::*;
+extern crate inkwell;
+
+use self::inkwell::*;
 use super::code_gen::CodeGenResult;
+use std::fs::File;
+use std::path::Path;
+
 
 //コードを実行形式で出力
-pub fn output_file(code_gen_result:CodeGenResult) {
-    let module=code_gen_result.module;
-    let file_name=code_gen_result.file_name;
-    let code_gen=code_gen_result.code_gen;
+pub fn output_file(code_gen_result: CodeGenResult) {
+    let CodeGenResult { module, file_name, .. } = code_gen_result;
 
     use std::env;
-    let target_machine = TargetMachine::create(
-        "generic",
-        "",
-        LLVMCodeGenOptLevel::LLVMCodeGenLevelDefault,
-        LLVMRelocMode::LLVMRelocPIC,
-        LLVMCodeModel::LLVMCodeModelDefault,
-    ).unwrap();
-    module.set_data_layout(target_machine.create_data_layout());
-    module.set_target_triple(target_machine.target_triple);
-    module.write_bitcode_to_file(&(file_name.to_string() + ".bc"));
-    target_machine.emit_to_file(
+    let triple = &targets::TargetMachine::get_default_triple().to_string();
+    let target_machine =
+        targets::Target::from_triple(triple).unwrap().create_target_machine(
+            triple,
+            "generic",
+            "",
+            OptimizationLevel::Default,
+            targets::RelocMode::Default,
+            targets::CodeModel::Default,
+        ).unwrap();
+    module.write_bitcode_to_file(&File::create(file_name.to_string() + ".bc").unwrap(), true, true);
+    target_machine.write_to_file(
         &module,
-        &(file_name.to_string() + ".obj"),
-        LLVMCodeGenFileType::LLVMObjectFile,
-    );
-    module.dispose_module();
-    code_gen.dispose();
-    target_machine.dispose();
+        targets::FileType::Object,
+        &Path::new(&(file_name.to_string() + ".obj")),
+    ).unwrap();
 
     let current_dir = env::current_dir().unwrap().to_str().unwrap().to_string();
 

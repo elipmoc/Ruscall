@@ -1,6 +1,5 @@
 use super::super::ir::hir::*;
 use super::super::ir::ast::*;
-use std::collections::HashMap;
 
 //Hirを組み替えてカリー化を行う
 

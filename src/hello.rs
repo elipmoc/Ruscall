@@ -1,6 +1,6 @@
 extern crate inkwell;
 
-use self::inkwell::{targets, types, OptimizationLevel, passes, builder, module, values, context};
+use self::inkwell::{targets, types, OptimizationLevel, passes, builder, module, values};
 use std::env;
 use std::process::Command;
 use std::fs::File;
@@ -40,7 +40,6 @@ pub fn hello() {
     }
     module.print_to_stderr();
     let triple = &targets::TargetMachine::get_default_triple().to_string();
-    //   module.get_target().unwrap();
     let target_machine =
         targets::Target::from_triple(triple).unwrap().create_target_machine(
             triple,

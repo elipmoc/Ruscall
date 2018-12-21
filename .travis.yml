@@ -5,6 +5,7 @@ cache:
 env:
   global:
     - LLVM_SYS_60_PREFIX=/usr/lib/llvm-6.0
+    - RUST_TEST_THREADS=1
     - secure: cuKKOctlrRBIoVyftaQNA47eoHirdY5Yfu4iNy5WCNI5USiEIJK6aYa2iuPJ0lFsTepdnyooBfRO46cLvS8jpINRjmY/4a3mg0Evfpy9+hp34+73XIkcCzkUYSwHq/sqYm6uO1ACobtD8H3m+so/TQ6Fu1tbBGoRWoAPzmkD5hoF/ZvOcCDE28eiqwm6WslYgKric9/SYr4MUTTAIDuwSp/NEtCebJXIOdTnK048QkOQjn0n7Ai2p+cfkqPuks0Y2dKVCVhtZaNMKnZIS9XwwVOe0OTpKMk1GGsutCV+rbwjoiBdvEiXWVj74AdpUVQf6xHMdd+jgLH4uwZk+vwG8rJN91m4JY04UhURynczqqf0zgtXXEdXcakG2RLZN3KprqU4neLIr5oPK6HMfSKe8Sq+igO+a8lkeEjO7bBjxRY+MlV69gKHP3HpVamQjRy4BGeEUhy7r+Gr8OpFDFE2ToFhqjLnu1fklCraXlEu6MptpcJooEoppPB6v51+TmzNELHf9CjqnT+Eugw0WuNAxw0wgyUyEBu/cggTr7dejbKDaJCWEJtvx7SUMd0z36KfRdYKoPuaM/XRbEFxjt7V7jvyASSw7L7K0+IvAdF+W/D5L2Uwqn113Hn25Mx7YRwY9V3qxHH221iUpT749LbcTiD5QRmhQbbOOhrlT9eWJs8=
 rust:
 - stable
