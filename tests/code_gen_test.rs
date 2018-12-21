@@ -7,8 +7,8 @@ macro_rules! helper {
         #[test]
         fn $file_name(){
             match parse(include_str!(concat!("test_data/", stringify!($file_name), ".rsc"))) {
-                Ok(_ir) => {
-                    //ir.code_gen(stringify!($file_name));
+                Ok(ir) => {
+                    ir.code_gen(stringify!($file_name));
                 }
                 Err(err) => assert!(false, "error!".to_string() + &err),
             };

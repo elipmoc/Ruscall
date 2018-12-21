@@ -18,7 +18,7 @@ pub fn compile(file_name: &str)->Result<(), String> {
     compile_from_str(&src_file_to_str(file_name), file_name)
 }
 
-pub fn compile_from_str(str: &str, file_name: &str) -> Result<(), String> {
+pub fn compile_from_str(str: &str, _file_name: &str) -> Result<(), String> {
     match parse(str) {
         Ok(program_ir) => Ok(output_file(program_ir.code_gen("compiled"))),
         Err(err) => Err(err),
