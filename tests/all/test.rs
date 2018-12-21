@@ -7,7 +7,7 @@ fn to_str_vec(args: Vec<&str>) -> Vec<String> {
 
 #[test]
 fn parse_cmd_args_test() {
-    use ruscall::cmd_args::*;
+    use self::ruscall::cmd_args::*;
     assert_eq!(
         parse_cmd_args(to_str_vec(vec!["my.exe"])),
         CmdArgsKind::Help
@@ -34,7 +34,7 @@ fn parse_cmd_args_test() {
     );
 }
 
-use ruscall::compile::ir::ast;
+use self::ruscall::compile::ir::ast;
 //helper
 fn create_infixl_ast(op: &str, priority: i8) -> ast::StmtAST {
     ast::StmtAST::InfixAST(ast::InfixAST {
@@ -53,7 +53,7 @@ fn create_infixr_ast(op: &str, priority: i8) -> ast::StmtAST {
 
 #[test]
 fn infix_parse_test() {
-    use ruscall::compile::parser::parse;
+    use self::ruscall::compile::parser::parse;
     assert_eq!(
         parse("infixl 4 +;").unwrap().0,
         ast::ProgramAST {
