@@ -18,7 +18,7 @@ pub fn output_file(code_gen_result: CodeGenResult) {
             "generic",
             "",
             OptimizationLevel::Default,
-            targets::RelocMode::Default,
+            targets::RelocMode::PIC,
             targets::CodeModel::Default,
         ).unwrap();
     module.write_bitcode_to_file(&File::create(file_name.to_string() + ".bc").unwrap(), true, true);
