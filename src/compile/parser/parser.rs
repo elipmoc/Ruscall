@@ -32,7 +32,18 @@ BNF
 :named_param   := :id :skip_many '=' :skip_many :expr
 :infix         := ('infixr' | 'infixl') :skip_many1 :num :skip_many1 :op
 :op            := '+' | '-' | '/' | '*' | '=='
-:term          := :num | :bool | :if | :named_params_constructor_call | :id  | :upper_id | :paren | :tuple | :lambda
+:term          :=
+                    (
+                        :num |
+                        :bool |
+                        :if |
+                        :named_params_constructor_call |
+                        :id  |
+                        :upper_id |
+                        :paren |
+                        :tuple |
+                        :lambda
+                    ){'.' :id}
 :paren         := '(' :skip_many :expr ')'
 :num           := [0-9]+
 :bool          := 'true' | 'false'
@@ -272,21 +283,24 @@ parser! {
 parser! {
     fn term_parser['a]()(MyStream<'a>)->ast::ExprAST
     {
-        try(paren_parser())
-        .or(tuple_parser())
-        .or(
-            (position(),num_parser())
-            .map(|(pos,num)|ast::ExprAST::create_num_ast(num,pos))
-        )
-        .or(try(bool_parser()))
-        .or(try(if_parser()))
-        .or(try(named_params_constructor_call_parser()))
-        .or(
-            (position(),id_parser().or(upper_id_parser()))
-            .skip(skip_many_parser())
-            .map(|(pos,id)|ast::ExprAST::VariableAST(ast::VariableAST::new(id,pos)))
-        )
-        .or(lambda_parser())
+        (
+            try(paren_parser())
+            .or(tuple_parser())
+            .or(
+                (position(),num_parser())
+                .map(|(pos,num)|ast::ExprAST::create_num_ast(num,pos))
+            )
+            .or(try(bool_parser()))
+            .or(try(if_parser()))
+            .or(try(named_params_constructor_call_parser()))
+            .or(
+                (position(),id_parser().or(upper_id_parser()))
+                .skip(skip_many_parser())
+                .map(|(pos,id)|ast::ExprAST::VariableAST(ast::VariableAST::new(id,pos)))
+            )
+            .or(lambda_parser()),
+            many(char('.').with(num_parser()))
+        ).map(|(expr,_):(_,Vec<_>)|expr)
     }
 }
 
