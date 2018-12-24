@@ -134,6 +134,11 @@ impl ExprAST {
                     .collect::<ResolveResult<Vec<(String, ExprAST)>>>()?;
                 Resolved::OtherExprAST(ExprAST::NamedParamsConstructorCallAST(Box::new(x)))
             }
+            ExprAST::TuplePropertyAST(x) => {
+                let mut x = *x;
+                x.expr = x.expr.resolve_op(infix_hash)?.get_expr_ast();
+                Resolved::OtherExprAST(ExprAST::TuplePropertyAST(Box::new(x)))
+            }
             ExprAST::NumAST(_) | ExprAST::BoolAST(_) | ExprAST::VariableAST(_) => Resolved::OtherExprAST(self),
             _ => panic!("undefined")
         };

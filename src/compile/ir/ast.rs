@@ -49,6 +49,7 @@ pub enum ExprAST {
     NamedParamsConstructorCallAST(Box<NamedParamsConstructorCallAST>),
     TupleAST(Box<TupleAST>),
     TupleStructAST(Box<TupleStructAST>),
+    TuplePropertyAST(Box<TuplePropertyAST>),
     LambdaAST(Box<LambdaAST>),
 }
 
@@ -93,6 +94,13 @@ impl ExprAST {
             ty,
         }))
     }
+    pub fn create_tuple_property_ast(index: String, expr: ExprAST, pos: SourcePosition) -> ExprAST {
+        ExprAST::TuplePropertyAST(Box::new(TuplePropertyAST {
+            index: index.parse().unwrap(),
+            expr,
+            pos,
+        }))
+    }
     pub fn create_lambda_ast(env: Vec<VariableAST>, params: Vec<VariableAST>, body: ExprAST, pos: SourcePosition) -> ExprAST {
         ExprAST::LambdaAST(Box::new(LambdaAST { env, params, body, pos }))
     }
@@ -109,7 +117,8 @@ impl ExprAST {
             ExprAST::NamedParamsConstructorCallAST(x) => x.pos,
             ExprAST::TupleAST(x) => x.pos,
             ExprAST::TupleStructAST(x) => x.tuple.pos,
-            ExprAST::LambdaAST(x) => x.pos
+            ExprAST::LambdaAST(x) => x.pos,
+            ExprAST::TuplePropertyAST(x) => x.pos
         }
     }
 }
@@ -221,6 +230,12 @@ pub struct TupleStructAST {
     pub ty: StructTypeAST,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct TuplePropertyAST {
+    pub expr: ExprAST,
+    pub index: u32,
+    pub pos: SourcePosition,
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct LambdaAST {

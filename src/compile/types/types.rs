@@ -13,8 +13,14 @@ impl TypeId {
 
 //型制約
 #[derive(Clone, PartialEq, Debug)]
-pub enum TypeCondition {
-    Call(FuncType)
+pub struct TypeCondition {
+    pub call: Option<Box<FuncType>>
+}
+
+impl TypeCondition {
+    pub fn new() -> Self {
+        TypeCondition { call: None }
+    }
 }
 
 #[derive(Clone, PartialEq)]
@@ -22,7 +28,7 @@ pub enum Type {
     Int32,
     Bool,
     TupleType(Box<TupleType>),
-    TyVar(TypeId, Vec<TypeCondition>),
+    TyVar(TypeId, TypeCondition),
     LambdaType(Box<LambdaType>),
     StructType(Box<StructType>),
 }

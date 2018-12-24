@@ -47,6 +47,7 @@ pub enum ExprMir {
     GlobalVariableMir(GlobalVariableMir),
     CallMir(Box<CallMir>),
     LambdaMir(Box<LambdaMir>),
+    TuplePropertyMir(Box<TuplePropertyMir>),
 }
 
 impl ExprMir {
@@ -61,7 +62,8 @@ impl ExprMir {
             ExprMir::VariableMir(x) => x.pos,
             ExprMir::GlobalVariableMir(x) => x.pos,
             ExprMir::CallMir(x) => x.func.get_pos(),
-            ExprMir::LambdaMir(x) => x.pos
+            ExprMir::LambdaMir(x) => x.pos,
+            ExprMir::TuplePropertyMir(x)=>x.pos
         }
     }
 
@@ -131,6 +133,13 @@ pub struct TupleMir {
 pub struct TupleStructMir {
     pub tuple: TupleMir,
     pub ty: StructType,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct TuplePropertyMir {
+    pub expr: TupleMir,
+    pub index: u32,
+    pub pos: SourcePosition,
 }
 
 

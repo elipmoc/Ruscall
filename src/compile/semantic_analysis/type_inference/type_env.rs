@@ -1,4 +1,5 @@
-use super::super::types::types::*;
+use super::super::super::types::types::*;
+use super::occurs_check::occurs_check;
 use std::collections::HashMap;
 
 #[derive(Debug, PartialEq)]
@@ -73,84 +74,73 @@ impl TypeEnv {
 struct TypeSubstitute(pub HashMap<TypeId, Type>);
 
 impl TypeSubstitute {
-    fn new() -> TypeSubstitute {
+    fn new() -> Self {
         TypeSubstitute(HashMap::new())
     }
 
-    //TypeにTypeIdが出現するか検査
-    fn occurs_check(&self, ty: &Type, ty_id: &TypeId) -> bool {
-        impl TupleType {
-            fn occurs_check(&self, ty_sub: &TypeSubstitute, ty_id: &TypeId) -> bool {
-                self.element_tys.iter().any(|e| ty_sub.occurs_check(e, ty_id))
-            }
+
+    fn insert2(self, ty_env: TypeEnv, ty1: Type, ty2: Type) -> Result<(Self, Type, TypeEnv), String> {
+        if ty1 == ty2 {
+            return Ok((self, ty1, ty_env));
         }
-        match ty {
-            Type::TyVar(id, conds) => {
-                conds.iter().any(|x|
-                    match x {
-                        TypeCondition::Call(x) =>
-                            self.occurs_check(&x.ret_type, &ty_id)
-                                ||
-                                x.param_types.iter().any(|x| self.occurs_check(x, &ty_id))
+        match (&ty1, &ty2) {
+            (Type::TyVar(ref ty_id1, _), Type::TyVar(ref ty_id2, _)) => {
+                match (self.0.get(ty_id1).map(Clone::clone), self.0.get(ty_id2).map(Clone::clone)) {
+                    (Some(ty1), Some(ty2)) => self.insert2(ty_env, ty1.clone(), ty2.clone()),
+                    (Some(ty1), None) => self.insert2(ty_env, ty1.clone(), ty2.clone()),
+                    (None, Some(ty2)) => self.insert2(ty_env, ty1.clone(), ty2.clone()),
+                    (None, None) => {
+                        let (mut ty_sub, ty, ty_env) = self.unify(ty_env, ty1.clone(), ty2.clone())?;
+                        ty_sub.safe_insert(ty_id1.clone(), ty.clone());
+                        ty_sub.safe_insert(ty_id2.clone(), ty.clone());
+                        Ok((ty_sub, ty, ty_env))
                     }
-                ) ||
-                    if id == ty_id { true } else {
-                        if self.0.contains_key(&id) {
-                            self.occurs_check(&self.0[id], &ty_id)
-                        } else {
-                            false
-                        }
-                    }
-            }
-            Type::Int32 | Type::Bool => false,
-            Type::TupleType(x) => x.occurs_check(&self, ty_id),
-            Type::LambdaType(x) => {
-                let x = &**x;
-                x.env_ty.as_ref().unwrap_or(&TupleType { element_tys: vec![] })
-                    .element_tys.iter().any(|e| self.occurs_check(e, ty_id))
-                    ||
-                    x.func_ty.param_types.iter().any(|e| self.occurs_check(e, ty_id))
-                    ||
-                    self.occurs_check(&x.func_ty.ret_type, ty_id)
-            }
-            Type::StructType(x) => {
-                match x.ty {
-                    StructInternalType::TupleType(ref x) => x.occurs_check(&self, ty_id),
-                    StructInternalType::RecordType(ref x) => x.element_tys.iter().any(|(_, e)| self.occurs_check(e, ty_id))
                 }
             }
-            _ => panic!("undefined type!")
+
+            (Type::TyVar(ref ty_id1, _), _) => {
+                match self.0.get(ty_id1).map(Clone::clone) {
+                    Some(ty1) => self.insert2(ty_env, ty1.clone(), ty2.clone()),
+                    None => {
+                        let (mut ty_sub, ty, ty_env) = self.unify(ty_env, ty1.clone(), ty2.clone())?;
+                        ty_sub.safe_insert(ty_id1.clone(), ty.clone());
+                        Ok((ty_sub, ty, ty_env))
+                    }
+                }
+            }
+
+            (_, Type::TyVar(ref ty_id2, _)) => {
+                match self.0.get(ty_id2).map(Clone::clone) {
+                    Some(ty2) => self.insert2(ty_env, ty1.clone(), ty2.clone()),
+                    None => {
+                        let (mut ty_sub, ty, ty_env) = self.unify(ty_env, ty1.clone(), ty2.clone())?;
+                        ty_sub.safe_insert(ty_id2.clone(), ty.clone());
+                        Ok((ty_sub, ty, ty_env))
+                    }
+                }
+            }
+            (ty1, ty2) => self.unify(ty_env, ty1.clone(), ty2.clone())
         }
     }
 
-    fn insert(mut self, ty_id: TypeId, ty: Type) -> Result<TypeSubstitute, String> {
-        match self.0.remove(&ty_id) {
-            Some(ty2) => {
-                self.0.insert(ty_id, ty2.clone());
-                self.unify(ty, ty2.clone())
-            }
-            None => {
-                if self.occurs_check(&ty, &ty_id) == false {
-                    println!("{:?}=>{:?}", ty_id, ty);
-                    self.0.insert(ty_id, ty);
-                } else {
-                    println!("occurs! {:?}=>{:?}", ty_id, ty);
-                }
-                Ok(self)
-            }
+    fn safe_insert(&mut self, ty_id: TypeId, insert_ty: Type) {
+        if occurs_check(&self.0, &insert_ty, &ty_id) == false {
+            println!("{:?}=>{:?}", ty_id, insert_ty);
+            self.0.insert(ty_id, insert_ty);
+        } else {
+            println!("occurs! {:?}=>{:?}", ty_id, insert_ty);
         }
     }
 
-
-    fn unify(self, ty1: Type, ty2: Type) -> Result<TypeSubstitute, String> {
+    fn unify(self, ty_env: TypeEnv, ty1: Type, ty2: Type) -> Result<(Self, Type, TypeEnv), String> {
         match (ty1, ty2) {
-            (Type::TyVar(id, conds), ty) => self.ty_var_unify(id, conds, ty),
-            (ty, Type::TyVar(id, conds)) => self.ty_var_unify(id, conds, ty),
-            (Type::LambdaType(ty1), Type::LambdaType(ty2)) => self.lambda_unify(*ty1, *ty2),
-            (Type::TupleType(ty1), Type::TupleType(ty2)) => self.tuple_unify(*ty1, *ty2),
+            (Type::TyVar(id, conds), ty) => self.ty_var_unify(ty_env, id, conds, ty),
+            (ty, Type::TyVar(id, conds)) => self.ty_var_unify(ty_env, id, conds, ty),
+            (Type::LambdaType(ty1), Type::LambdaType(ty2)) => self.lambda_unify(ty_env, *ty1, *ty2),
+            (Type::TupleType(ty1), Type::TupleType(ty2)) => self.tuple_unify(ty_env, *ty1, *ty2),
             (ty1, ty2) => {
                 if ty1 == ty2 {
-                    return Ok(self);
+                    return Ok((self, ty1, ty_env));
                 }
                 Err(format!(
                     "TypeSubstitute insert error! \n expect:{:?} \n actual:{:?}",
@@ -159,82 +149,92 @@ impl TypeSubstitute {
             }
         }
     }
-
-    fn ty_var_unify(mut self, ty_id: TypeId, conds: Vec<TypeCondition>, ty: Type) -> Result<TypeSubstitute, String> {
-        match ty {
-            Type::TyVar(id, conds2) => {
-                for cond in conds.iter() {
-                    for cond2 in conds2.iter() {
-                        match (cond, cond2) {
-                            (TypeCondition::Call(x), TypeCondition::Call(y)) => {
-                                self = self.fn_unify(x.clone(), y.clone())?;
-                            }
-                        };
+    fn ty_var_unify(mut self, mut ty_env: TypeEnv, ty_id: TypeId, cond: TypeCondition, ty: Type) -> Result<(Self, Type, TypeEnv), String> {
+        let result_ty =
+            match ty {
+                Type::TyVar(id, mut cond2) => {
+                    match (cond.call, cond2.call) {
+                        (Some(fn_ty1), Some(fn_ty2)) => {
+                            let (ty_sub, new_fn_ty, new_ty_env) = self.fn_unify(ty_env, *fn_ty1, *fn_ty2)?;
+                            self = ty_sub;
+                            ty_env = new_ty_env;
+                            Type::TyVar(ty_env.no_name_get(), TypeCondition { call: Some(Box::new(new_fn_ty)) })
+                        }
+                        (fn_ty1, None) => {
+                            Type::TyVar(ty_id, TypeCondition { call: fn_ty1 })
+                        }
+                        (None, fn_ty2) => {
+                            Type::TyVar(id, TypeCondition { call: fn_ty2 })
+                        }
                     }
                 }
-                if conds.len() > conds2.len() {
-                    self = self.insert(id, Type::TyVar(ty_id, conds))?;
-                } else {
-                    self = self.insert(ty_id, Type::TyVar(id, conds2))?;
-                }
-            }
-            Type::LambdaType(x) => {
-                for cond in conds.into_iter() {
-                    match cond {
-                        TypeCondition::Call(c) => {
+                Type::LambdaType(x) => {
+                    match cond.call {
+                        Some(c) => {
                             let env_len = x.env_ty.clone().map(|t| t.element_tys.len()).unwrap_or(0);
                             let mut func_ty = x.func_ty.clone();
                             func_ty.param_types = func_ty.param_types.clone().into_iter().skip(env_len).collect::<Vec<_>>();
-                            self = self.fn_unify(func_ty, c)?;
+                            let (ty_sub, _, new_ty_env) = self.fn_unify(ty_env, func_ty, *c)?;
+                            self = ty_sub;
+                            ty_env = new_ty_env;
                         }
-                    }
-                };
-                self = self.insert(ty_id, Type::LambdaType(x))?;
-            }
-            ty => {
-                if conds.len() != 0 {
-                    return Err(format!(
-                        "TypeSubstitute insert error! \n expect:{:?} \n actual:{:?}",
-                        Type::TyVar(ty_id, conds), ty
-                    ));
-                } else {
-                    self = self.insert(ty_id, ty)?;
+                        _ => ()
+                    };
+                    Type::LambdaType(x.clone())
                 }
-            }
-        };
-        Ok(self)
+                ty => {
+                    if cond.call.is_some() {
+                        return Err(format!(
+                            "TypeSubstitute insert error! \n expect:{:?} \n actual:{:?}",
+                            Type::TyVar(ty_id, cond), ty
+                        ));
+                    } else {
+                        ty
+                    }
+                }
+            };
+        Ok((self, result_ty, ty_env))
     }
 
-    fn fn_unify(mut self, ty1: FuncType, ty2: FuncType) -> Result<TypeSubstitute, String> {
+    fn fn_unify(mut self, mut ty_env: TypeEnv, ty1: FuncType, ty2: FuncType) -> Result<(Self, FuncType, TypeEnv), String> {
         if ty1.param_types.len() != ty2.param_types.len() {
             return Err(format!(
                 "TypeSubstitute insert error! \n expect:{:?} \n actual:{:?}",
                 ty1, ty2
             ));
         }
+        let mut new_param_types: Vec<Type> = Vec::with_capacity(ty1.param_types.len());
         for (x, y) in ty1.param_types.into_iter().zip(ty2.param_types) {
-            self = self.unify(x, y)?;
+            let (ty_sub, ty, new_ty_env) = self.insert2(ty_env, x, y)?;
+            self = ty_sub;
+            ty_env = new_ty_env;
+            new_param_types.push(ty);
         }
-        self.unify(ty1.ret_type, ty2.ret_type)
+        let (ty_sub, new_ret_type, ty_env) = self.insert2(ty_env, ty1.ret_type, ty2.ret_type)?;
+        Ok((ty_sub, FuncType { param_types: new_param_types, ret_type: new_ret_type }, ty_env))
     }
 
-    fn tuple_unify(mut self, ty1: TupleType, ty2: TupleType) -> Result<TypeSubstitute, String> {
+    fn tuple_unify(mut self, mut ty_env: TypeEnv, ty1: TupleType, ty2: TupleType) -> Result<(Self, Type, TypeEnv), String> {
         if ty1.element_tys.len() != ty2.element_tys.len() {
             return Err(format!(
                 "TypeSubstitute insert error! \n expect:{:?} \n actual:{:?}",
                 ty1, ty2
             ));
         }
-        for (x, y) in ty1.element_tys.into_iter().zip(ty2.element_tys) {
-            self = self.unify(x, y)?;
+        for (x, y) in ty1.element_tys.clone().into_iter().zip(ty2.element_tys) {
+            let (ty_sub, _, new_ty_env) = self.insert2(ty_env, x, y)?;
+            self = ty_sub;
+            ty_env = new_ty_env;
         }
-        Ok(self)
+        Ok((self, Type::TupleType(Box::new(ty1)), ty_env))
     }
 
-    fn lambda_unify(mut self, ty1: LambdaType, ty2: LambdaType) -> Result<TypeSubstitute, String> {
-        match (ty1.env_ty, ty2.env_ty) {
+    fn lambda_unify(mut self, mut ty_env: TypeEnv, ty1: LambdaType, ty2: LambdaType) -> Result<(Self, Type, TypeEnv), String> {
+        match (ty1.env_ty.clone(), ty2.env_ty) {
             (Some(x), Some(y)) => {
-                self = self.tuple_unify(x, y)?;
+                let (ty_sub, _, new_ty_env) = self.tuple_unify(ty_env, x, y)?;
+                self = ty_sub;
+                ty_env = new_ty_env;
             }
             (None, None) => (),
             (None, x) | (x, None) => {
@@ -244,26 +244,26 @@ impl TypeSubstitute {
                 ));
             }
         }
-        self.fn_unify(ty1.func_ty, ty2.func_ty)
+        let (ty_sub, _, ty_env) = self.fn_unify(ty_env, ty1.func_ty.clone(), ty2.func_ty)?;
+        Ok((ty_sub, Type::LambdaType(Box::new(ty1)), ty_env))
     }
 
     // 型変数に対応する単相型を見つけて返す。見つからなかったら空タプルの型を返す
-    fn look_up(&self, ty_id: &TypeId, conds: &Vec<TypeCondition>) -> Type {
+    fn look_up(&self, ty_id: &TypeId, cond: &TypeCondition) -> Type {
         match self.0.get(ty_id) {
             Some(ty) => self.type_look_up(ty),
             None => {
-                if conds.len() == 1 {
-                    match conds[0].clone() {
-                        TypeCondition::Call(c) =>
-                            Type::LambdaType(Box::new(LambdaType {
-                                env_ty: None,
-                                func_ty: self.func_look_up(&c),
-                            }))
-                    }
-                } else {
-                    Type::TupleType(Box::new(TupleType {
-                        element_tys: vec![],
-                    }))
+                match &cond.call {
+                    Some(x) =>
+                        Type::LambdaType(Box::new(LambdaType {
+                            env_ty: None,
+                            func_ty: self.func_look_up(&x),
+                        })),
+
+                    None =>
+                        Type::TupleType(Box::new(TupleType {
+                            element_tys: vec![],
+                        }))
                 }
             }
         }
@@ -336,7 +336,7 @@ impl TypeResolved {
             ty_env
                 .env[0]
                 .iter()
-                .map(|(k, v)| (k.clone(), ty_subst.look_up(&v, &vec![])))
+                .map(|(k, v)| (k.clone(), ty_subst.look_up(&v, &TypeCondition::new())))
                 .collect(),
         )
     }
@@ -368,12 +368,12 @@ impl TypeInfo {
         TypeInfo(TypeEnv::new(), TypeSubstitute::new())
     }
 
-    pub fn look_up(&self, ty_id: &TypeId, conds: &Vec<TypeCondition>) -> Type {
-        self.1.look_up(ty_id, conds)
+    pub fn look_up(&self, ty_id: &TypeId, cond: &TypeCondition) -> Type {
+        self.1.look_up(ty_id, cond)
     }
 
     pub fn look_up_func_name(&mut self, name: String) -> Type {
-        self.1.look_up(&self.0.global_get(name), &vec![])
+        self.1.look_up(&self.0.global_get(name), &TypeCondition::new())
     }
 
     pub fn get(&mut self, id: String) -> TypeId {
@@ -389,7 +389,9 @@ impl TypeInfo {
     }
 
     pub fn unify(mut self, ty1: Type, ty2: Type) -> Result<TypeInfo, String> {
-        self.1 = self.1.unify(ty1, ty2)?;
+        let (ty_sub, _, ty_env) = self.1.insert2(self.0, ty1, ty2)?;
+        self.1 = ty_sub;
+        self.0 = ty_env;
         Ok(self)
     }
 

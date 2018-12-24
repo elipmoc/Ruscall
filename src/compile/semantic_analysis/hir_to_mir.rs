@@ -137,7 +137,7 @@ impl TypeAST {
     fn to_ty(self, struct_list: &HashMap<String, DecStructHir>, ty_var_table: &mut TypeVariableTable, ty_info: &mut TypeInfo) -> Type {
         match self {
             TypeAST::Type(x) => x,
-            TypeAST::FuncTypeAST(x) => Type::TyVar(ty_info.no_name_get(), vec![TypeCondition::Call(x.to_ty(struct_list, ty_var_table, ty_info))]),
+            TypeAST::FuncTypeAST(x) => Type::TyVar(ty_info.no_name_get(), TypeCondition { call: Some(Box::new(x.to_ty(struct_list, ty_var_table, ty_info))) }),
             TypeAST::TupleTypeAST(x) => Type::TupleType(
                 Box::new(x.to_ty(struct_list, ty_var_table, ty_info))
             ),

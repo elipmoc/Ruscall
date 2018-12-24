@@ -1,9 +1,10 @@
 pub mod hir_to_mir;
-pub mod type_env;
 pub mod type_get;
 pub mod variable_table;
 pub mod type_variable_table;
+pub mod type_inference;
 
+pub use self::type_inference::type_env;
 use super::ir::mir;
 use super::ir::ast;
 use super::error::Error;

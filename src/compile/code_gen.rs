@@ -53,10 +53,11 @@ impl mir::ProgramMir {
 }
 
 fn ex_func_gen(dec_func_ir: mir::DecFuncMir, module: &module::Module, ty_info: &mut TypeInfo) {
+    use compile::types::show_type::ShowType;
     match ty_info.look_up_func_name(dec_func_ir.name.clone()) {
         Type::LambdaType(ty) =>
             module.add_function(&dec_func_ir.name, ty.to_llvm_any_type(false).as_any_type_enum().into_function_type(), Some(module::Linkage::External)),
-        _ => panic!("error!"),
+        x => panic!("error!{}",x.show()),
     };
 }
 
@@ -160,13 +161,14 @@ impl mir::ExprMir {
             mir::ExprMir::NumMir(_) => Type::Int32,
             mir::ExprMir::BoolMir(_) => Type::Bool,
             mir::ExprMir::OpMir(_) => Type::Int32,
-            mir::ExprMir::VariableMir(x) => ty_info.look_up(&x.ty_id, &vec![]),
-            mir::ExprMir::IfMir(x) => ty_info.look_up(&x.ty_id, &vec![]),
+            mir::ExprMir::VariableMir(x) => ty_info.look_up(&x.ty_id, &TypeCondition::new()),
+            mir::ExprMir::IfMir(x) => ty_info.look_up(&x.ty_id, &TypeCondition::new()),
             mir::ExprMir::GlobalVariableMir(x) => ty_info.look_up_func_name(x.id.clone()),
-            mir::ExprMir::CallMir(x) => ty_info.look_up(&x.ty_id, &vec![]),
-            mir::ExprMir::TupleMir(x) => ty_info.look_up(&x.ty_id, &vec![]),
+            mir::ExprMir::CallMir(x) => ty_info.look_up(&x.ty_id, &TypeCondition::new()),
+            mir::ExprMir::TupleMir(x) => ty_info.look_up(&x.ty_id, &TypeCondition::new()),
             mir::ExprMir::TupleStructMir(_) => panic!("undefined"),
-            mir::ExprMir::LambdaMir(x) => ty_info.look_up(&x.ty_id, &vec![]),
+            mir::ExprMir::TuplePropertyMir(_) => panic!("undefined"),
+            mir::ExprMir::LambdaMir(x) => ty_info.look_up(&x.ty_id, &TypeCondition::new()),
         }
     }
 }
@@ -239,7 +241,7 @@ impl mir::IfMir {
         builder.build_unconditional_branch(&merge_block);
         let else_block = builder.get_insert_block().unwrap();
         builder.position_at_end(&merge_block);
-        let phi_node = builder.build_phi(ty_info.look_up(&self.ty_id, &vec![]).to_llvm_basic_type(), "");
+        let phi_node = builder.build_phi(ty_info.look_up(&self.ty_id, &TypeCondition::new()).to_llvm_basic_type(), "");
         phi_node.add_incoming(&[(t_value, &then_block), (f_value, &else_block)]);
         phi_node
     }

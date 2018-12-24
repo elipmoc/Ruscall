@@ -299,8 +299,12 @@ parser! {
                 .map(|(pos,id)|ast::ExprAST::VariableAST(ast::VariableAST::new(id,pos)))
             )
             .or(lambda_parser()),
-            many(char('.').with(num_parser()))
-        ).map(|(expr,_):(_,Vec<_>)|expr)
+            many(char('.').with(( position(), num_parser())))
+        ).map(|(expr,prop ):(_,Vec<_>)|{
+            prop.into_iter().fold(expr,|acc,(pos,index) |
+                ast::ExprAST::create_tuple_property_ast(index ,acc, pos)
+            )
+        })
     }
 }
 

@@ -22,7 +22,14 @@ impl ShowType for Type {
             Type::Int32 => "Int32".to_string(),
             Type::Bool => "Bool".to_string(),
             Type::TupleType(x) => x.show(),
-            Type::TyVar(ty_id, _) => ty_id.get_id().to_string(),
+            Type::TyVar(ty_id, cond) => {
+                ty_id.get_id().to_string() + "[" +
+                    &match &cond.call {
+                        None => "".to_string(),
+                        Some(x) => x.show()
+                    }
+                    + "]"
+            }
             Type::LambdaType(x) => x.show(),
             Type::StructType(x) => x.show(),
         }

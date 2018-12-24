@@ -113,6 +113,11 @@ impl ExprAST {
                     .collect::<ResolveResult<Vec<_>>>()?;
                 self = ExprAST::TupleStructAST(Box::new(x));
             }
+            ExprAST::TuplePropertyAST(x) => {
+                let mut x = *x;
+                x.expr = x.expr.resolve_named_params_constructor_call(struct_list)?;
+                self = ExprAST::TuplePropertyAST(Box::new(x));
+            }
         }
         Ok(self)
     }
