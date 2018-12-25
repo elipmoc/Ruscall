@@ -42,7 +42,6 @@ pub fn occurs_check(hash_map: &TypeSubstituteHashMap, ty: &Type, ty_id: &TypeId)
                 StructInternalType::RecordType(ref x) => x.element_tys.iter().any(|(_, e)| occurs_check(hash_map, e, ty_id))
             }
         }
-        _ => panic!("undefined type!")
     }
 }
 

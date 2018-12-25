@@ -150,7 +150,6 @@ impl TypeAST {
                     panic!("実装めんどいな")
                 }
             }
-            _ => panic!("undefined")
         }
     }
 }

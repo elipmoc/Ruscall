@@ -39,7 +39,7 @@ pub fn parse(src_str: &str) -> Result<mir::ProgramMir, String> {
             let result = semantic_analysis::analysis(ast.0);
             match result {
                 Ok(x) => {
-                    println!("resolve_op\n{:?}\n", x);
+                    println!("resolve_op\n\n{:?}\n", x);
                     Result::Ok(x)
                 }
                 Err(err) => Result::Err(err.to_string()),

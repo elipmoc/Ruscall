@@ -45,7 +45,6 @@ impl ProgramAST {
                     }
                     program_hir.struct_list.insert(x.ty.name.clone(), x);
                 }
-                _ => panic!("undefined!")
             };
         };
         if program_hir.def_func_list.contains_key("main") {

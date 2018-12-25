@@ -87,7 +87,7 @@ impl<'a> TypeGet for &'a ExprMir {
             ExprMir::GlobalVariableMir(x) => x.ty_get(ty_info),
             ExprMir::TupleMir(x) => x.ty_get(ty_info),
             ExprMir::TupleStructMir(x) => x.ty_get(ty_info),
-            ExprMir::TuplePropertyMir(x) => panic!("undefined")/*x.ty_get(ty_info)*/,
+            ExprMir::TuplePropertyMir(_x) => panic!("undefined")/*x.ty_get(ty_info)*/,
             ExprMir::LambdaMir(x) => x.ty_get(ty_info)
         }
     }

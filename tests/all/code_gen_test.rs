@@ -16,7 +16,7 @@ macro_rules! helper {
                 Ok(ir) => {
                     let CodeGenResult{ module , .. } = ir.code_gen(stringify!($file_name));
                     let execution_engine = module.create_jit_execution_engine(OptimizationLevel::None).unwrap();
-                    execution_engine.add_module(&create_moc_llvm_module());
+                    assert!(execution_engine.add_module(&create_moc_llvm_module()).is_ok(),"add_module error!");
                     unsafe {
                         let funcion_in_rust: JitFunction<MainFunc> = execution_engine.get_function("main").unwrap();
                             assert_eq!(
