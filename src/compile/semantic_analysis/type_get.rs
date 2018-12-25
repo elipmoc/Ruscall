@@ -42,11 +42,9 @@ impl ProgramMir {
 impl<'a> TypeGet for &'a DecFuncMir {
     fn ty_get(&self, mut ty_info: TypeInfo) -> TyCheckResult<(TypeInfo, Type)> {
         let func_ty_id = ty_info.get(self.name.clone());
-
-        let ty_var = ty_info.no_name_get();
         let ty_info = ty_info.unify(
             Type::TyVar(func_ty_id.clone(), TypeCondition::new()),
-            Type::TyVar(ty_var, TypeCondition { call: Some(Box::new(self.ty.clone())) }),
+            Type::LambdaType(Box::new(LambdaType { env_ty: None, func_ty: self.ty.clone() })),
         ).map_err(|msg| Error::new(self.pos, &msg))?;
         Ok((ty_info, Type::TyVar(func_ty_id, TypeCondition::new())))
     }

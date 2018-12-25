@@ -253,18 +253,9 @@ impl TypeSubstitute {
         match self.0.get(ty_id) {
             Some(ty) => self.type_look_up(ty),
             None => {
-                match &cond.call {
-                    Some(x) =>
-                        Type::LambdaType(Box::new(LambdaType {
-                            env_ty: None,
-                            func_ty: self.func_look_up(&x),
-                        })),
-
-                    None =>
-                        Type::TupleType(Box::new(TupleType {
-                            element_tys: vec![],
-                        }))
-                }
+                Type::TupleType(Box::new(TupleType {
+                    element_tys: vec![],
+                }))
             }
         }
     }
