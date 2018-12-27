@@ -82,24 +82,36 @@ impl TypeSubstitute {
         let result_ty =
             match ty {
                 Type::TyVar(id, mut cond2) => {
-                    match (cond.call, cond2.call) {
-                        (Some(fn_ty1), Some(fn_ty2)) => {
+                    match (cond, cond2) {
+                        (TypeCondition::Call(fn_ty1), TypeCondition::Call(fn_ty2)) => {
                             let (ty_sub, new_fn_ty, new_ty_env) = self.fn_unify(ty_env, *fn_ty1, *fn_ty2)?;
                             self = ty_sub;
                             ty_env = new_ty_env;
-                            Type::TyVar(ty_env.no_name_get(), TypeCondition { call: Some(Box::new(new_fn_ty)) })
+                            Type::TyVar(ty_env.no_name_get(), TypeCondition::with_call(new_fn_ty))
                         }
-                        (fn_ty1, None) => {
-                            Type::TyVar(ty_id, TypeCondition { call: fn_ty1 })
+                        (fn_ty1, TypeCondition::Empty) => {
+                            Type::TyVar(ty_id, fn_ty1)
                         }
-                        (None, fn_ty2) => {
-                            Type::TyVar(id, TypeCondition { call: fn_ty2 })
+                        (TypeCondition::Empty, fn_ty2) => {
+                            Type::TyVar(id, fn_ty2)
+                        }
+                        (TypeCondition::ImplItems(impl_items1), TypeCondition::ImplItems(impl_items2)) => {
+                            Type::TyVar(
+                                ty_env.no_name_get(),
+                                TypeCondition::ImplItems(Box::new(ImplItems::merge(*impl_items1, *impl_items2))),
+                            )
+                        }
+                        (cond, cond2) => {
+                            return Err(format!(
+                                "TypeSubstitute insert error! \n expect:{:?} \n actual:{:?}",
+                                Type::TyVar(ty_id, cond), Type::TyVar(id, cond2)
+                            ));
                         }
                     }
                 }
                 Type::LambdaType(x) => {
-                    match cond.call {
-                        Some(c) => {
+                    match cond {
+                        TypeCondition::Call(c) => {
                             let env_len = x.env_ty.clone().map(|t| t.element_tys.len()).unwrap_or(0);
                             let mut func_ty = x.func_ty.clone();
                             func_ty.param_types = func_ty.param_types.clone().into_iter().skip(env_len).collect::<Vec<_>>();
@@ -111,8 +123,34 @@ impl TypeSubstitute {
                     };
                     Type::LambdaType(x.clone())
                 }
+                Type::TupleType(x) => {
+                    match cond {
+                        TypeCondition::Call(_) => {
+                            return Err(format!(
+                                "TypeSubstitute insert error! \n expect:{:?} \n actual:{:?}",
+                                Type::TyVar(ty_id, cond), x
+                            ));
+                        }
+                        TypeCondition::ImplItems(ref impl_items) => {
+                            for (index, ty) in impl_items.get_tuple_properties() {
+                                let index = *index as usize;
+                                if index >= x.element_tys.len() {
+                                    return Err(format!(
+                                        "TypeSubstitute insert error! \n expect:{:?} \n actual:{:?}",
+                                        Type::TyVar(ty_id, cond.clone()), x
+                                    ));
+                                }
+                                let (ty_sub, _, new_ty_env) = self.start_unify(ty_env, ty.clone(), x.element_tys[index].clone())?;
+                                self = ty_sub;
+                                ty_env = new_ty_env;
+                            }
+                            Type::TupleType(x)
+                        }
+                        _ => Type::TupleType(x)
+                    }
+                }
                 ty => {
-                    if cond.call.is_some() {
+                    if cond.is_empty() == false {
                         return Err(format!(
                             "TypeSubstitute insert error! \n expect:{:?} \n actual:{:?}",
                             Type::TyVar(ty_id, cond), ty

@@ -87,7 +87,7 @@ impl<'a> TypeGet for &'a ExprMir {
             ExprMir::GlobalVariableMir(x) => x.ty_get(ty_info),
             ExprMir::TupleMir(x) => x.ty_get(ty_info),
             ExprMir::TupleStructMir(x) => x.ty_get(ty_info),
-            ExprMir::TuplePropertyMir(_x) => panic!("undefined")/*x.ty_get(ty_info)*/,
+            ExprMir::TuplePropertyMir(x) => x.ty_get(ty_info),
             ExprMir::LambdaMir(x) => x.ty_get(ty_info)
         }
     }
@@ -132,7 +132,7 @@ impl TypeGet for CallMir {
         let ty_info =
             ty_info.unify(
                 func_ty,
-                Type::TyVar(ty_id, TypeCondition { call: Some(Box::new(FuncType { param_types: params_ty, ret_type: ret_ty.clone() })) }),
+                Type::TyVar(ty_id, TypeCondition::with_call(FuncType { param_types: params_ty, ret_type: ret_ty.clone() })),
             ).map_err(|msg| Error::new(self.func.get_pos(), &msg))?;
         Ok((ty_info, ret_ty))
     }
@@ -240,11 +240,21 @@ impl TypeGet for LambdaMir {
         Ok((ty_info, lambda_ty))
     }
 }
-/*
+
+
 impl TypeGet for TuplePropertyMir {
     fn ty_get(&self, ty_info: TypeInfo) -> TyCheckResult<(TypeInfo, Type)> {
-        let (ty_info, expr_ty) = self.expr.ty_get(ty_info)?;
-        let tuple_ty
-        ty_info.unify(expr_ty)
+        let (mut ty_info, expr_ty) = (&self.expr).ty_get(ty_info)?;
+        let property_ty =
+            Type::TyVar(
+                self.ty_id.clone(), TypeCondition::new(),
+            );
+        let temp_var_ty = ty_info.no_name_get();
+        let ty_info = ty_info.unify(
+            Type::TyVar(temp_var_ty, TypeCondition::with_impl_tuple_property(self.index, property_ty.clone())),
+            expr_ty,
+        ).map_err(|msg| Error::new(self.pos, &msg))?;
+
+        Ok((ty_info, property_ty))
     }
-}*/
+}

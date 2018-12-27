@@ -137,7 +137,7 @@ impl TypeAST {
     fn to_ty(self, struct_list: &HashMap<String, DecStructHir>, ty_var_table: &mut TypeVariableTable, ty_info: &mut TypeInfo) -> Type {
         match self {
             TypeAST::Type(x) => x,
-            TypeAST::FuncTypeAST(x) => Type::TyVar(ty_info.no_name_get(), TypeCondition { call: Some(Box::new(x.to_ty(struct_list, ty_var_table, ty_info))) }),
+            TypeAST::FuncTypeAST(x) => Type::TyVar(ty_info.no_name_get(), TypeCondition::with_call(x.to_ty(struct_list, ty_var_table, ty_info))),
             TypeAST::TupleTypeAST(x) => Type::TupleType(
                 Box::new(x.to_ty(struct_list, ty_var_table, ty_info))
             ),
@@ -179,7 +179,7 @@ impl ExprAST {
             ExprAST::TupleAST(x) => x.to_mir(program_ir, struct_list, var_table, lambda_count),
             ExprAST::TupleStructAST(x) => x.to_mir(program_ir, struct_list, var_table, lambda_count),
             ExprAST::LambdaAST(x) => x.to_mir(program_ir, struct_list, var_table, lambda_count),
-            _ => panic!("undefined")
+            ExprAST::TuplePropertyAST(x) => x.to_mir(program_ir, struct_list, var_table, lambda_count),
         }
     }
 }
@@ -321,6 +321,25 @@ impl LambdaAST {
             pos: self.pos,
             params_len,
         })))
+    }
+}
+
+impl TuplePropertyAST {
+    fn to_mir(
+        self,
+        program_ir: &mut ProgramMir,
+        struct_list: &HashMap<String, DecStructHir>,
+        var_table: &mut VariableTable,
+        lambda_count: &mut usize,
+    ) -> AstToIrResult<ExprMir> {
+        Ok(
+            ExprMir::create_tuple_property_mir(
+                self.expr.to_mir(program_ir, struct_list, var_table, lambda_count)?,
+                self.pos,
+                program_ir.ty_info.no_name_get(),
+                self.index,
+            )
+        )
     }
 }
 

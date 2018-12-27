@@ -63,7 +63,7 @@ impl ExprMir {
             ExprMir::GlobalVariableMir(x) => x.pos,
             ExprMir::CallMir(x) => x.func.get_pos(),
             ExprMir::LambdaMir(x) => x.pos,
-            ExprMir::TuplePropertyMir(x)=>x.pos
+            ExprMir::TuplePropertyMir(x) => x.pos
         }
     }
 
@@ -101,6 +101,16 @@ impl ExprMir {
             ty: struct_ty,
         }))
     }
+    pub fn create_tuple_property_mir(expr: ExprMir, pos: SourcePosition, ty_id: TypeId, index: u32) -> ExprMir {
+        ExprMir::TuplePropertyMir(Box::new(
+            TuplePropertyMir {
+                expr,
+                pos,
+                index,
+                ty_id,
+            }
+        ))
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -137,9 +147,10 @@ pub struct TupleStructMir {
 
 #[derive(Debug, PartialEq)]
 pub struct TuplePropertyMir {
-    pub expr: TupleMir,
+    pub expr: ExprMir,
     pub index: u32,
     pub pos: SourcePosition,
+    pub ty_id: TypeId,
 }
 
 

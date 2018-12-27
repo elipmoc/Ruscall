@@ -165,7 +165,7 @@ impl mir::ExprMir {
             mir::ExprMir::CallMir(x) => ty_info.look_up(&x.ty_id),
             mir::ExprMir::TupleMir(x) => ty_info.look_up(&x.ty_id),
             mir::ExprMir::TupleStructMir(_) => panic!("undefined"),
-            mir::ExprMir::TuplePropertyMir(_) => panic!("undefined"),
+            mir::ExprMir::TuplePropertyMir(x) => ty_info.look_up(&x.ty_id),
             mir::ExprMir::LambdaMir(x) => ty_info.look_up(&x.ty_id),
         }
     }
@@ -205,7 +205,7 @@ impl mir::ExprMir {
             mir::ExprMir::TupleStructMir(x) => x.tuple.code_gen(module, builder, params, ty_info, function),
             mir::ExprMir::LambdaMir(x) => x.code_gen(module, builder, params, ty_info),
             mir::ExprMir::CallMir(x) => x.code_gen(module, builder, params, ty_info, function),
-            _ => panic!("error!")
+            mir::ExprMir::TuplePropertyMir(x) => x.code_gen(module, builder, params, ty_info, function),
         }
     }
 }
@@ -386,5 +386,29 @@ impl mir::LambdaMir {
             builder.build_store(func_ptr, func.as_any_value_enum().into_pointer_value().as_basic_value_enum());
             builder.build_load(lambda_val, "ret")
         }
+    }
+}
+
+impl mir::TuplePropertyMir {
+    fn code_gen(
+        self,
+        module: &module::Module,
+        builder: &builder::Builder,
+        params: &Vec<values::BasicValueEnum>,
+        ty_info: &mut TypeInfo,
+        function: values::FunctionValue,
+    ) -> values::BasicValueEnum {
+        let expr_ty = self.expr.get_ty(ty_info);
+        let expr_ptr = builder.build_alloca(expr_ty.to_llvm_basic_type(), "");
+        let expr_value = self.expr.code_gen(module, builder, params, ty_info, function);
+        builder.build_store(expr_ptr, expr_value);
+        let ptr = unsafe {
+            builder.build_struct_gep(
+                expr_ptr,
+                self.index,
+                "",
+            )
+        };
+        builder.build_load(ptr, "")
     }
 }

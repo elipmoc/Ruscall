@@ -13,13 +13,65 @@ impl TypeId {
 
 //型制約
 #[derive(Clone, PartialEq, Debug)]
-pub struct TypeCondition {
-    pub call: Option<Box<FuncType>>
+pub enum TypeCondition {
+    Call(Box<FuncType>),
+    Empty,
+    ImplItems(Box<ImplItems>),
 }
 
 impl TypeCondition {
     pub fn new() -> Self {
-        TypeCondition { call: None }
+        TypeCondition::Empty
+    }
+
+    pub fn with_call(fn_ty: FuncType) -> Self {
+        TypeCondition::Call(Box::new(fn_ty))
+    }
+
+    pub fn with_impl_tuple_property(index: u32, ty: Type) -> Self {
+        TypeCondition::ImplItems(Box::new(ImplItems::new(index, ty)))
+    }
+
+    pub fn is_call(&self) -> bool {
+        if let TypeCondition::Call(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        if let TypeCondition::Empty = self {
+            true
+        } else {
+            false
+        }
+    }
+}
+
+use std::collections::HashMap;
+use std::collections::hash_map::{Values,Iter};
+
+#[derive(Clone, PartialEq, Debug)]
+pub struct ImplItems(pub HashMap<u32, Type>);
+
+impl ImplItems {
+    fn new(index: u32, ty: Type) -> Self {
+        let mut x = ImplItems(HashMap::new());
+        x.0.insert(index, ty);
+        x
+    }
+
+    pub fn merge(other1: Self, other2: Self) -> Self {
+        ImplItems(other1.0.into_iter().chain(other2.0.into_iter()).collect())
+    }
+
+    pub fn types(&self) -> Values<u32, Type> {
+        self.0.values()
+    }
+
+    pub fn get_tuple_properties(&self) -> Iter<u32, Type> {
+        self.0.iter()
     }
 }
 

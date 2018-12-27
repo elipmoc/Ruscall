@@ -7,14 +7,15 @@ type TypeSubstituteHashMap = HashMap<TypeId, Type>;
 pub fn occurs_check(hash_map: &TypeSubstituteHashMap, ty: &Type, ty_id: &TypeId) -> bool {
     match ty {
         Type::TyVar(id, ref cond) => {
-            (match cond.call {
-                Some(ref x) =>
+            (match cond {
+                TypeCondition::Call(ref x) =>
                     {
                         occurs_check(hash_map, &x.ret_type, &ty_id)
                             ||
                             x.param_types.iter().any(|x| occurs_check(hash_map, x, &ty_id))
                     }
-                None => false
+                TypeCondition::Empty => false,
+                TypeCondition::ImplItems(x) => x.types().any(|x| occurs_check(hash_map, &x, &ty_id))
             })
                 ||
                 if id == ty_id { true } else {
@@ -32,7 +33,7 @@ pub fn occurs_check(hash_map: &TypeSubstituteHashMap, ty: &Type, ty_id: &TypeId)
             x.env_ty.as_ref().unwrap_or(&TupleType { element_tys: vec![] })
                 .element_tys.iter().any(|e| occurs_check(hash_map, e, ty_id))
                 ||
-                x.func_ty.param_types.iter().any(|e| occurs_check(hash_map, e, ty_id))
+                x.func_ty.occurs_check(hash_map, ty_id)
                 ||
                 occurs_check(hash_map, &x.func_ty.ret_type, ty_id)
         }
@@ -48,5 +49,13 @@ pub fn occurs_check(hash_map: &TypeSubstituteHashMap, ty: &Type, ty_id: &TypeId)
 impl TupleType {
     fn occurs_check(&self, hash_map: &TypeSubstituteHashMap, ty_id: &TypeId) -> bool {
         self.element_tys.iter().any(|e| occurs_check(hash_map, e, ty_id))
+    }
+}
+
+impl FuncType {
+    fn occurs_check(&self, hash_map: &TypeSubstituteHashMap, ty_id: &TypeId) -> bool {
+        self.param_types.iter().any(|e| occurs_check(hash_map, e, ty_id))
+            ||
+            occurs_check(hash_map, &self.ret_type, ty_id)
     }
 }

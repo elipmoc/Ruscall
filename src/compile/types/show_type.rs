@@ -24,9 +24,10 @@ impl ShowType for Type {
             Type::TupleType(x) => x.show(),
             Type::TyVar(ty_id, cond) => {
                 ty_id.get_id().to_string() + "[" +
-                    &match &cond.call {
-                        None => "".to_string(),
-                        Some(x) => x.show()
+                    &match &cond {
+                        TypeCondition::Empty => "".to_string(),
+                        TypeCondition::Call(x) => x.show(),
+                        TypeCondition::ImplItems(x) => x.show()
                     }
                     + "]"
             }
@@ -81,5 +82,13 @@ impl ShowType for LambdaType {
             + &self.env_ty.clone().map(|x| x.show()).unwrap_or("void".to_string())
             + ","
             + "func:" + &self.func_ty.show() + ")"
+    }
+}
+
+impl ShowType for ImplItems {
+    fn show(&self) -> String {
+        "impl{".to_string() + &self.0.iter().fold(String::new(), |acc, (name, ty)| {
+            acc + &format!(" index {}::{:?},", name, ty)
+        }) + "}"
     }
 }
