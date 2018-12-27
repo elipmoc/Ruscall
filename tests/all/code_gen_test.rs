@@ -43,3 +43,4 @@ helper!(test10,15);
 helper!(test11,12);
 helper!(test12,65);
 helper!(fact,120);
+helper!(tuple_property,14);
