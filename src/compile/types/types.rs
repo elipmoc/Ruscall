@@ -148,6 +148,16 @@ pub struct StructType {
     pub name: String,
 }
 
+impl TupleTypeBase for StructType {
+    fn get_elements_at(&self, index: usize) -> &Type {
+        &self.ty.get_elements_at(index)
+    }
+
+    fn get_elements_len(&self) -> usize {
+        self.ty.get_elements_len()
+    }
+}
+
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct RecordType {

@@ -118,12 +118,10 @@ impl TypeSubstitute {
                     Type::TupleType(Box::new(tuple_ty))
                 }
                 Type::StructType(struct_ty) => {
-                    let mut struct_ty = *struct_ty;
-                    let (ty_sub, struct_internal_ty, new_ty_env) =
-                        self.tuple_ty_var_unify(ty_env, struct_ty.ty, ty_id, cond)?;
+                    let (ty_sub, struct_ty, new_ty_env) =
+                        self.tuple_ty_var_unify(ty_env, *struct_ty, ty_id, cond)?;
                     self = ty_sub;
                     ty_env = new_ty_env;
-                    struct_ty.ty = struct_internal_ty;
                     Type::StructType(Box::new(struct_ty))
                 }
                 ty => {
