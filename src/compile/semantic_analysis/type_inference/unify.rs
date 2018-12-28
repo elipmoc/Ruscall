@@ -1,6 +1,15 @@
 use super::super::super::types::types::*;
 use super::type_env::{TypeEnv, TypeSubstitute};
 use super::occurs_check::occurs_check;
+use std::fmt::Debug;
+
+//型エラーの生成
+fn create_error<A: Debug, B: Debug, T>(ty1: &A, ty2: &B) -> Result<(TypeSubstitute, T, TypeEnv), String> {
+    Err(format!(
+        "TypeSubstitute insert error! \n expect:{:?} \n actual:{:?}",
+        ty1, ty2
+    ))
+}
 
 impl TypeSubstitute {
     //二つの型の型代入情報の末端を取得して単一化する
@@ -23,28 +32,17 @@ impl TypeSubstitute {
                 }
             }
 
-            (Type::TyVar(ref ty_id1, _), _) => {
-                match self.0.get(ty_id1).map(Clone::clone) {
+            (Type::TyVar(ty_id, cond), ty2) | (ty2, Type::TyVar(ty_id, cond)) => {
+                match self.0.get(ty_id).map(Clone::clone) {
                     Some(ty1) => self.start_unify(ty_env, ty1.clone(), ty2.clone()),
                     None => {
-                        let (mut ty_sub, ty, ty_env) = self.unify(ty_env, ty1.clone(), ty2.clone())?;
-                        ty_sub.safe_insert(ty_id1.clone(), ty.clone());
+                        let (mut ty_sub, ty, ty_env) = self.unify(ty_env, Type::TyVar(ty_id.clone(), cond.clone()), ty2.clone())?;
+                        ty_sub.safe_insert(ty_id.clone(), ty.clone());
                         Ok((ty_sub, ty, ty_env))
                     }
                 }
             }
-
-            (_, Type::TyVar(ref ty_id2, _)) => {
-                match self.0.get(ty_id2).map(Clone::clone) {
-                    Some(ty2) => self.start_unify(ty_env, ty1.clone(), ty2.clone()),
-                    None => {
-                        let (mut ty_sub, ty, ty_env) = self.unify(ty_env, ty1.clone(), ty2.clone())?;
-                        ty_sub.safe_insert(ty_id2.clone(), ty.clone());
-                        Ok((ty_sub, ty, ty_env))
-                    }
-                }
-            }
-            (ty1, ty2) => self.unify(ty_env, ty1.clone(), ty2.clone())
+            (_, _) => self.unify(ty_env, ty1.clone(), ty2.clone())
         }
     }
 
@@ -61,18 +59,14 @@ impl TypeSubstitute {
     //単一化処理
     fn unify(self, ty_env: TypeEnv, ty1: Type, ty2: Type) -> Result<(Self, Type, TypeEnv), String> {
         match (ty1, ty2) {
-            (Type::TyVar(id, conds), ty) => self.ty_var_unify(ty_env, id, conds, ty),
-            (ty, Type::TyVar(id, conds)) => self.ty_var_unify(ty_env, id, conds, ty),
+            (Type::TyVar(id, conds), ty) | (ty, Type::TyVar(id, conds)) => self.ty_var_unify(ty_env, id, conds, ty),
             (Type::LambdaType(ty1), Type::LambdaType(ty2)) => self.lambda_unify(ty_env, *ty1, *ty2),
             (Type::TupleType(ty1), Type::TupleType(ty2)) => self.tuple_unify(ty_env, *ty1, *ty2),
             (ty1, ty2) => {
                 if ty1 == ty2 {
                     return Ok((self, ty1, ty_env));
                 }
-                Err(format!(
-                    "TypeSubstitute insert error! \n expect:{:?} \n actual:{:?}",
-                    ty1, ty2
-                ))
+                create_error(&ty1, &ty2)
             }
         }
     }
@@ -89,12 +83,8 @@ impl TypeSubstitute {
                             ty_env = new_ty_env;
                             Type::TyVar(ty_env.no_name_get(), TypeCondition::with_call(new_fn_ty))
                         }
-                        (fn_ty1, TypeCondition::Empty) => {
-                            Type::TyVar(ty_id, fn_ty1)
-                        }
-                        (TypeCondition::Empty, fn_ty2) => {
-                            Type::TyVar(id, fn_ty2)
-                        }
+                        (fn_ty1, TypeCondition::Empty) => Type::TyVar(ty_id, fn_ty1),
+                        (TypeCondition::Empty, fn_ty2) => Type::TyVar(id, fn_ty2),
                         (TypeCondition::ImplItems(impl_items1), TypeCondition::ImplItems(impl_items2)) => {
                             Type::TyVar(
                                 ty_env.no_name_get(),
@@ -102,10 +92,7 @@ impl TypeSubstitute {
                             )
                         }
                         (cond, cond2) => {
-                            return Err(format!(
-                                "TypeSubstitute insert error! \n expect:{:?} \n actual:{:?}",
-                                Type::TyVar(ty_id, cond), Type::TyVar(id, cond2)
-                            ));
+                            return create_error(&Type::TyVar(ty_id, cond), &Type::TyVar(id, cond2));
                         }
                     }
                 }
@@ -124,37 +111,24 @@ impl TypeSubstitute {
                     Type::LambdaType(x.clone())
                 }
                 Type::TupleType(x) => {
-                    match cond {
-                        TypeCondition::Call(_) => {
-                            return Err(format!(
-                                "TypeSubstitute insert error! \n expect:{:?} \n actual:{:?}",
-                                Type::TyVar(ty_id, cond), x
-                            ));
-                        }
-                        TypeCondition::ImplItems(ref impl_items) => {
-                            for (index, ty) in impl_items.get_tuple_properties() {
-                                let index = *index as usize;
-                                if index >= x.element_tys.len() {
-                                    return Err(format!(
-                                        "TypeSubstitute insert error! \n expect:{:?} \n actual:{:?}",
-                                        Type::TyVar(ty_id, cond.clone()), x
-                                    ));
-                                }
-                                let (ty_sub, _, new_ty_env) = self.start_unify(ty_env, ty.clone(), x.element_tys[index].clone())?;
-                                self = ty_sub;
-                                ty_env = new_ty_env;
-                            }
-                            Type::TupleType(x)
-                        }
-                        _ => Type::TupleType(x)
-                    }
+                    let (ty_sub, tuple_ty, new_ty_env) =
+                        self.tuple_ty_var_unify(ty_env, *x, ty_id, cond)?;
+                    self = ty_sub;
+                    ty_env = new_ty_env;
+                    Type::TupleType(Box::new(tuple_ty))
+                }
+                Type::StructType(struct_ty) => {
+                    let mut struct_ty = *struct_ty;
+                    let (ty_sub, struct_internal_ty, new_ty_env) =
+                        self.tuple_ty_var_unify(ty_env, struct_ty.ty, ty_id, cond)?;
+                    self = ty_sub;
+                    ty_env = new_ty_env;
+                    struct_ty.ty = struct_internal_ty;
+                    Type::StructType(Box::new(struct_ty))
                 }
                 ty => {
                     if cond.is_empty() == false {
-                        return Err(format!(
-                            "TypeSubstitute insert error! \n expect:{:?} \n actual:{:?}",
-                            Type::TyVar(ty_id, cond), ty
-                        ));
+                        return create_error(&Type::TyVar(ty_id, cond), &ty);
                     } else {
                         ty
                     }
@@ -163,13 +137,34 @@ impl TypeSubstitute {
         Ok((self, result_ty, ty_env))
     }
 
+    //タプルと型変数の単一化
+    fn tuple_ty_var_unify<T: TupleTypeBase + Debug>(mut self, mut ty_env: TypeEnv, tuple_ty: T, ty_id: TypeId, cond: TypeCondition)
+                                                    -> Result<(Self, T, TypeEnv), String> {
+        match cond {
+            TypeCondition::Call(_) => {
+                return create_error(&Type::TyVar(ty_id, cond), &tuple_ty);
+            }
+            TypeCondition::ImplItems(ref impl_items) => {
+                for (index, ty) in impl_items.get_tuple_properties() {
+                    let index = *index as usize;
+                    if index >= tuple_ty.get_elements_len() {
+                        return create_error(&Type::TyVar(ty_id, cond.clone()), &tuple_ty);
+                    }
+                    let (ty_sub, _, new_ty_env) =
+                        self.start_unify(ty_env, ty.clone(), tuple_ty.get_elements_at(index).clone())?;
+                    self = ty_sub;
+                    ty_env = new_ty_env;
+                };
+            }
+            TypeCondition::Empty => ()
+        };
+        Ok((self, tuple_ty, ty_env))
+    }
+
     //関数の単一化処理
     fn fn_unify(mut self, mut ty_env: TypeEnv, ty1: FuncType, ty2: FuncType) -> Result<(Self, FuncType, TypeEnv), String> {
         if ty1.param_types.len() != ty2.param_types.len() {
-            return Err(format!(
-                "TypeSubstitute insert error! \n expect:{:?} \n actual:{:?}",
-                ty1, ty2
-            ));
+            return create_error(&ty1, &ty2);
         }
         let mut new_param_types: Vec<Type> = Vec::with_capacity(ty1.param_types.len());
         for (x, y) in ty1.param_types.into_iter().zip(ty2.param_types) {
@@ -185,10 +180,7 @@ impl TypeSubstitute {
     //タプルの単一化処理
     fn tuple_unify(mut self, mut ty_env: TypeEnv, ty1: TupleType, ty2: TupleType) -> Result<(Self, Type, TypeEnv), String> {
         if ty1.element_tys.len() != ty2.element_tys.len() {
-            return Err(format!(
-                "TypeSubstitute insert error! \n expect:{:?} \n actual:{:?}",
-                ty1, ty2
-            ));
+            return create_error(&ty1, &ty2);
         }
         for (x, y) in ty1.element_tys.clone().into_iter().zip(ty2.element_tys) {
             let (ty_sub, _, new_ty_env) = self.start_unify(ty_env, x, y)?;
@@ -208,10 +200,7 @@ impl TypeSubstitute {
             }
             (None, None) => (),
             (None, x) | (x, None) => {
-                return Err(format!(
-                    "TypeSubstitute insert error! \n expect:{:?} \n actual:{:?}",
-                    "void", x
-                ));
+                return create_error(&"void", &x);
             }
         }
         let (ty_sub, _, ty_env) = self.fn_unify(ty_env, ty1.func_ty.clone(), ty2.func_ty)?;

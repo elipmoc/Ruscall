@@ -50,7 +50,7 @@ impl TypeCondition {
 }
 
 use std::collections::HashMap;
-use std::collections::hash_map::{Values,Iter};
+use std::collections::hash_map::{Values, Iter};
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct ImplItems(pub HashMap<u32, Type>);
@@ -109,10 +109,37 @@ pub struct TupleType {
     pub element_tys: Vec<Type>
 }
 
+impl TupleTypeBase for TupleType {
+    fn get_elements_at(&self, index: usize) -> &Type {
+        &self.element_tys[index]
+    }
+
+    fn get_elements_len(&self) -> usize {
+        self.element_tys.len()
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum StructInternalType {
     RecordType(RecordType),
     TupleType(TupleType),
+}
+
+
+impl TupleTypeBase for StructInternalType {
+    fn get_elements_at(&self, index: usize) -> &Type {
+        match self {
+            StructInternalType::RecordType(x) => x.get_elements_at(index),
+            StructInternalType::TupleType(x) => x.get_elements_at(index)
+        }
+    }
+
+    fn get_elements_len(&self) -> usize {
+        match self {
+            StructInternalType::RecordType(x) => x.get_elements_len(),
+            StructInternalType::TupleType(x) => x.get_elements_len()
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -127,8 +154,24 @@ pub struct RecordType {
     pub element_tys: Vec<(String, Type)>
 }
 
+impl TupleTypeBase for RecordType {
+    fn get_elements_at(&self, index: usize) -> &Type {
+        &self.element_tys[index].1
+    }
+
+    fn get_elements_len(&self) -> usize {
+        self.element_tys.len()
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct LambdaType {
     pub env_ty: Option<TupleType>,
     pub func_ty: FuncType,
+}
+
+//タプルぽく振る舞えるかの制約
+pub trait TupleTypeBase {
+    fn get_elements_at(&self, index: usize) -> &Type;
+    fn get_elements_len(&self) -> usize;
 }
