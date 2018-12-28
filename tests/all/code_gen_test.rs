@@ -6,7 +6,8 @@ use self::inkwell::execution_engine::JitFunction;
 use self::ruscall::compile::parse;
 use self::ruscall::compile::code_gen::CodeGenResult;
 use super::moc_llvm_module::create_moc_llvm_module;
-type MainFunc=unsafe extern "C" fn()->i32;
+
+type MainFunc = unsafe extern "C" fn() -> i32;
 
 macro_rules! helper {
     ($file_name:ident,$expect:expr) => {
@@ -45,3 +46,4 @@ helper!(test12,65);
 helper!(fact,120);
 helper!(tuple_property,14);
 helper!(record_property,20);
+helper!(record_name_property,11);

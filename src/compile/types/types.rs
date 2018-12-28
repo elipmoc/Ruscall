@@ -78,20 +78,32 @@ impl ImplItems {
         x
     }
 
-    pub fn merge(other1: Self, other2: Self) -> Self {
-        ImplItems {
-            index_properties:
-            other1.index_properties
-                .into_iter()
-                .chain(other2.index_properties.into_iter())
-                .collect()
-            ,
-            name_properties:
-            other1.name_properties
-                .into_iter()
-                .chain(other2.name_properties.into_iter())
-                .collect(),
+    pub fn merge<ACC, F: Fn(ACC, Type, Type) -> Result<(ACC, Type), String>>(mut other1: Self, other2: Self, mut acc: ACC, func: &mut F) -> Result<(ACC, Self), String> {
+        for (key, ty) in other2.index_properties {
+            if let Some(ty2) = other1.index_properties.remove(&key) {
+                let (new_acc, ty) = func(acc, ty2, ty)?;
+                acc = new_acc;
+                other1.index_properties.insert(key, ty);
+            } else {
+                other1.index_properties.insert(key, ty);
+            }
         }
+        for (key, ty) in other2.name_properties {
+            if let Some(ty2) = other1.name_properties.remove(&key) {
+                let (new_acc, ty) = func(acc, ty2, ty)?;
+                acc = new_acc;
+                other1.name_properties.insert(key, ty);
+            } else {
+                other1.name_properties.insert(key, ty);
+            }
+        }
+
+        Ok((
+            acc,
+            ImplItems {
+                index_properties: other1.index_properties,
+                name_properties: other1.name_properties,
+            }))
     }
 
     pub fn get_index_property_types(&self) -> Values<u32, Type> {

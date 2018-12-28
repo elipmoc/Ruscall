@@ -86,9 +86,17 @@ impl TypeSubstitute {
                         (fn_ty1, TypeCondition::Empty) => Type::TyVar(ty_id, fn_ty1),
                         (TypeCondition::Empty, fn_ty2) => Type::TyVar(id, fn_ty2),
                         (TypeCondition::ImplItems(impl_items1), TypeCondition::ImplItems(impl_items2)) => {
+                            let ((ty_sub, new_ty_env), impl_items) = ImplItems::merge(
+                                *impl_items1, *impl_items2, (self, ty_env),
+                                &mut |acc, ty1, ty2| {
+                                    let (ty_sub, ty, ty_env) = acc.0.start_unify(acc.1, ty1, ty2)?;
+                                    Ok(((ty_sub, ty_env), ty))
+                                })?;
+                            self = ty_sub;
+                            ty_env = new_ty_env;
                             Type::TyVar(
                                 ty_env.no_name_get(),
-                                TypeCondition::ImplItems(Box::new(ImplItems::merge(*impl_items1, *impl_items2))),
+                                TypeCondition::ImplItems(Box::new(impl_items)),
                             )
                         }
                         (cond, cond2) => {
