@@ -5,8 +5,8 @@ use std::collections::HashMap;
 
 type ResolveResult<T> = Result<T, Error>;
 
-//struct RGB{ B:Int32 , G:Int32 , R:Int32 }
-//RGB {R:5,G:3,B:2}のようなレコード構造体生成関数呼び出しを
+//struct RGB{ b:Int32 , g:Int32 , r:Int32 }
+//RGB {r:5,g:3,b:2}のようなレコード構造体生成関数呼び出しを
 //RGB 2 3 5のように脱糖衣する
 
 
@@ -113,10 +113,15 @@ impl ExprAST {
                     .collect::<ResolveResult<Vec<_>>>()?;
                 self = ExprAST::TupleStructAST(Box::new(x));
             }
-            ExprAST::TuplePropertyAST(x) => {
+            ExprAST::IndexPropertyAST(x) => {
                 let mut x = *x;
                 x.expr = x.expr.resolve_named_params_constructor_call(struct_list)?;
-                self = ExprAST::TuplePropertyAST(Box::new(x));
+                self = ExprAST::IndexPropertyAST(Box::new(x));
+            }
+            ExprAST::NamePropertyAST(x) => {
+                let mut x = *x;
+                x.expr = x.expr.resolve_named_params_constructor_call(struct_list)?;
+                self = ExprAST::NamePropertyAST(Box::new(x));
             }
         }
         Ok(self)

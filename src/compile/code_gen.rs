@@ -165,7 +165,8 @@ impl mir::ExprMir {
             mir::ExprMir::CallMir(x) => ty_info.look_up(&x.ty_id),
             mir::ExprMir::TupleMir(x) => ty_info.look_up(&x.ty_id),
             mir::ExprMir::TupleStructMir(_) => panic!("undefined"),
-            mir::ExprMir::TuplePropertyMir(x) => ty_info.look_up(&x.ty_id),
+            mir::ExprMir::IndexPropertyMir(x) => ty_info.look_up(&x.ty_id),
+            mir::ExprMir::NamePropertyMir(x) => ty_info.look_up(&x.ty_id),
             mir::ExprMir::LambdaMir(x) => ty_info.look_up(&x.ty_id),
         }
     }
@@ -205,7 +206,8 @@ impl mir::ExprMir {
             mir::ExprMir::TupleStructMir(x) => x.tuple.code_gen(module, builder, params, ty_info, function),
             mir::ExprMir::LambdaMir(x) => x.code_gen(module, builder, params, ty_info),
             mir::ExprMir::CallMir(x) => x.code_gen(module, builder, params, ty_info, function),
-            mir::ExprMir::TuplePropertyMir(x) => x.code_gen(module, builder, params, ty_info, function),
+            mir::ExprMir::IndexPropertyMir(x) => x.code_gen(module, builder, params, ty_info, function),
+            mir::ExprMir::NamePropertyMir(x) => x.code_gen(module, builder, params, ty_info, function),
         }
     }
 }
@@ -389,7 +391,7 @@ impl mir::LambdaMir {
     }
 }
 
-impl mir::TuplePropertyMir {
+impl mir::IndexPropertyMir {
     fn code_gen(
         self,
         module: &module::Module,
@@ -406,6 +408,46 @@ impl mir::TuplePropertyMir {
             builder.build_struct_gep(
                 expr_ptr,
                 self.index,
+                "",
+            )
+        };
+        builder.build_load(ptr, "")
+    }
+}
+
+
+impl mir::NamePropertyMir {
+    fn code_gen(
+        self,
+        module: &module::Module,
+        builder: &builder::Builder,
+        params: &Vec<values::BasicValueEnum>,
+        ty_info: &mut TypeInfo,
+        function: values::FunctionValue,
+    ) -> values::BasicValueEnum {
+        let expr_ty = self.expr.get_ty(ty_info);
+        let index = match expr_ty {
+            Type::StructType(ref x) => {
+                match x.ty {
+                    StructInternalType::RecordType(ref x) => {
+                        x.element_tys
+                            .iter().enumerate()
+                            .find(|(_, (name, _))| &self.property_name == name)
+                            .unwrap()
+                            .0
+                    }
+                    _ => panic!("bug!")
+                }
+            }
+            _ => panic!("bug!")
+        };
+        let expr_ptr = builder.build_alloca(expr_ty.to_llvm_basic_type(), "");
+        let expr_value = self.expr.code_gen(module, builder, params, ty_info, function);
+        builder.build_store(expr_ptr, expr_value);
+        let ptr = unsafe {
+            builder.build_struct_gep(
+                expr_ptr,
+                index as u32,
                 "",
             )
         };

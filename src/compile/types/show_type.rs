@@ -87,8 +87,10 @@ impl ShowType for LambdaType {
 
 impl ShowType for ImplItems {
     fn show(&self) -> String {
-        "impl{".to_string() + &self.0.iter().fold(String::new(), |acc, (name, ty)| {
+        "impl{".to_string() + &self.get_index_properties().fold(String::new(), |acc, (name, ty)| {
             acc + &format!(" index {}::{:?},", name, ty)
+        })+&self.get_name_properties().fold(String::new(), |acc, (name, ty)| {
+            acc + &format!(" name {}::{:?},", name, ty)
         }) + "}"
     }
 }

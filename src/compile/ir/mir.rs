@@ -47,7 +47,8 @@ pub enum ExprMir {
     GlobalVariableMir(GlobalVariableMir),
     CallMir(Box<CallMir>),
     LambdaMir(Box<LambdaMir>),
-    TuplePropertyMir(Box<TuplePropertyMir>),
+    IndexPropertyMir(Box<IndexPropertyMir>),
+    NamePropertyMir(Box<NamePropertyMir>),
 }
 
 impl ExprMir {
@@ -63,7 +64,8 @@ impl ExprMir {
             ExprMir::GlobalVariableMir(x) => x.pos,
             ExprMir::CallMir(x) => x.func.get_pos(),
             ExprMir::LambdaMir(x) => x.pos,
-            ExprMir::TuplePropertyMir(x) => x.pos
+            ExprMir::IndexPropertyMir(x) => x.pos,
+            ExprMir::NamePropertyMir(x) => x.pos
         }
     }
 
@@ -101,12 +103,22 @@ impl ExprMir {
             ty: struct_ty,
         }))
     }
-    pub fn create_tuple_property_mir(expr: ExprMir, pos: SourcePosition, ty_id: TypeId, index: u32) -> ExprMir {
-        ExprMir::TuplePropertyMir(Box::new(
-            TuplePropertyMir {
+    pub fn create_index_property_mir(expr: ExprMir, pos: SourcePosition, ty_id: TypeId, index: u32) -> ExprMir {
+        ExprMir::IndexPropertyMir(Box::new(
+            IndexPropertyMir {
                 expr,
                 pos,
                 index,
+                ty_id,
+            }
+        ))
+    }
+    pub fn create_name_property_mir(expr: ExprMir, pos: SourcePosition, ty_id: TypeId, property_name: String) -> ExprMir {
+        ExprMir::NamePropertyMir(Box::new(
+            NamePropertyMir {
+                expr,
+                pos,
+                property_name,
                 ty_id,
             }
         ))
@@ -146,13 +158,20 @@ pub struct TupleStructMir {
 }
 
 #[derive(Debug, PartialEq)]
-pub struct TuplePropertyMir {
+pub struct IndexPropertyMir {
     pub expr: ExprMir,
     pub index: u32,
     pub pos: SourcePosition,
     pub ty_id: TypeId,
 }
 
+#[derive(Debug, PartialEq)]
+pub struct NamePropertyMir {
+    pub expr: ExprMir,
+    pub property_name: String,
+    pub pos: SourcePosition,
+    pub ty_id: TypeId,
+}
 
 #[derive(Debug, PartialEq)]
 pub struct VariableMir {

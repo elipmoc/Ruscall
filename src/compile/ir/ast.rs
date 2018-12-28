@@ -49,7 +49,8 @@ pub enum ExprAST {
     NamedParamsConstructorCallAST(Box<NamedParamsConstructorCallAST>),
     TupleAST(Box<TupleAST>),
     TupleStructAST(Box<TupleStructAST>),
-    TuplePropertyAST(Box<TuplePropertyAST>),
+    IndexPropertyAST(Box<IndexPropertyAST>),
+    NamePropertyAST(Box<NamePropertyAST>),
     LambdaAST(Box<LambdaAST>),
 }
 
@@ -94,12 +95,23 @@ impl ExprAST {
             ty,
         }))
     }
-    pub fn create_tuple_property_ast(index: String, expr: ExprAST, pos: SourcePosition) -> ExprAST {
-        ExprAST::TuplePropertyAST(Box::new(TuplePropertyAST {
-            index: index.parse().unwrap(),
-            expr,
-            pos,
-        }))
+    pub fn create_property_ast(property_name: String, expr: ExprAST, pos: SourcePosition) -> ExprAST {
+        match property_name.parse::<u32>() {
+            Ok(index) => {
+                ExprAST::IndexPropertyAST(Box::new(IndexPropertyAST {
+                    index,
+                    expr,
+                    pos,
+                }))
+            }
+            Err(_) => {
+                ExprAST::NamePropertyAST(Box::new(NamePropertyAST {
+                    property_name,
+                    expr,
+                    pos,
+                }))
+            }
+        }
     }
     pub fn create_lambda_ast(env: Vec<VariableAST>, params: Vec<VariableAST>, body: ExprAST, pos: SourcePosition) -> ExprAST {
         ExprAST::LambdaAST(Box::new(LambdaAST { env, params, body, pos }))
@@ -118,7 +130,8 @@ impl ExprAST {
             ExprAST::TupleAST(x) => x.pos,
             ExprAST::TupleStructAST(x) => x.tuple.pos,
             ExprAST::LambdaAST(x) => x.pos,
-            ExprAST::TuplePropertyAST(x) => x.pos
+            ExprAST::IndexPropertyAST(x) => x.pos,
+            ExprAST::NamePropertyAST(x) => x.pos
         }
     }
 }
@@ -231,9 +244,16 @@ pub struct TupleStructAST {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct TuplePropertyAST {
+pub struct IndexPropertyAST {
     pub expr: ExprAST,
     pub index: u32,
+    pub pos: SourcePosition,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct NamePropertyAST {
+    pub expr: ExprAST,
+    pub property_name: String,
     pub pos: SourcePosition,
 }
 

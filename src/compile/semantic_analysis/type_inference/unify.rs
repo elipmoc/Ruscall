@@ -143,7 +143,20 @@ impl TypeSubstitute {
                 return create_error(&Type::TyVar(ty_id, cond), &tuple_ty);
             }
             TypeCondition::ImplItems(ref impl_items) => {
-                for (index, ty) in impl_items.get_tuple_properties() {
+                for (name, ty) in impl_items.get_name_properties() {
+                    match tuple_ty.get_elements_from_record_name(name) {
+                        Some(element_ty) => {
+                            let (ty_sub, _, new_ty_env) =
+                                self.start_unify(ty_env, ty.clone(), element_ty.clone())?;
+                            self = ty_sub;
+                            ty_env = new_ty_env;
+                        }
+                        None => {
+                            return create_error(&Type::TyVar(ty_id, cond.clone()), &tuple_ty);
+                        }
+                    }
+                };
+                for (index, ty) in impl_items.get_index_properties() {
                     let index = *index as usize;
                     if index >= tuple_ty.get_elements_len() {
                         return create_error(&Type::TyVar(ty_id, cond.clone()), &tuple_ty);

@@ -54,6 +54,7 @@ impl ExprAST {
                 ExprAST::FuncCallAST(x) => {
                     let mut x = *x;
                     x.func = x.func.currying(vec![].into_iter(), vec![]);
+                    x.param = x.param.currying(vec![].into_iter(), vec![]);
                     ExprAST::FuncCallAST(Box::new(x))
                 }
                 ExprAST::OpAST(x) => {
@@ -70,7 +71,24 @@ impl ExprAST {
                     x.f_expr = x.f_expr.currying(vec![].into_iter(), vec![]);
                     ExprAST::IfAST(Box::new(x))
                 }
-                x => x
+                ExprAST::NamedParamsConstructorCallAST(_) => panic!("bug"),
+                ExprAST::TupleStructAST(mut x) => {
+                    x.tuple.elements = x.to_owned().tuple.elements.into_iter()
+                        .map(|x| x.currying(vec![].into_iter(), vec![]))
+                        .collect();
+                    ExprAST::TupleStructAST(x)
+                }
+                ExprAST::IndexPropertyAST(mut x) => {
+                    x.expr = x.to_owned().expr.currying(vec![].into_iter(), vec![]);
+                    ExprAST::IndexPropertyAST(x)
+                }
+                ExprAST::NamePropertyAST(mut x) => {
+                    x.expr = x.to_owned().expr.currying(vec![].into_iter(), vec![]);
+                    ExprAST::NamePropertyAST(x)
+                }
+                ExprAST::NumAST(_) |
+                ExprAST::BoolAST(_) |
+                ExprAST::VariableAST(_) => self
             }
         }
     }

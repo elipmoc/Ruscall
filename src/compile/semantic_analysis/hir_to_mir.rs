@@ -179,7 +179,8 @@ impl ExprAST {
             ExprAST::TupleAST(x) => x.to_mir(program_ir, struct_list, var_table, lambda_count),
             ExprAST::TupleStructAST(x) => x.to_mir(program_ir, struct_list, var_table, lambda_count),
             ExprAST::LambdaAST(x) => x.to_mir(program_ir, struct_list, var_table, lambda_count),
-            ExprAST::TuplePropertyAST(x) => x.to_mir(program_ir, struct_list, var_table, lambda_count),
+            ExprAST::IndexPropertyAST(x) => x.to_mir(program_ir, struct_list, var_table, lambda_count),
+            ExprAST::NamePropertyAST(x) => x.to_mir(program_ir, struct_list, var_table, lambda_count),
         }
     }
 }
@@ -324,7 +325,7 @@ impl LambdaAST {
     }
 }
 
-impl TuplePropertyAST {
+impl IndexPropertyAST {
     fn to_mir(
         self,
         program_ir: &mut ProgramMir,
@@ -333,11 +334,29 @@ impl TuplePropertyAST {
         lambda_count: &mut usize,
     ) -> AstToIrResult<ExprMir> {
         Ok(
-            ExprMir::create_tuple_property_mir(
+            ExprMir::create_index_property_mir(
                 self.expr.to_mir(program_ir, struct_list, var_table, lambda_count)?,
                 self.pos,
                 program_ir.ty_info.no_name_get(),
                 self.index,
+            )
+        )
+    }
+}
+impl NamePropertyAST {
+    fn to_mir(
+        self,
+        program_ir: &mut ProgramMir,
+        struct_list: &HashMap<String, DecStructHir>,
+        var_table: &mut VariableTable,
+        lambda_count: &mut usize,
+    ) -> AstToIrResult<ExprMir> {
+        Ok(
+            ExprMir::create_name_property_mir(
+                self.expr.to_mir(program_ir, struct_list, var_table, lambda_count)?,
+                self.pos,
+                program_ir.ty_info.no_name_get(),
+                self.property_name,
             )
         )
     }

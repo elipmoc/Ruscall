@@ -15,7 +15,7 @@ pub fn occurs_check(hash_map: &TypeSubstituteHashMap, ty: &Type, ty_id: &TypeId)
                             x.param_types.iter().any(|x| occurs_check(hash_map, x, &ty_id))
                     }
                 TypeCondition::Empty => false,
-                TypeCondition::ImplItems(x) => x.types().any(|x| occurs_check(hash_map, &x, &ty_id))
+                TypeCondition::ImplItems(x) => x.get_index_property_types().any(|x| occurs_check(hash_map, &x, &ty_id))
             })
                 ||
                 if id == ty_id { true } else {

@@ -87,7 +87,8 @@ impl<'a> TypeGet for &'a ExprMir {
             ExprMir::GlobalVariableMir(x) => x.ty_get(ty_info),
             ExprMir::TupleMir(x) => x.ty_get(ty_info),
             ExprMir::TupleStructMir(x) => x.ty_get(ty_info),
-            ExprMir::TuplePropertyMir(x) => x.ty_get(ty_info),
+            ExprMir::IndexPropertyMir(x) => x.ty_get(ty_info),
+            ExprMir::NamePropertyMir(x) => x.ty_get(ty_info),
             ExprMir::LambdaMir(x) => x.ty_get(ty_info)
         }
     }
@@ -242,7 +243,7 @@ impl TypeGet for LambdaMir {
 }
 
 
-impl TypeGet for TuplePropertyMir {
+impl TypeGet for IndexPropertyMir {
     fn ty_get(&self, ty_info: TypeInfo) -> TyCheckResult<(TypeInfo, Type)> {
         let (mut ty_info, expr_ty) = (&self.expr).ty_get(ty_info)?;
         let property_ty =
@@ -251,7 +252,24 @@ impl TypeGet for TuplePropertyMir {
             );
         let temp_var_ty = ty_info.no_name_get();
         let ty_info = ty_info.unify(
-            Type::TyVar(temp_var_ty, TypeCondition::with_impl_tuple_property(self.index, property_ty.clone())),
+            Type::TyVar(temp_var_ty, TypeCondition::with_impl_index_property(self.index, property_ty.clone())),
+            expr_ty,
+        ).map_err(|msg| Error::new(self.pos, &msg))?;
+
+        Ok((ty_info, property_ty))
+    }
+}
+
+impl TypeGet for NamePropertyMir {
+    fn ty_get(&self, ty_info: TypeInfo) -> TyCheckResult<(TypeInfo, Type)> {
+        let (mut ty_info, expr_ty) = (&self.expr).ty_get(ty_info)?;
+        let property_ty =
+            Type::TyVar(
+                self.ty_id.clone(), TypeCondition::new(),
+            );
+        let temp_var_ty = ty_info.no_name_get();
+        let ty_info = ty_info.unify(
+            Type::TyVar(temp_var_ty, TypeCondition::with_impl_name_property(self.property_name.clone(), property_ty.clone())),
             expr_ty,
         ).map_err(|msg| Error::new(self.pos, &msg))?;
 

@@ -43,7 +43,7 @@ BNF
                         :paren |
                         :tuple |
                         :lambda
-                    ){:skip_many '.' :skip_many :id}
+                    ){:skip_many '.' :skip_many (:id | :num) }
 :paren         := '(' :skip_many :expr ')'
 :num           := [0-9]+
 :bool          := 'true' | 'false'
@@ -303,11 +303,11 @@ parser! {
                 skip_many_parser()
                 .with(char('.'))
                 .with(skip_many_parser())
-                .with(( position(), num_parser()))
+                .with(( position(), num_parser().or(id_parser()) ))
             ))
         ).map(|(expr,prop ):(_,Vec<_>)|{
-            prop.into_iter().fold(expr,|acc,(pos,index) |
-                ast::ExprAST::create_tuple_property_ast(index ,acc, pos)
+            prop.into_iter().fold(expr,|acc,(pos,name) |
+                ast::ExprAST::create_property_ast(name ,acc, pos)
             )
         })
     }

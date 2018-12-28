@@ -28,8 +28,12 @@ impl TypeCondition {
         TypeCondition::Call(Box::new(fn_ty))
     }
 
-    pub fn with_impl_tuple_property(index: u32, ty: Type) -> Self {
-        TypeCondition::ImplItems(Box::new(ImplItems::new(index, ty)))
+    pub fn with_impl_index_property(index: u32, ty: Type) -> Self {
+        TypeCondition::ImplItems(Box::new(ImplItems::with_index_property(index, ty)))
+    }
+
+    pub fn with_impl_name_property(name: String, ty: Type) -> Self {
+        TypeCondition::ImplItems(Box::new(ImplItems::with_name_property(name, ty)))
     }
 
     pub fn is_call(&self) -> bool {
@@ -53,25 +57,57 @@ use std::collections::HashMap;
 use std::collections::hash_map::{Values, Iter};
 
 #[derive(Clone, PartialEq, Debug)]
-pub struct ImplItems(pub HashMap<u32, Type>);
+//ある要素が定義されているという制約を保存する構造体
+pub struct ImplItems {
+    //x.1 などのプロパティアクセスの制約
+    index_properties: HashMap<u32, Type>,
+    //x.hoge などのプロパティアクセスの制約
+    name_properties: HashMap<String, Type>,
+}
 
 impl ImplItems {
-    fn new(index: u32, ty: Type) -> Self {
-        let mut x = ImplItems(HashMap::new());
-        x.0.insert(index, ty);
+    fn with_index_property(index: u32, ty: Type) -> Self {
+        let mut x = ImplItems { index_properties: HashMap::new(), name_properties: HashMap::new() };
+        x.index_properties.insert(index, ty);
+        x
+    }
+
+    fn with_name_property(name: String, ty: Type) -> Self {
+        let mut x = ImplItems { index_properties: HashMap::new(), name_properties: HashMap::new() };
+        x.name_properties.insert(name, ty);
         x
     }
 
     pub fn merge(other1: Self, other2: Self) -> Self {
-        ImplItems(other1.0.into_iter().chain(other2.0.into_iter()).collect())
+        ImplItems {
+            index_properties:
+            other1.index_properties
+                .into_iter()
+                .chain(other2.index_properties.into_iter())
+                .collect()
+            ,
+            name_properties:
+            other1.name_properties
+                .into_iter()
+                .chain(other2.name_properties.into_iter())
+                .collect(),
+        }
     }
 
-    pub fn types(&self) -> Values<u32, Type> {
-        self.0.values()
+    pub fn get_index_property_types(&self) -> Values<u32, Type> {
+        self.index_properties.values()
     }
 
-    pub fn get_tuple_properties(&self) -> Iter<u32, Type> {
-        self.0.iter()
+    pub fn get_index_properties(&self) -> Iter<u32, Type> {
+        self.index_properties.iter()
+    }
+
+    pub fn get_name_property_types(&self) -> Values<String, Type> {
+        self.name_properties.values()
+    }
+
+    pub fn get_name_properties(&self) -> Iter<String, Type> {
+        self.name_properties.iter()
     }
 }
 
@@ -140,6 +176,12 @@ impl TupleTypeBase for StructInternalType {
             StructInternalType::TupleType(x) => x.get_elements_len()
         }
     }
+    fn get_elements_from_record_name(&self, record_name: &String) -> Option<&Type> {
+        match self {
+            StructInternalType::RecordType(x) => x.get_elements_from_record_name(record_name),
+            StructInternalType::TupleType(x) => x.get_elements_from_record_name(record_name)
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -155,6 +197,10 @@ impl TupleTypeBase for StructType {
 
     fn get_elements_len(&self) -> usize {
         self.ty.get_elements_len()
+    }
+
+    fn get_elements_from_record_name(&self, record_name: &String) -> Option<&Type> {
+        self.ty.get_elements_from_record_name(record_name)
     }
 }
 
@@ -172,6 +218,9 @@ impl TupleTypeBase for RecordType {
     fn get_elements_len(&self) -> usize {
         self.element_tys.len()
     }
+    fn get_elements_from_record_name(&self, record_name: &String) -> Option<&Type> {
+        self.element_tys.iter().find(|(name, _)| name == record_name).map(|(_, ty)| ty)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -184,4 +233,7 @@ pub struct LambdaType {
 pub trait TupleTypeBase {
     fn get_elements_at(&self, index: usize) -> &Type;
     fn get_elements_len(&self) -> usize;
+    fn get_elements_from_record_name(&self, _: &String) -> Option<&Type> {
+        None
+    }
 }
