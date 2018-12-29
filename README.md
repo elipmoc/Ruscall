@@ -49,9 +49,15 @@ cargo run -- -build test.rsc
 ruscall -build test.rsc
 ```
 
-実行するとcompiled.outまたはcompiled.exeが生成されます。
+実行するとtest.rsc.outまたはtest.rsc.exeが生成されます。
 
-ファイル名をまだ指定できないんだ。‪本当に‬申し訳ない😢‬
+また
+
+```
+-build test.rsc hoge
+```
+のようにして、出力ファイルの名前を指定できます。
+
 # 目的
 Rust、Scala、Haskellのいいところを結集した言語を作る。
 
