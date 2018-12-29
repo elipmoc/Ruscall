@@ -46,7 +46,7 @@ pub fn hello() {
             "generic",
             "",
             OptimizationLevel::Default,
-            targets::RelocMode::Default,
+            targets::RelocMode::PIC,
             targets::CodeModel::Default,
         ).unwrap();
     module.write_bitcode_to_file(&File::create("hoge.bc").unwrap(), true, true);
