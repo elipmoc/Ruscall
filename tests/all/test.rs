@@ -30,11 +30,16 @@ fn parse_cmd_args_test() {
     );
     assert_eq!(
         parse_cmd_args(to_str_vec(vec!["my.exe", "-build", "hoge"])),
-        CmdArgsKind::Compile("hoge".to_string())
+        CmdArgsKind::Compile("hoge".to_string(), "hoge".to_string())
+    );
+    assert_eq!(
+        parse_cmd_args(to_str_vec(vec!["my.exe", "-build", "hoge", "fuga"])),
+        CmdArgsKind::Compile("hoge".to_string(), "fuga".to_string())
     );
 }
 
 use self::ruscall::compile::ir::ast;
+
 //helper
 fn create_infixl_ast(op: &str, priority: i8) -> ast::StmtAST {
     ast::StmtAST::InfixAST(ast::InfixAST {
@@ -43,6 +48,7 @@ fn create_infixl_ast(op: &str, priority: i8) -> ast::StmtAST {
         priority: ast::Priority(priority),
     })
 }
+
 fn create_infixr_ast(op: &str, priority: i8) -> ast::StmtAST {
     ast::StmtAST::InfixAST(ast::InfixAST {
         op: op.to_string(),

@@ -13,14 +13,14 @@ use self::ir::mir;
 use std::fs;
 use std::io::{BufReader, Read};
 
-pub fn compile(file_name: &str)->Result<(), String> {
-    println!("input:{}", file_name);
-    compile_from_str(&src_file_to_str(file_name), file_name)
+pub fn compile(input_file_name: &str, output_file_name: &str) -> Result<(), String> {
+    println!("input:{}", input_file_name);
+    compile_from_str(&src_file_to_str(input_file_name), output_file_name)
 }
 
-pub fn compile_from_str(str: &str, _file_name: &str) -> Result<(), String> {
+pub fn compile_from_str(str: &str, output_file_name: &str) -> Result<(), String> {
     match parse(str) {
-        Ok(program_ir) => Ok(output_file(program_ir.code_gen("compiled"))),
+        Ok(program_ir) => Ok(output_file(program_ir.code_gen(output_file_name))),
         Err(err) => Err(err),
     }
 }

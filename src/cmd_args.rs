@@ -9,7 +9,7 @@ pub enum CmdArgsKind {
     Version,
     Error,
     Hello,
-    Compile(String),
+    Compile(String, String),
 }
 
 impl CmdArgsKind {
@@ -22,13 +22,14 @@ impl CmdArgsKind {
                 println!("\nOPTIONS:");
                 println!("-h                    help");
                 println!("-v                    version");
-                println!("-hello                hello world build");
+                println!("-hello                build hello world ");
                 println!("-build [SOURCE_FILE]  build source file");
+                println!("-build [SOURCE_FILE] [OUTPUT_FILE]  build source file and set output file name");
             }
             CmdArgsKind::Version => println!("\nRuscall version 0.5.0\n"),
             CmdArgsKind::Hello => hello::hello(),
-            CmdArgsKind::Compile(ref file_name) => {
-                if let Err(err) = compile::compile(file_name) {
+            CmdArgsKind::Compile(ref input_file_name, ref output_file_name) => {
+                if let Err(err) = compile::compile(input_file_name, output_file_name) {
                     eprintln!("{}", err);
                 }
             }
@@ -53,9 +54,13 @@ pub fn parse_cmd_args(args: Vec<String>) -> CmdArgsKind {
             _ => CmdArgsKind::Error,
         },
         3 => match (&*(args[1]), &*(args[2])) {
-            ("-build", file_name) => CmdArgsKind::Compile(file_name.to_string()),
+            ("-build", file_name) => CmdArgsKind::Compile(file_name.to_string(), file_name.to_string()),
             _ => CmdArgsKind::Error,
         },
+        4 => match (&*(args[1]), &*(args[2]), &*(args[3])) {
+            ("-build", input_file_name, output_file_name) => CmdArgsKind::Compile(input_file_name.to_string(), output_file_name.to_string()),
+            _ => CmdArgsKind::Error,
+        }
         _ => CmdArgsKind::Error,
     }
 }
