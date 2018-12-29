@@ -26,7 +26,7 @@ impl CmdArgsKind {
                 println!("-build [SOURCE_FILE]  build source file");
                 println!("-build [SOURCE_FILE] [OUTPUT_FILE]  build source file and set output file name");
             }
-            CmdArgsKind::Version => println!("\nRuscall version 0.5.0\n"),
+            CmdArgsKind::Version => println!("\nRuscall version 0.6.0\n"),
             CmdArgsKind::Hello => hello::hello(),
             CmdArgsKind::Compile(ref input_file_name, ref output_file_name) => {
                 if let Err(err) = compile::compile(input_file_name, output_file_name) {

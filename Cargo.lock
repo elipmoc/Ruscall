@@ -153,7 +153,7 @@ dependencies = [
 
 [[package]]
 name = "ruscall"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "cc 1.0.27 (registry+https://github.com/rust-lang/crates.io-index)",
  "combine 3.6.3 (registry+https://github.com/rust-lang/crates.io-index)",

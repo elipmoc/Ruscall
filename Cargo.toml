@@ -1,6 +1,6 @@
 [package]
 name = "ruscall"
-version = "0.5.0"
+version = "0.6.0"
 authors = ["elipmoc <relipmoc101@gmail.com>"]
 readme = "README.md"
 build="build.rs"
