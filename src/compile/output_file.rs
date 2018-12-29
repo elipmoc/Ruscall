@@ -31,7 +31,7 @@ pub fn output_file(code_gen_result: CodeGenResult) {
     let current_dir = env::current_dir().unwrap().to_str().unwrap().to_string();
 
     if cfg!(target_os = "windows") {
-        let compile_bat_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
+        let compile_bat_dir = env::var("CARGO_MANIFEST_DIR").unwrap_or(".".to_string());
         command_exec(
             "cmd",
             &[
