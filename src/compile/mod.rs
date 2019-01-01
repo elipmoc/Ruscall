@@ -4,6 +4,7 @@ pub mod output_file;
 pub mod parser;
 pub mod semantic_analysis;
 pub mod types;
+pub mod new_types;
 pub mod ast_transformer;
 pub mod ir;
 
