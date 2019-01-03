@@ -4,6 +4,11 @@ use super::types::*;
 use std::collections::HashMap;
 
 #[derive(Clone, PartialEq)]
+//制約と型をセットにしたもの
+//psが制約
+//tがその制約がかけられたなにか
+//例: ps: aはNum制約がある。 t:a->a
+//説明：　Num制約がかかった型変数aがあり、型はa->aである
 pub struct Qual<T> {
     ps: Vec<Pred>,
     t: T,
@@ -16,6 +21,9 @@ impl<T> Qual<T> {
 }
 
 #[derive(Clone, PartialEq)]
+//idは型クラス名。tyはその型クラスのインスタンスを表す。
+//例：　id:"Num" ty:"a"
+//説明：　型変数aはNum制約を持つ
 pub enum Pred {
     IsIn { id: Id, ty: Type }
 }
@@ -27,11 +35,11 @@ impl Pred {
     }
 }
 
-//型クラスを表すクラス
+//型クラスを表す
 pub struct Class {
     //スーパークラス
     supers: Vec<Id>,
-    //スーパークラス
+    //スーパークラスのインスタンス
     instances: Vec<Instance>,
 }
 
@@ -51,7 +59,7 @@ impl Instance {
         Instance { qual }
     }
 
-    pub fn get_qual(&self)->&Qual<Pred>{
+    pub fn get_qual(&self) -> &Qual<Pred> {
         &self.qual
     }
 }
@@ -90,7 +98,7 @@ impl ClassEnv {
         }
         Ok(self.modify(id, Class::new(supers, vec![])))
     }
-    pub fn add_inst( self, ps: Vec<Pred>, p: Pred) -> Result<Self, String> {
+    pub fn add_inst(self, ps: Vec<Pred>, p: Pred) -> Result<Self, String> {
         match p {
             IsIn { id, ty } => {
                 let mut insts = (*self.get_instances(&id)).clone();
@@ -109,6 +117,37 @@ impl ClassEnv {
                 )
             }
         }
+    }
+    pub fn by_super(&self, p: Pred) -> Vec<Pred> {
+        match p {
+            IsIn { id, ty } => {
+                let mut ps = self.get_super(&id).iter().map(|super_id|
+                    self.by_super(IsIn { id: super_id.clone(), ty: ty.clone() })
+                ).flatten().collect::<Vec<_>>();
+                ps.push(IsIn { id, ty });
+                ps
+            }
+        }
+    }
+    pub fn by_inst(&self, p: Pred) -> Result<Vec<Pred>, String> {
+        use super::unify::{lift, matc_h};
+        match p {
+            IsIn { id, ty } => {
+                self.get_instances(&id).iter().map(|inst| {
+                    let subst = lift(matc_h)(inst.get_qual().t.clone(), IsIn { id: id.clone(), ty: ty.clone() })?;
+                    Ok(inst.get_qual().ps.iter().map(|p| p.apply(&subst)).collect())
+                }).find(Result::is_ok).unwrap_or(Err("error".to_string()))
+            }
+        }
+    }
+    //帰結関数
+    pub fn entail(&self, ps: Vec<Pred>, p: Pred) -> bool {
+        ps.clone().into_iter().map(|p| self.by_super(p)).any(|ps2| ps2.contains(&p))
+            ||
+            match self.by_inst(p) {
+                Err(_) => false,
+                Ok(qs) => qs.into_iter().all(|q| self.entail(ps.clone(), q))
+            }
     }
 }
 
