@@ -1,6 +1,7 @@
 use super::typ::*;
 use super::typ::{Type::*, Kind::*};
 use super::types::*;
+use std::collections::HashMap;
 
 #[derive(Clone, PartialEq)]
 pub struct Qual<T> {
@@ -17,6 +18,98 @@ impl<T> Qual<T> {
 #[derive(Clone, PartialEq)]
 pub enum Pred {
     IsIn { id: Id, ty: Type }
+}
+
+impl Pred {
+    pub fn overlap(&self, other: &Self) -> bool {
+        use super::unify::{mgu, lift};
+        lift(mgu)(self.clone(), other.clone()).is_ok()
+    }
+}
+
+//型クラスを表すクラス
+pub struct Class {
+    //スーパークラス
+    supers: Vec<Id>,
+    //スーパークラス
+    instances: Vec<Instance>,
+}
+
+impl Class {
+    pub fn new(supers: Vec<Id>, instances: Vec<Instance>) -> Class {
+        Class { supers, instances }
+    }
+}
+
+#[derive(Clone)]
+pub struct Instance {
+    qual: Qual<Pred>,
+}
+
+impl Instance {
+    pub fn new(qual: Qual<Pred>) -> Instance {
+        Instance { qual }
+    }
+
+    pub fn get_qual(&self)->&Qual<Pred>{
+        &self.qual
+    }
+}
+
+pub struct ClassEnv {
+    classes: HashMap<Id, Class>,
+    defaults: Vec<Type>,
+}
+
+impl ClassEnv {
+    pub fn new() -> ClassEnv {
+        ClassEnv {
+            classes: HashMap::new(),
+            defaults: vec![t_int()],
+        }
+    }
+    pub fn defined(&self, id: &Id) -> bool {
+        self.classes.contains_key(id)
+    }
+    pub fn get_super(&self, id: &Id) -> &Vec<Id> {
+        &self.classes.get(id).unwrap().supers
+    }
+    pub fn get_instances(&self, id: &Id) -> &Vec<Instance> {
+        &self.classes.get(id).unwrap().instances
+    }
+    pub fn modify(mut self, id: Id, class: Class) -> ClassEnv {
+        self.classes.insert(id, class);
+        self
+    }
+    pub fn add_class(self, id: Id, supers: Vec<Id>) -> Result<Self, String> {
+        if self.defined(&id) {
+            return Err("class already defined".to_string());
+        }
+        if supers.iter().any(|id| self.defined(id) == false) {
+            return Err("superclass not defined".to_string());
+        }
+        Ok(self.modify(id, Class::new(supers, vec![])))
+    }
+    pub fn add_inst( self, ps: Vec<Pred>, p: Pred) -> Result<Self, String> {
+        match p {
+            IsIn { id, ty } => {
+                let mut insts = (*self.get_instances(&id)).clone();
+                if self.defined(&id) == false { return Err("no class for instance".to_string()); }
+                {
+                    let mut qs = insts.iter().map(|x| &x.get_qual().t);
+                    if qs.any(|q| IsIn { id: id.clone(), ty: ty.clone() }.overlap(&q)) { return Err("overlapping instance".to_string()); }
+                }
+                insts.push(Instance::new(Qual::new(ps, IsIn { id: id.clone(), ty })));
+                let c = Class::new(self.get_super(&id).clone(), insts);
+                Ok(
+                    self.modify(
+                        id.clone(),
+                        c,
+                    )
+                )
+            }
+        }
+    }
 }
 
 use self::Pred::*;

@@ -1,7 +1,7 @@
 use std::fmt;
 use super::types::*;
 
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash,Debug)]
 pub struct Id(String);
 
 impl Id {
@@ -37,7 +37,7 @@ impl fmt::Debug for Kind
     }
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq,Debug)]
 pub enum Type {
     //型変数
     TVar(TyVar),
@@ -49,7 +49,7 @@ pub enum Type {
     TGen(u32),
 }
 
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash,Debug)]
 pub struct TyVar {
     id: Id,
     kind: Kind,
@@ -61,7 +61,7 @@ impl TyVar {
     }
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq,Debug)]
 pub struct TyCon {
     id: Id,
     kind: Kind,

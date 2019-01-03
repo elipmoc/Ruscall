@@ -14,7 +14,7 @@ pub fn mgu(a: Type, b: Type) -> UnifyResult {
                     a2.apply(&s1),
                     b2.apply(&s1),
                 )?;
-            Ok(s2.left_merge(s1))
+            Ok(s2.right_merge(s1))
         }
         (TVar(v), t) | (t, TVar(v)) => var_bind(v, t),
         (TCon(ref tc1), TCon(ref tc2))if tc1 == tc2 => Ok(Subst::new()),
@@ -33,6 +33,23 @@ pub fn matc_h(a: Type, b: Type) -> UnifyResult {
         (TVar(ref v), ref t)if v.kind() == t.kind() => Ok(Subst::one_with(v.clone(), t.clone())),
         (TCon(ref tc1), TCon(ref tc2))if tc1 == tc2 => Ok(Subst::new()),
         _ => Err("types do not match".to_string())
+    }
+}
+
+use super::traits::Pred;
+
+pub fn lift<F: Fn(Type, Type) -> UnifyResult>(f: F) -> impl Fn(Pred, Pred) -> UnifyResult {
+    use super::traits::Pred::*;
+    move |a: Pred, b: Pred| {
+        match (a, b) {
+            (IsIn { id: id1, ty: ty1 }, IsIn { id: id2, ty: ty2 }) => {
+                if id1 == id2 {
+                    f(ty1, ty2)
+                } else {
+                    Err("classes differ".to_string())
+                }
+            }
+        }
     }
 }
 
