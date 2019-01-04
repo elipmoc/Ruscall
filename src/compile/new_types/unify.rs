@@ -37,12 +37,12 @@ pub fn matc_h(a: Type, b: Type) -> UnifyResult {
 }
 
 use super::traits::Pred;
-
+//matc_hやmguといった単一化処理をPredに拡張する
 pub fn lift<F: Fn(Type, Type) -> UnifyResult>(f: F) -> impl Fn(Pred, Pred) -> UnifyResult {
     use super::traits::Pred::*;
     move |a: Pred, b: Pred| {
         match (a, b) {
-            (IsIn { id: id1, ty: ty1 }, IsIn { id: id2, ty: ty2 }) => {
+            (IsIn { class_name: id1, ty: ty1 }, IsIn { class_name: id2, ty: ty2 }) => {
                 if id1 == id2 {
                     f(ty1, ty2)
                 } else {
