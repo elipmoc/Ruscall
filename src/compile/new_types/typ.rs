@@ -1,7 +1,8 @@
 use std::fmt;
 use super::types::*;
+use super::traits::Qual;
 
-#[derive(Clone, PartialEq, Eq, Hash,Debug)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct Id(String);
 
 impl Id {
@@ -37,7 +38,7 @@ impl fmt::Debug for Kind
     }
 }
 
-#[derive(Clone, PartialEq,Debug)]
+#[derive(Clone, PartialEq, Debug)]
 pub enum Type {
     //型変数
     TVar(TyVar),
@@ -49,7 +50,15 @@ pub enum Type {
     TGen(u32),
 }
 
-#[derive(Clone, PartialEq, Eq, Hash,Debug)]
+impl Type {
+    //量化変数なしの型スキームを生成
+    pub fn to_scheme(self) -> Scheme {
+        Forall { kinds: vec![], qual: Qual::new(vec![], self) }
+    }
+}
+
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+//型変数
 pub struct TyVar {
     id: Id,
     kind: Kind,
@@ -61,7 +70,8 @@ impl TyVar {
     }
 }
 
-#[derive(Clone, PartialEq,Debug)]
+#[derive(Clone, PartialEq, Debug)]
+//型コンストラクタ
 pub struct TyCon {
     id: Id,
     kind: Kind,
@@ -73,8 +83,31 @@ impl TyCon {
     }
 }
 
+#[derive(Clone, PartialEq)]
+//型スキーム
+pub enum Scheme {
+    Forall { kinds: Vec<Kind>, qual: Qual<Type> }
+}
+
+impl Scheme {
+    //型変数を量化する
+    fn quantify(vs: Vec<TyVar>, qt: Qual<Type>) -> Scheme {
+        let vs =
+            qt.tv()
+                .into_iter()
+                .filter(|v| vs.contains(&v))
+                .collect::<Vec<_>>();
+        let ks = vs.iter().map(|v| v.kind().clone()).collect::<Vec<_>>();
+        let s = Subst::many_with(
+            vs.into_iter().enumerate()
+                .map(|(index, v)| (v.clone(), TGen(index as u32))).collect::<Vec<_>>());
+        Forall { kinds: ks, qual: qt.apply(&s) }
+    }
+}
+
 use self::Kind::*;
 use self::Type::*;
+use self::Scheme::*;
 
 //helper---------------------------------------------------------------------
 
@@ -145,6 +178,23 @@ impl Types for Type {
             TVar(v) => one_hash_set(v),
             TAp(a, b) => hash_set_union(a.tv(), &b.tv()),
             _ => HashSet::new()
+        }
+    }
+}
+
+impl Types for Scheme {
+    fn apply(&self, s: &Subst) -> Self {
+        match self {
+            Forall { kinds, qual } => {
+                Forall { kinds: kinds.clone(), qual: qual.apply(s) }
+            }
+        }
+    }
+    fn tv(&self) -> HashSet<&TyVar> {
+        match self {
+            Forall { ref qual, .. } => {
+                qual.tv()
+            }
         }
     }
 }

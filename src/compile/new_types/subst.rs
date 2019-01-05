@@ -1,5 +1,4 @@
-use std::collections::{HashMap, HashSet};
-use std::hash::Hash;
+use std::collections::HashMap;
 use super::typ::{TyVar, Type};
 use super::typ::Type::*;
 use super::types::*;
@@ -17,6 +16,12 @@ impl Subst {
     pub fn one_with(v: TyVar, t: Type) -> Subst {
         let mut h = HashMap::new();
         h.insert(v, t);
+        Subst(h)
+    }
+
+    //複数の対応を持つ型代入写像の作成
+    pub fn many_with(s: Vec<(TyVar, Type)>) -> Subst {
+        let h = s.into_iter().collect::<HashMap<_, _>>();
         Subst(h)
     }
 
