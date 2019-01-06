@@ -105,6 +105,24 @@ impl Scheme {
     }
 }
 
+//変数の仮定
+pub struct Assump {
+    id: Id,
+    scheme: Scheme,
+}
+
+//仮定のリスト
+pub struct AssumpList(Vec<Assump>);
+
+impl AssumpList {
+    fn find_scheme(&self, id: &Id) -> Result<Scheme, String> {
+        match self.0.iter().find(|a| &a.id == id) {
+            Some(a) => Ok(a.scheme.clone()),
+            None => Err("unbound identifier:".to_string() + id.get_id())
+        }
+    }
+}
+
 use self::Kind::*;
 use self::Type::*;
 use self::Scheme::*;
@@ -196,6 +214,15 @@ impl Types for Scheme {
                 qual.tv()
             }
         }
+    }
+}
+
+impl Types for Assump {
+    fn apply(&self, s: &Subst) -> Self {
+        Assump { id: self.id.clone(), scheme: self.scheme.apply(s) }
+    }
+    fn tv(&self) -> HashSet<&TyVar> {
+        self.scheme.tv()
     }
 }
 
