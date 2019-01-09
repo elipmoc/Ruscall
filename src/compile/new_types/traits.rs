@@ -10,8 +10,8 @@ use std::collections::HashMap;
 //例: ps: aはNum制約がある。 t:a->a
 //説明：　Num制約がかかった型変数aがあり、型はa->aである
 pub struct Qual<T> {
-    ps: Vec<Pred>,
-    t: T,
+    pub ps: Vec<Pred>,
+    pub t: T,
 }
 
 impl<T> Qual<T> {
@@ -25,7 +25,8 @@ impl<T> Qual<T> {
 //例：　id:"Num" ty:"a"
 //説明：　型変数aはNum制約を持つ
 pub enum Pred {
-    IsIn { class_name: Id, ty: Type }
+    IsIn { class_name: Id, ty: Type },
+    Test
 }
 
 impl Pred {
