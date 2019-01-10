@@ -58,6 +58,11 @@ version = "0.3.55"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
+name = "indexmap"
+version = "1.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
 name = "inkwell"
 version = "0.1.0"
 source = "git+https://github.com/elipmoc/inkwell?branch=llvm6-0#ad57fda81b67b887845e982b137c9f2a927c0d6d"
@@ -157,6 +162,7 @@ version = "0.6.0"
 dependencies = [
  "cc 1.0.27 (registry+https://github.com/rust-lang/crates.io-index)",
  "combine 3.6.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "indexmap 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "inkwell 0.1.0 (git+https://github.com/elipmoc/inkwell?branch=llvm6-0)",
  "libc 0.2.45 (registry+https://github.com/rust-lang/crates.io-index)",
  "llvm-sys 60.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -259,6 +265,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum either 1.5.0 (registry+https://github.com/rust-lang/crates.io-index)" = "3be565ca5c557d7f59e7cfcf1844f9e3033650c929c6566f511e8005f205c1d0"
 "checksum enum-methods 0.0.8 (registry+https://github.com/rust-lang/crates.io-index)" = "7798e7da2d4cb0d6d6fc467e8d6b5bf247e9e989f786dde1732d79899c32bb10"
 "checksum gcc 0.3.55 (registry+https://github.com/rust-lang/crates.io-index)" = "8f5f3913fa0bfe7ee1fd8248b6b9f42a5af4b9d65ec2dd2c3c26132b950ecfc2"
+"checksum indexmap 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)" = "7e81a7c05f79578dbc15793d8b619db9ba32b4577003ef3af1a91c416798c58d"
 "checksum inkwell 0.1.0 (git+https://github.com/elipmoc/inkwell?branch=llvm6-0)" = "<none>"
 "checksum inkwell_internal_macros 0.1.0 (git+https://github.com/elipmoc/inkwell?branch=llvm6-0)" = "<none>"
 "checksum lazy_static 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "a374c89b9db55895453a74c1e38861d9deec0b01b405a82516e9d5de4820dea1"
