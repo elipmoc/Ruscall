@@ -28,7 +28,7 @@ impl<'a> Binding<'a> {
     }
 
     fn get_func_binding_group(mut self, func_name: &String) -> Binding<'a> {
-        if self.bindings.contains(func_name) || self.func_mir_list.contains_key(func_name)==false {
+        if self.bindings.contains(func_name) || self.func_mir_list.contains_key(func_name) == false {
             return self;
         }
         let func = self.func_mir_list.remove(func_name).unwrap();
@@ -45,16 +45,12 @@ impl<'a> Binding<'a> {
                 let binding = self.get_expr_binding_group(&x.r_expr);
                 binding.get_expr_binding_group(&x.l_expr)
             }
-            GlobalVariableMir(x) => {
-                self.get_func_binding_group(&x.id)
-            }
+            GlobalVariableMir(x) => self.get_func_binding_group(&x.id),
             IfMir(x) => {
                 let binding = self.get_expr_binding_group(&x.t_expr);
                 binding.get_expr_binding_group(&x.f_expr)
             }
-            IndexPropertyMir(x) => {
-                self.get_expr_binding_group(&x.expr)
-            }
+            IndexPropertyMir(x) => self.get_expr_binding_group(&x.expr),
             CallMir(x) => {
                 let binding = self.get_expr_binding_group(&x.func);
                 x.params.iter().fold(binding, |acc, x| {
@@ -67,18 +63,14 @@ impl<'a> Binding<'a> {
                     acc.get_expr_binding_group(x)
                 })
             }
-            ExprMir::TupleMir(x) => {
+            TupleMir(x) => {
                 let binding = self;
                 x.elements.iter().fold(binding, |acc, x| {
                     acc.get_expr_binding_group(x)
                 })
             }
-            ExprMir::LambdaMir(x) => {
-                self.get_func_binding_group(&x.func_name)
-            }
-            ExprMir::NamePropertyMir(x) => {
-                self.get_expr_binding_group(&x.expr)
-            }
+            LambdaMir(x) => self.get_func_binding_group(&x.func_name),
+            NamePropertyMir(x) => self.get_expr_binding_group(&x.expr)
         }
     }
 }
@@ -105,12 +97,12 @@ fn binding_group_test() {
 
     let a = create_nest_func_mir("a", "b");
     let b = create_nest_func_mir("b", "c");
-    let c = create_nest_func_mir("c", "a");
+    let c = create_nest_func_mir("c", "c");
     let mut h = HashMap::new();
     h.insert("a".to_string(), &a);
     h.insert("b".to_string(), &b);
-    h.insert("c".to_string(), &b);
-    let mut bindings = Binding::create_binding_group(h);
+    h.insert("c".to_string(), &c);
+    let bindings = Binding::create_binding_group(h);
     let mut iter = bindings.iter();
     assert_eq!(iter.next().unwrap(), &"c".to_string());
     assert_eq!(iter.next().unwrap(), &"b".to_string());
