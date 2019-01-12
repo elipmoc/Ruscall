@@ -33,7 +33,7 @@ impl mir::ProgramMir {
                 .to_llvm_any_type(false).into_function_type();
 
             use compile::mangling::mangle;
-            println!("{}",mangle(&x.name,&ty_info.look_up_func_name(x.name.clone())));
+            println!("{}", mangle(&x.name, &ty_info.look_up_func_name(x.name.clone())));
             module.add_function(&x.name, func_type, Some(module::Linkage::External));
         });
 
@@ -67,8 +67,12 @@ fn ex_func_gen(dec_func_ir: mir::DecFuncMir, module: &module::Module, ty_info: &
 impl Type {
     fn to_llvm_basic_type(&self) -> types::BasicTypeEnum {
         match self {
-            Type::Int32 => types::IntType::i32_type().as_basic_type_enum(),
-            Type::Bool => types::IntType::bool_type().as_basic_type_enum(),
+            Type::TCon { name } =>
+                match name as &str {
+                    "Int32" => types::IntType::i32_type().as_basic_type_enum(),
+                    "Bool" => types::IntType::bool_type().as_basic_type_enum(),
+                    _ => panic!("undefined!")
+                },
             Type::TupleType(x) => x.to_llvm_type().as_basic_type_enum(),
             Type::TyVar(_, _) => panic!("TyVar type!"),
             Type::LambdaType(x) => x.to_llvm_basic_type(),
@@ -78,8 +82,12 @@ impl Type {
 
     fn to_llvm_any_type(&self, fn_pointer_flag: bool) -> types::AnyTypeEnum {
         match self {
-            Type::Int32 => types::IntType::i32_type().as_any_type_enum(),
-            Type::Bool => types::IntType::i8_type().as_any_type_enum(),
+            Type::TCon { name } =>
+                match name as &str {
+                    "Int32" => types::IntType::i32_type().as_any_type_enum(),
+                    "Bool" => types::IntType::i8_type().as_any_type_enum(),
+                    _ => panic!("undefined!")
+                },
             Type::TupleType(x) => x.to_llvm_type().as_any_type_enum(),
             Type::TyVar(_, _) => panic!("TyVar type!"),
             Type::LambdaType(x) => x.to_llvm_any_type(fn_pointer_flag),
@@ -159,9 +167,9 @@ impl StructType {
 impl mir::ExprMir {
     fn get_ty(&self, ty_info: &mut TypeInfo) -> Type {
         match self {
-            mir::ExprMir::NumMir(_) => Type::Int32,
-            mir::ExprMir::BoolMir(_) => Type::Bool,
-            mir::ExprMir::OpMir(_) => Type::Int32,
+            mir::ExprMir::NumMir(_) => Type::create_int32(),
+            mir::ExprMir::BoolMir(_) => Type::create_bool(),
+            mir::ExprMir::OpMir(_) => Type::create_int32(),
             mir::ExprMir::VariableMir(x) => ty_info.look_up(&x.ty_id),
             mir::ExprMir::IfMir(x) => ty_info.look_up(&x.ty_id),
             mir::ExprMir::GlobalVariableMir(x) => ty_info.look_up_func_name(x.id.clone()),

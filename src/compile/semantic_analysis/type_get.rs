@@ -96,13 +96,13 @@ impl<'a> TypeGet for &'a ExprMir {
 
 impl TypeGet for NumMir {
     fn ty_get(&self, ty_info: TypeInfo) -> TyCheckResult<(TypeInfo, Type)> {
-        Ok((ty_info, Type::Int32))
+        Ok((ty_info, Type::create_int32()))
     }
 }
 
 impl TypeGet for BoolMir {
     fn ty_get(&self, ty_info: TypeInfo) -> TyCheckResult<(TypeInfo, Type)> {
-        Ok((ty_info, Type::Bool))
+        Ok((ty_info, Type::create_bool()))
     }
 }
 
@@ -111,7 +111,7 @@ impl TypeGet for IfMir {
         let (ty_info, cond_ty) = (&self.cond).ty_get(ty_info)?;
         let (ty_info, t_expr_ty) = (&self.t_expr).ty_get(ty_info)?;
         let (ty_info, f_expr_ty) = (&self.f_expr).ty_get(ty_info)?;
-        let ty_info = ty_info.unify(cond_ty, Type::Bool)
+        let ty_info = ty_info.unify(cond_ty, Type::create_bool())
             .map_err(|msg| Error::new(self.pos, &msg))?;
         let ty_info = ty_info.unify(t_expr_ty, f_expr_ty.clone())
             .map_err(|msg| Error::new(self.pos, &msg))?;
@@ -142,18 +142,18 @@ impl TypeGet for CallMir {
 impl TypeGet for OpMir {
     fn ty_get(&self, ty_info: TypeInfo) -> TyCheckResult<(TypeInfo, Type)> {
         let ret_ty = match &(self.op) as &str {
-            "==" => Type::Bool,
-            _ => Type::Int32,
+            "==" => Type::create_bool(),
+            _ => Type::create_int32(),
         };
 
         let (ty_info, l_expr_ty) = (&self.l_expr)
             .ty_get(ty_info)?;
-        let ty_info = ty_info.unify(l_expr_ty, Type::Int32)
+        let ty_info = ty_info.unify(l_expr_ty, Type::create_int32())
             .map_err(|msg| Error::new(self.l_expr.get_pos(), &msg))?;
 
         let (ty_info, r_expr_ty) = (&self.r_expr)
             .ty_get(ty_info)?;
-        let ty_info = ty_info.unify(r_expr_ty, Type::Int32)
+        let ty_info = ty_info.unify(r_expr_ty, Type::create_int32())
             .map_err(|msg| Error::new(self.r_expr.get_pos(), &msg))?;
         Ok((ty_info, ret_ty))
     }

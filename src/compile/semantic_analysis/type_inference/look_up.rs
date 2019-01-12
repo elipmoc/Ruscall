@@ -20,7 +20,7 @@ impl TypeSubstitute {
             Type::TupleType(x) => Type::TupleType(Box::new(self.tuple_look_up(x))),
             Type::LambdaType(x) => self.lambda_look_up(x),
             Type::StructType(x) => self.struct_look_up(x),
-            Type::Int32 | Type::Bool => ty.clone(),
+            Type::TCon {..}=> ty.clone(),
         }
     }
     fn func_look_up(&self, ty: &FuncType) -> FuncType {

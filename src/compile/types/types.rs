@@ -20,8 +20,9 @@ pub enum TypeCondition {
 }
 
 use std::hash::{Hash, Hasher};
-impl Hash for TypeCondition{
-    fn hash<H:Hasher>(&self,state:&mut H){}
+
+impl Hash for TypeCondition {
+    fn hash<H: Hasher>(&self, _: &mut H) {}
 }
 
 impl TypeCondition {
@@ -128,10 +129,9 @@ impl ImplItems {
     }
 }
 
-#[derive(Clone, PartialEq,Hash)]
+#[derive(Clone, PartialEq, Hash)]
 pub enum Type {
-    Int32,
-    Bool,
+    TCon { name: String },
     TupleType(Box<TupleType>),
     TyVar(TypeId, TypeCondition),
     LambdaType(Box<LambdaType>),
@@ -139,6 +139,12 @@ pub enum Type {
 }
 
 impl Type {
+    pub fn create_int32() -> Type {
+        Type::TCon { name: "Int32".to_string() }
+    }
+    pub fn create_bool() -> Type {
+        Type::TCon { name: "Bool".to_string() }
+    }
     pub fn create_func_type(param_types: Vec<Type>, ret_type: Type) -> Type {
         Type::LambdaType(Box::new(LambdaType { env_ty: None, func_ty: FuncType { param_types, ret_type } }))
     }
@@ -150,14 +156,14 @@ impl Type {
     }
 }
 
-#[derive(Debug, Clone, PartialEq,Hash)]
+#[derive(Debug, Clone, PartialEq, Hash)]
 pub struct FuncType {
     pub param_types: Vec<Type>,
     pub ret_type: Type,
 }
 
 
-#[derive(Debug, Clone, PartialEq,Hash)]
+#[derive(Debug, Clone, PartialEq, Hash)]
 pub struct TupleType {
     pub element_tys: Vec<Type>
 }
@@ -172,7 +178,7 @@ impl TupleTypeBase for TupleType {
     }
 }
 
-#[derive(Debug, Clone, PartialEq,Hash)]
+#[derive(Debug, Clone, PartialEq, Hash)]
 pub enum StructInternalType {
     RecordType(RecordType),
     TupleType(TupleType),
@@ -201,7 +207,7 @@ impl TupleTypeBase for StructInternalType {
     }
 }
 
-#[derive(Debug, Clone, PartialEq,Hash)]
+#[derive(Debug, Clone, PartialEq, Hash)]
 pub struct StructType {
     pub ty: StructInternalType,
     pub name: String,
@@ -222,7 +228,7 @@ impl TupleTypeBase for StructType {
 }
 
 
-#[derive(Debug, Clone, PartialEq,Hash)]
+#[derive(Debug, Clone, PartialEq, Hash)]
 pub struct RecordType {
     pub element_tys: Vec<(String, Type)>
 }
@@ -240,7 +246,7 @@ impl TupleTypeBase for RecordType {
     }
 }
 
-#[derive(Debug, Clone, PartialEq,Hash)]
+#[derive(Debug, Clone, PartialEq, Hash)]
 pub struct LambdaType {
     pub env_ty: Option<TupleType>,
     pub func_ty: FuncType,

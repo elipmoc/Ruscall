@@ -26,7 +26,7 @@ pub fn occurs_check(hash_map: &TypeSubstituteHashMap, ty: &Type, ty_id: &TypeId)
                     }
                 }
         }
-        Type::Int32 | Type::Bool => false,
+        Type::TCon {..} => false,
         Type::TupleType(x) => x.occurs_check(hash_map, ty_id),
         Type::LambdaType(x) => {
             let x = &**x;

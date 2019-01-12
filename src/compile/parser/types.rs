@@ -11,7 +11,7 @@ use combine::{many,optional,sep_end_by};
 parser! {
    fn ty_term_parser['a]()(MyStream<'a>) ->TypeAST
     {
-       string("Int32").map(|_|TypeAST::Type(Type::Int32) )
+       string("Int32").map(|_|TypeAST::Type(Type::create_int32()) )
        .or((
             lower(),many(alpha_num())
         ).map(|(x,xs):(char,String)|TypeAST::TypeVarName(x.to_string()+&xs)))

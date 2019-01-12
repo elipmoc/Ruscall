@@ -19,8 +19,7 @@ pub fn type_error<T, A: ShowType, B: ShowType>(expect: &A, actual: &B) -> Result
 impl ShowType for Type {
     fn show(&self) -> String {
         match self {
-            Type::Int32 => "Int32".to_string(),
-            Type::Bool => "Bool".to_string(),
+            Type::TCon { name } => name.clone(),
             Type::TupleType(x) => x.show(),
             Type::TyVar(ty_id, cond) => {
                 ty_id.get_id().to_string() + "[" +
@@ -89,7 +88,7 @@ impl ShowType for ImplItems {
     fn show(&self) -> String {
         "impl{".to_string() + &self.get_index_properties().fold(String::new(), |acc, (name, ty)| {
             acc + &format!(" index {}::{:?},", name, ty)
-        })+&self.get_name_properties().fold(String::new(), |acc, (name, ty)| {
+        }) + &self.get_name_properties().fold(String::new(), |acc, (name, ty)| {
             acc + &format!(" name {}::{:?},", name, ty)
         }) + "}"
     }
