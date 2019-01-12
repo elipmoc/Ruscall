@@ -5,6 +5,7 @@ pub mod parser;
 pub mod semantic_analysis;
 pub mod types;
 pub mod ast_transformer;
+pub mod mangling;
 pub mod ir;
 
 use self::error::Error;

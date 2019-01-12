@@ -31,6 +31,9 @@ impl mir::ProgramMir {
             let func_type = ty_info
                 .look_up_func_name(x.name.clone())
                 .to_llvm_any_type(false).into_function_type();
+
+            use compile::mangling::mangle;
+            println!("{}",mangle(&x.name,&ty_info.look_up_func_name(x.name.clone())));
             module.add_function(&x.name, func_type, Some(module::Linkage::External));
         });
 
