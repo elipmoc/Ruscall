@@ -164,6 +164,9 @@ impl Type {
     pub fn create_func_type(param_types: Vec<Type>, ret_type: Type) -> Type {
         Type::LambdaType(Box::new(LambdaType { env_ty: None, func_ty: FuncType { param_types, ret_type } }))
     }
+    pub fn create_func_type2(func_ty: FuncType) -> Type {
+        Type::LambdaType(Box::new(LambdaType { env_ty: None, func_ty }))
+    }
     pub fn create_tuple_type(element_tys: Vec<Type>) -> Type {
         Type::TupleType(Box::new(TupleType { element_tys }))
     }
@@ -277,7 +280,7 @@ pub trait TupleTypeBase {
     }
 }
 
-#[derive(Clone, PartialEq,Debug)]
+#[derive(Clone, PartialEq, Debug)]
 //制約と型をセットにしたもの
 //psが制約
 //tがその制約がかけられたなにか
@@ -289,10 +292,10 @@ pub struct Qual<T> {
 }
 
 
-#[derive(Clone, PartialEq,Debug)]
+#[derive(Clone, PartialEq, Debug)]
 //型スキーム
 pub enum Scheme {
-    Forall { qual: Qual<FuncType> }
+    Forall { qual: Qual<Type> }
 }
 
 //変数の型の仮定

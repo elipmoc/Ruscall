@@ -46,7 +46,7 @@ impl<'a> TypeGet for &'a ExplicitFunc {
                 let (ty_info, ty) = (&self.func).ty_get(ty_info)?;
                 let ty_info = ty_info.unify(
                     ty.clone(),
-                    Type::LambdaType(Box::new(LambdaType { env_ty: None, func_ty: qual.t.clone() })),
+                    qual.t.clone()
                 ).map_err(|msg| Error::new(self.func.pos, &msg))?;
                 Ok((ty_info, ty))
             }

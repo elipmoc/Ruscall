@@ -73,7 +73,7 @@ impl DefFuncAST {
                 let mut ty_var_table = TypeVariableTable::new();
                 program_ir.explicit_func_list.push(ExplicitFunc {
                     func: func_ir,
-                    scheme: Scheme::Forall { qual: Qual { ps: vec![], t: x.ty.to_ty(struct_list, &mut ty_var_table, &mut program_ir.ty_info) } },
+                    scheme: Scheme::Forall { qual: Qual { ps: vec![], t: Type::create_func_type2(x.ty.to_ty(struct_list, &mut ty_var_table, &mut program_ir.ty_info)) } },
                 })
             }
             None => { program_ir.implicit_func_list.insert(func_ir.name.clone(), ImplicitFunc { func: func_ir }); }
