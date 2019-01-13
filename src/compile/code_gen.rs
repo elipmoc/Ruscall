@@ -27,7 +27,7 @@ impl mir::ProgramMir {
             .for_each(|x| ex_func_gen(x, &module, &mut ty_info));
 
         //関数宣言のコード化
-        self.implicit_func_list.iter().map(|x| &x.func)
+        self.implicit_func_list.iter().map(|(_, x)| &x.func)
             .chain(self.explicit_func_list.iter().map(|x| &x.func))
             .for_each(|x| {
                 let func_type = ty_info
@@ -41,7 +41,7 @@ impl mir::ProgramMir {
 
         //関数定義のコード化
         self.implicit_func_list
-            .into_iter().map(|x| x.func)
+            .into_iter().map(|(_, x)| x.func)
             .chain(self.explicit_func_list.into_iter().map(|x| x.func))
             .for_each(|func| func.code_gen(&module, &builder, &mut ty_info));
 

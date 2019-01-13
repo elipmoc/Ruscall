@@ -30,7 +30,7 @@ impl ProgramMir {
             )?.0;
         //関数宣言の型チェック
         let ty_info =
-            ty_get_all(self.implicit_func_list.iter().map(|x| &x.func), ty_info)?.0;
+            ty_get_all(self.implicit_func_list.iter().map(|(_, x)| &x.func), ty_info)?.0;
         //関数定義の型チェック
         let ty_info =
             ty_get_all(self.explicit_func_list.iter().map(|x| x), ty_info)?.0;
@@ -40,7 +40,7 @@ impl ProgramMir {
 }
 
 impl<'a> TypeGet for &'a ExplicitFunc {
-    fn ty_get(&self, mut ty_info: TypeInfo) -> TyCheckResult<(TypeInfo, Type)> {
+    fn ty_get(&self, ty_info: TypeInfo) -> TyCheckResult<(TypeInfo, Type)> {
         match &self.scheme {
             Scheme::Forall { qual } => {
                 let (ty_info, ty) = (&self.func).ty_get(ty_info)?;

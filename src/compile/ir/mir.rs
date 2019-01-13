@@ -2,11 +2,12 @@ use combine::stream::state::SourcePosition;
 use super::ast::*;
 use super::super::types::types::{TypeId, FuncType, StructType, Scheme};
 use super::super::semantic_analysis::type_env::TypeInfo;
+use indexmap::IndexMap;
 
 #[derive(Debug, PartialEq)]
 pub struct ProgramMir {
     //関数定義のリスト
-    pub implicit_func_list: Vec<ImplicitFunc>,
+    pub implicit_func_list: IndexMap<String, ImplicitFunc>,
     pub explicit_func_list: Vec<ExplicitFunc>,
 
     pub ex_dec_func_list: Vec<DecFuncMir>,
@@ -17,7 +18,7 @@ pub struct ProgramMir {
 impl ProgramMir {
     pub fn empty() -> ProgramMir {
         ProgramMir {
-            implicit_func_list: vec![],
+            implicit_func_list: IndexMap::new(),
             explicit_func_list: vec![],
             ex_dec_func_list: vec![],
             ty_info: TypeInfo::new(),
@@ -35,7 +36,7 @@ pub struct ExplicitFunc {
 #[derive(Debug, PartialEq)]
 //型が分からない関数
 pub struct ImplicitFunc {
-   pub func: FuncMir
+    pub func: FuncMir
 }
 
 

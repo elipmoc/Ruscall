@@ -1,19 +1,18 @@
 extern crate indexmap;
 
 use crate::compile::ir::mir::*;
-use std::collections::HashMap;
-use self::indexmap::set::IndexSet;
+use self::indexmap::IndexMap;
 
-pub struct Binding<'a> {
-    bindings: IndexSet<String>,
-    func_mir_list: HashMap<String, &'a FuncMir>,
+pub struct Binding {
+    bindings: IndexMap<String, ImplicitFunc>,
+    func_mir_list: IndexMap<String, ImplicitFunc>,
 }
 
-impl<'a> Binding<'a> {
+impl Binding {
     // 関数の依存度を解析し、依存していない順に並び変えた関数名リストを返す
-    pub fn create_binding_group(func_mir_list: HashMap<String, &FuncMir>) -> IndexSet<String> {
+    pub fn create_binding_group(func_mir_list: IndexMap<String, ImplicitFunc>) -> IndexMap<String, ImplicitFunc> {
         let mut binding = Binding {
-            bindings: IndexSet::new(),
+            bindings: IndexMap::new(),
             func_mir_list,
         };
         loop {
@@ -27,17 +26,17 @@ impl<'a> Binding<'a> {
         }
     }
 
-    fn get_func_binding_group(mut self, func_name: &String) -> Binding<'a> {
-        if self.bindings.contains(func_name) || self.func_mir_list.contains_key(func_name) == false {
+    fn get_func_binding_group(mut self, func_name: &String) -> Binding {
+        if self.bindings.contains_key(func_name) || self.func_mir_list.contains_key(func_name) == false {
             return self;
         }
         let func = self.func_mir_list.remove(func_name).unwrap();
-        let mut binding = self.get_expr_binding_group(&func.body);
-        binding.bindings.insert(func_name.clone());
+        let mut binding = self.get_expr_binding_group(&func.func.body);
+        binding.bindings.insert(func_name.clone(), func);
         binding
     }
 
-    fn get_expr_binding_group(self, expr_mir: &ExprMir) -> Binding<'a> {
+    fn get_expr_binding_group(self, expr_mir: &ExprMir) -> Binding {
         use self::ExprMir::*;
         match expr_mir {
             BoolMir(_) | NumMir(_) | VariableMir(_) => self,
@@ -86,25 +85,27 @@ fn binding_group_test() {
             pos: SourcePosition::new(),
         }
     }
-    fn create_nest_func_mir(name: &str, f_name: &str) -> FuncMir {
-        FuncMir {
-            name: name.to_string(),
-            body: ExprMir::GlobalVariableMir(GlobalVariableMir::new(f_name.to_string(), SourcePosition::new())),
-            params_len: 0,
-            pos: SourcePosition::new(),
+    fn create_nest_func_mir(name: &str, f_name: &str) -> ImplicitFunc {
+        ImplicitFunc {
+            func: FuncMir {
+                name: name.to_string(),
+                body: ExprMir::GlobalVariableMir(GlobalVariableMir::new(f_name.to_string(), SourcePosition::new())),
+                params_len: 0,
+                pos: SourcePosition::new(),
+            }
         }
     }
 
     let a = create_nest_func_mir("a", "b");
     let b = create_nest_func_mir("b", "c");
     let c = create_nest_func_mir("c", "c");
-    let mut h = HashMap::new();
-    h.insert("a".to_string(), &a);
-    h.insert("b".to_string(), &b);
-    h.insert("c".to_string(), &c);
+    let mut h = IndexMap::new();
+    h.insert("a".to_string(), a);
+    h.insert("b".to_string(), b);
+    h.insert("c".to_string(), c);
     let bindings = Binding::create_binding_group(h);
     let mut iter = bindings.iter();
-    assert_eq!(iter.next().unwrap(), &"c".to_string());
-    assert_eq!(iter.next().unwrap(), &"b".to_string());
-    assert_eq!(iter.next().unwrap(), &"a".to_string());
+    assert_eq!(iter.next().unwrap().0, &"c".to_string());
+    assert_eq!(iter.next().unwrap().0, &"b".to_string());
+    assert_eq!(iter.next().unwrap().0, &"a".to_string());
 }

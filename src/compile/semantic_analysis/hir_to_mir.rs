@@ -12,7 +12,7 @@ type AstToIrResult<T> = Result<T, Error>;
 
 impl ProgramHir {
     //ASTをIRに変換
-    pub fn to_mir(mut self) -> AstToIrResult<ProgramMir> {
+    pub fn to_mir(self) -> AstToIrResult<ProgramMir> {
         let mut lambda_count: usize = 0;
         let mut var_table = VariableTable::new(self.get_global_var_names());
 
@@ -76,7 +76,7 @@ impl DefFuncAST {
                     scheme: Scheme::Forall { qual: Qual { ps: vec![], t: x.ty.to_ty(struct_list, &mut ty_var_table, &mut program_ir.ty_info) } },
                 })
             }
-            None => program_ir.implicit_func_list.push(ImplicitFunc { func: func_ir })
+            None => { program_ir.implicit_func_list.insert(func_ir.name.clone(), ImplicitFunc { func: func_ir }); }
         };
         var_table.out_nest();
         Ok(program_ir)
@@ -319,7 +319,7 @@ impl LambdaAST {
         var_table.out_nest();
         *lambda_count += 1;
         let lambda_name = "#".to_string() + &(*lambda_count - 1).to_string();
-        program_ir.implicit_func_list.push(ImplicitFunc {
+        program_ir.implicit_func_list.insert(lambda_name.clone(), ImplicitFunc {
             func: FuncMir {
                 params_len,
                 body,
@@ -394,8 +394,9 @@ fn ast_to_ir_test() {
             pos: SourcePosition { column: 0, line: 0 },
         })],
     };
-    let mut func_list = vec![];
-    func_list.push(ImplicitFunc {
+    use indexmap::IndexMap;
+    let mut func_list = IndexMap::new();
+    func_list.insert("main".to_string(), ImplicitFunc {
         func: FuncMir {
             name: "main".to_string(),
             body: ExprMir::create_variable_mir(0, SourcePosition { line: 0, column: 0 }, TypeId::new(0)),
