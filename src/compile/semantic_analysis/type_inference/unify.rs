@@ -71,42 +71,45 @@ impl TypeSubstitute {
         }
     }
 
+    //型制約の単一化処理
+    fn pred_unify(mut self, mut ty_env: TypeEnv, p1: Pred, p2: Pred) -> Result<(Self, Pred, TypeEnv), String> {
+        use self::Condition::*;
+        match (p1.cond, p2.cond) {
+            (Call(fn_ty1), Call(fn_ty2)) => {
+                let (ty_sub, new_fn_ty, new_ty_env) = self.fn_unify(ty_env, *fn_ty1, *fn_ty2)?;
+                self = ty_sub;
+                ty_env = new_ty_env;
+                Ok((self, Pred::with_call(new_fn_ty), ty_env))
+            }
+            (c, Empty) | (Empty, c) => Ok((self, Pred { ty_id: TypeId::new(0), cond: c }, ty_env)),
+            (Items(impl_items1), Items(impl_items2)) => {
+                let ((ty_sub, new_ty_env), impl_items) = ImplItems::merge(
+                    *impl_items1, *impl_items2, (self, ty_env),
+                    &mut |acc, ty1, ty2| {
+                        let (ty_sub, ty, ty_env) = acc.0.start_unify(acc.1, ty1, ty2)?;
+                        Ok(((ty_sub, ty_env), ty))
+                    })?;
+                self = ty_sub;
+                ty_env = new_ty_env;
+                Ok((self, Pred { ty_id: TypeId::new(0), cond: Items(Box::new(impl_items)) }, ty_env))
+            }
+            (p1, p2) => create_error(&p1, &p2)
+        }
+    }
+
     //型変数の単一化処理
-    fn ty_var_unify(mut self, mut ty_env: TypeEnv, ty_id: TypeId, cond: TypeCondition, ty: Type) -> Result<(Self, Type, TypeEnv), String> {
+    fn ty_var_unify(mut self, mut ty_env: TypeEnv, ty_id: TypeId, p1: Pred, ty: Type) -> Result<(Self, Type, TypeEnv), String> {
         let result_ty =
             match ty {
-                Type::TyVar(id, mut cond2) => {
-                    match (cond, cond2) {
-                        (TypeCondition::Call(fn_ty1), TypeCondition::Call(fn_ty2)) => {
-                            let (ty_sub, new_fn_ty, new_ty_env) = self.fn_unify(ty_env, *fn_ty1, *fn_ty2)?;
-                            self = ty_sub;
-                            ty_env = new_ty_env;
-                            Type::TyVar(ty_env.no_name_get(), TypeCondition::with_call(new_fn_ty))
-                        }
-                        (fn_ty1, TypeCondition::Empty) => Type::TyVar(ty_id, fn_ty1),
-                        (TypeCondition::Empty, fn_ty2) => Type::TyVar(id, fn_ty2),
-                        (TypeCondition::ImplItems(impl_items1), TypeCondition::ImplItems(impl_items2)) => {
-                            let ((ty_sub, new_ty_env), impl_items) = ImplItems::merge(
-                                *impl_items1, *impl_items2, (self, ty_env),
-                                &mut |acc, ty1, ty2| {
-                                    let (ty_sub, ty, ty_env) = acc.0.start_unify(acc.1, ty1, ty2)?;
-                                    Ok(((ty_sub, ty_env), ty))
-                                })?;
-                            self = ty_sub;
-                            ty_env = new_ty_env;
-                            Type::TyVar(
-                                ty_env.no_name_get(),
-                                TypeCondition::ImplItems(Box::new(impl_items)),
-                            )
-                        }
-                        (cond, cond2) => {
-                            return create_error(&Type::TyVar(ty_id, cond), &Type::TyVar(id, cond2));
-                        }
-                    }
+                Type::TyVar(_, mut p2) => {
+                    let (ty_sub, p, new_ty_env) = self.pred_unify(ty_env, p1, p2)?;
+                    ty_env = new_ty_env;
+                    self = ty_sub;
+                    Type::TyVar(ty_env.no_name_get(), p)
                 }
                 Type::LambdaType(x) => {
-                    match cond {
-                        TypeCondition::Call(c) => {
+                    match p1.cond {
+                        Condition::Call(c) => {
                             let env_len = x.env_ty.clone().map(|t| t.element_tys.len()).unwrap_or(0);
                             let mut func_ty = x.func_ty.clone();
                             func_ty.param_types = func_ty.param_types.clone().into_iter().skip(env_len).collect::<Vec<_>>();
@@ -120,21 +123,21 @@ impl TypeSubstitute {
                 }
                 Type::TupleType(x) => {
                     let (ty_sub, tuple_ty, new_ty_env) =
-                        self.tuple_ty_var_unify(ty_env, *x, ty_id, cond)?;
+                        self.tuple_ty_var_unify(ty_env, *x, ty_id, p1)?;
                     self = ty_sub;
                     ty_env = new_ty_env;
                     Type::TupleType(Box::new(tuple_ty))
                 }
                 Type::StructType(struct_ty) => {
                     let (ty_sub, struct_ty, new_ty_env) =
-                        self.tuple_ty_var_unify(ty_env, *struct_ty, ty_id, cond)?;
+                        self.tuple_ty_var_unify(ty_env, *struct_ty, ty_id, p1)?;
                     self = ty_sub;
                     ty_env = new_ty_env;
                     Type::StructType(Box::new(struct_ty))
                 }
                 ty => {
-                    if cond.is_empty() == false {
-                        return create_error(&Type::TyVar(ty_id, cond), &ty);
+                    if p1.is_empty() == false {
+                        return create_error(&Type::TyVar(ty_id, p1), &ty);
                     } else {
                         ty
                     }
@@ -144,13 +147,13 @@ impl TypeSubstitute {
     }
 
     //タプルと型変数の単一化
-    fn tuple_ty_var_unify<T: TupleTypeBase + Debug>(mut self, mut ty_env: TypeEnv, tuple_ty: T, ty_id: TypeId, cond: TypeCondition)
+    fn tuple_ty_var_unify<T: TupleTypeBase + Debug>(mut self, mut ty_env: TypeEnv, tuple_ty: T, ty_id: TypeId, p: Pred)
                                                     -> Result<(Self, T, TypeEnv), String> {
-        match cond {
-            TypeCondition::Call(_) => {
-                return create_error(&Type::TyVar(ty_id, cond), &tuple_ty);
+        match p.cond {
+            Condition::Call(_) => {
+                return create_error(&Type::TyVar(ty_id, p), &tuple_ty);
             }
-            TypeCondition::ImplItems(ref impl_items) => {
+            Condition::Items(ref impl_items) => {
                 for (name, ty) in impl_items.get_name_properties() {
                     match tuple_ty.get_elements_from_record_name(name) {
                         Some(element_ty) => {
@@ -160,14 +163,14 @@ impl TypeSubstitute {
                             ty_env = new_ty_env;
                         }
                         None => {
-                            return create_error(&Type::TyVar(ty_id, cond.clone()), &tuple_ty);
+                            return create_error(&Type::TyVar(ty_id, p.clone()), &tuple_ty);
                         }
                     }
                 };
                 for (index, ty) in impl_items.get_index_properties() {
                     let index = *index as usize;
                     if index >= tuple_ty.get_elements_len() {
-                        return create_error(&Type::TyVar(ty_id, cond.clone()), &tuple_ty);
+                        return create_error(&Type::TyVar(ty_id, p.clone()), &tuple_ty);
                     }
                     let (ty_sub, _, new_ty_env) =
                         self.start_unify(ty_env, ty.clone(), tuple_ty.get_elements_at(index).clone())?;
@@ -175,7 +178,7 @@ impl TypeSubstitute {
                     ty_env = new_ty_env;
                 };
             }
-            TypeCondition::Empty => ()
+            Condition::Empty => ()
         };
         Ok((self, tuple_ty, ty_env))
     }

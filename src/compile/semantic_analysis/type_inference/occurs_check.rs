@@ -6,16 +6,16 @@ type TypeSubstituteHashMap = HashMap<TypeId, Type>;
 //TypeにTypeIdが出現するか検査
 pub fn occurs_check(hash_map: &TypeSubstituteHashMap, ty: &Type, ty_id: &TypeId) -> bool {
     match ty {
-        Type::TyVar(id, ref cond) => {
-            (match cond {
-                TypeCondition::Call(ref x) =>
+        Type::TyVar(id, ref pred) => {
+            (match &pred.cond {
+                Condition::Call(ref x) =>
                     {
                         occurs_check(hash_map, &x.ret_type, &ty_id)
                             ||
                             x.param_types.iter().any(|x| occurs_check(hash_map, x, &ty_id))
                     }
-                TypeCondition::Empty => false,
-                TypeCondition::ImplItems(x) => x.get_index_property_types().any(|x| occurs_check(hash_map, &x, &ty_id))
+                Condition::Empty => false,
+                Condition::Items(x) => x.get_index_property_types().any(|x| occurs_check(hash_map, &x, &ty_id))
             })
                 ||
                 if id == ty_id { true } else {
@@ -26,7 +26,7 @@ pub fn occurs_check(hash_map: &TypeSubstituteHashMap, ty: &Type, ty_id: &TypeId)
                     }
                 }
         }
-        Type::TCon {..} => false,
+        Type::TCon { .. } => false,
         Type::TupleType(x) => x.occurs_check(hash_map, ty_id),
         Type::LambdaType(x) => {
             let x = &**x;

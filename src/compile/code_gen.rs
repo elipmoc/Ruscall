@@ -27,19 +27,22 @@ impl mir::ProgramMir {
             .for_each(|x| ex_func_gen(x, &module, &mut ty_info));
 
         //関数宣言のコード化
-        self.func_list.iter().for_each(|x| {
-            let func_type = ty_info
-                .look_up_func_name(x.name.clone())
-                .to_llvm_any_type(false).into_function_type();
+        self.implicit_func_list.iter().map(|x| &x.func)
+            .chain(self.explicit_func_list.iter().map(|x| &x.func))
+            .for_each(|x| {
+                let func_type = ty_info
+                    .look_up_func_name(x.name.clone())
+                    .to_llvm_any_type(false).into_function_type();
 
-            use compile::mangling::mangle;
-            println!("{}", mangle(&x.name, &ty_info.look_up_func_name(x.name.clone())));
-            module.add_function(&x.name, func_type, Some(module::Linkage::External));
-        });
+                use compile::mangling::mangle;
+                println!("{}", mangle(&x.name, &ty_info.look_up_func_name(x.name.clone())));
+                module.add_function(&x.name, func_type, Some(module::Linkage::External));
+            });
 
         //関数定義のコード化
-        self.func_list
-            .into_iter()
+        self.implicit_func_list
+            .into_iter().map(|x| x.func)
+            .chain(self.explicit_func_list.into_iter().map(|x| x.func))
             .for_each(|func| func.code_gen(&module, &builder, &mut ty_info));
 
         if let Err(err_msg) = module.verify() {

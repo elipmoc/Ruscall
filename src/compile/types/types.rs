@@ -13,37 +13,53 @@ impl TypeId {
 
 //型制約
 #[derive(Clone, PartialEq, Debug)]
-pub enum TypeCondition {
+pub struct Pred {
+    pub ty_id: TypeId,
+    pub cond: Condition,
+}
+
+#[derive(Clone, PartialEq, Debug)]
+pub enum Condition {
     Call(Box<FuncType>),
     Empty,
-    ImplItems(Box<ImplItems>),
+    Items(Box<ImplItems>),
 }
 
 use std::hash::{Hash, Hasher};
 
-impl Hash for TypeCondition {
+impl Hash for Pred {
     fn hash<H: Hasher>(&self, _: &mut H) {}
 }
 
-impl TypeCondition {
+use self::Condition::*;
+
+impl Pred {
     pub fn new() -> Self {
-        TypeCondition::Empty
+        Pred { ty_id: TypeId::new(0), cond: Empty }
     }
 
     pub fn with_call(fn_ty: FuncType) -> Self {
-        TypeCondition::Call(Box::new(fn_ty))
+        Pred { ty_id: TypeId::new(0), cond: Call(Box::new(fn_ty)) }
     }
 
     pub fn with_impl_index_property(index: u32, ty: Type) -> Self {
-        TypeCondition::ImplItems(Box::new(ImplItems::with_index_property(index, ty)))
+        Pred {
+            ty_id: TypeId::new(0),
+            cond: Items(Box::new(ImplItems::with_index_property(index, ty))),
+        }
     }
 
     pub fn with_impl_name_property(name: String, ty: Type) -> Self {
-        TypeCondition::ImplItems(Box::new(ImplItems::with_name_property(name, ty)))
+        Pred {
+            ty_id: TypeId::new(0),
+            cond: Items(Box::new(
+                ImplItems::with_name_property(name, ty)
+            )),
+        }
     }
 
     pub fn is_call(&self) -> bool {
-        if let TypeCondition::Call(_) = self {
+        if let Call(_) = self.cond {
             true
         } else {
             false
@@ -51,7 +67,7 @@ impl TypeCondition {
     }
 
     pub fn is_empty(&self) -> bool {
-        if let TypeCondition::Empty = self {
+        if let Empty = self.cond {
             true
         } else {
             false
@@ -133,7 +149,7 @@ impl ImplItems {
 pub enum Type {
     TCon { name: String },
     TupleType(Box<TupleType>),
-    TyVar(TypeId, TypeCondition),
+    TyVar(TypeId, Pred),
     LambdaType(Box<LambdaType>),
     StructType(Box<StructType>),
 }
@@ -260,3 +276,24 @@ pub trait TupleTypeBase {
         None
     }
 }
+
+#[derive(Clone, PartialEq,Debug)]
+//制約と型をセットにしたもの
+//psが制約
+//tがその制約がかけられたなにか
+//例: ps: aはNum制約がある。 t:a->a
+//説明：　Num制約がかかった型変数aがあり、型はa->aである
+pub struct Qual<T> {
+    pub ps: Vec<Pred>,
+    pub t: T,
+}
+
+
+#[derive(Clone, PartialEq,Debug)]
+//型スキーム
+pub enum Scheme {
+    Forall { qual: Qual<FuncType> }
+}
+
+//変数の型の仮定
+pub struct AssumpList(HashMap<String, Scheme>);

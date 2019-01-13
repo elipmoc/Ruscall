@@ -21,12 +21,12 @@ impl ShowType for Type {
         match self {
             Type::TCon { name } => name.clone(),
             Type::TupleType(x) => x.show(),
-            Type::TyVar(ty_id, cond) => {
+            Type::TyVar(ty_id, pred) => {
                 ty_id.get_id().to_string() + "[" +
-                    &match &cond {
-                        TypeCondition::Empty => "".to_string(),
-                        TypeCondition::Call(x) => x.show(),
-                        TypeCondition::ImplItems(x) => x.show()
+                    &match &pred.cond {
+                        Condition::Empty => "".to_string(),
+                        Condition::Call(x) => x.show(),
+                        Condition::Items(x) => x.show()
                     }
                     + "]"
             }

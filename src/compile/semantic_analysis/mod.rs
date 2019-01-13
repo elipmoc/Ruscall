@@ -19,6 +19,6 @@ pub fn analysis(ast: ast::ProgramAST) -> Result<mir::ProgramMir, Error> {
     println!("\nGlobal Item Type List \n");
     println!("{:?}", ty_resolved);
     println!("\nBinding Group List \n");
-    println!("{:?}", Binding::create_binding_group(ir.func_list.iter().map(|x| (x.name.clone(), x)).collect()));
+    println!("{:?}", Binding::create_binding_group(ir.implicit_func_list.iter().map(|x| (x.func.name.clone(), &x.func)).collect()));
     Result::Ok(ir)
 }

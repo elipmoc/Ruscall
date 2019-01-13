@@ -12,21 +12,21 @@ type AstToIrResult<T> = Result<T, Error>;
 
 impl ProgramHir {
     //ASTをIRに変換
-    pub fn to_mir(self) -> AstToIrResult<ProgramMir> {
+    pub fn to_mir(mut self) -> AstToIrResult<ProgramMir> {
         let mut lambda_count: usize = 0;
         let mut var_table = VariableTable::new(self.get_global_var_names());
 
         let mut program_mir = ProgramMir::empty();
         let struct_list = &self.struct_list;
+        let mut dec_func_list = self.dec_func_list;
         program_mir = self.def_func_list
             .into_iter()
             .fold(Ok(program_mir), |acc, (_, x)| {
-                x.to_mir(acc?, struct_list, &mut lambda_count, &mut var_table)
+                x.to_mir(acc?, &mut dec_func_list, struct_list, &mut lambda_count, &mut var_table)
             })?;
 
-        program_mir = self.dec_func_list
+        program_mir = self.ex_dec_func_list
             .into_iter()
-            .chain(self.ex_dec_func_list.into_iter())
             .fold(Ok(program_mir), |acc, (_, x)| {
                 Ok(x.to_mir(acc?, struct_list))
             })?;
@@ -51,6 +51,7 @@ impl DefFuncAST {
     fn to_mir(
         self,
         mut program_ir: ProgramMir,
+        dec_func_list: &mut HashMap<String, DecFuncHir>,
         struct_list: &HashMap<String, DecStructHir>,
         lambda_count: &mut usize,
         var_table: &mut VariableTable,
@@ -67,7 +68,16 @@ impl DefFuncAST {
             params_len,
             pos: self.pos,
         };
-        program_ir.func_list.push(func_ir);
+        match dec_func_list.remove(&func_ir.name) {
+            Some(x) => {
+                let mut ty_var_table = TypeVariableTable::new();
+                program_ir.explicit_func_list.push(ExplicitFunc {
+                    func: func_ir,
+                    scheme: Scheme::Forall { qual: Qual { ps: vec![], t: x.ty.to_ty(struct_list, &mut ty_var_table, &mut program_ir.ty_info) } },
+                })
+            }
+            None => program_ir.implicit_func_list.push(ImplicitFunc { func: func_ir })
+        };
         var_table.out_nest();
         Ok(program_ir)
     }
@@ -86,7 +96,7 @@ impl DecFuncAST {
             true => {
                 program_ir.ex_dec_func_list.push(dec_func_ir);
             }
-            _ => program_ir.dec_func_list.push(dec_func_ir),
+            _ => panic!("error!"),
         }
         program_ir
     }
@@ -137,7 +147,7 @@ impl TypeAST {
     fn to_ty(self, struct_list: &HashMap<String, DecStructHir>, ty_var_table: &mut TypeVariableTable, ty_info: &mut TypeInfo) -> Type {
         match self {
             TypeAST::Type(x) => x,
-            TypeAST::FuncTypeAST(x) => Type::TyVar(ty_info.no_name_get(), TypeCondition::with_call(x.to_ty(struct_list, ty_var_table, ty_info))),
+            TypeAST::FuncTypeAST(x) => Type::TyVar(ty_info.no_name_get(), Pred::with_call(x.to_ty(struct_list, ty_var_table, ty_info))),
             TypeAST::TupleTypeAST(x) => Type::TupleType(
                 Box::new(x.to_ty(struct_list, ty_var_table, ty_info))
             ),
@@ -309,11 +319,13 @@ impl LambdaAST {
         var_table.out_nest();
         *lambda_count += 1;
         let lambda_name = "#".to_string() + &(*lambda_count - 1).to_string();
-        program_ir.func_list.push(FuncMir {
-            params_len,
-            body,
-            pos: self.pos,
-            name: lambda_name.clone(),
+        program_ir.implicit_func_list.push(ImplicitFunc {
+            func: FuncMir {
+                params_len,
+                body,
+                pos: self.pos,
+                name: lambda_name.clone(),
+            }
         });
         Ok(ExprMir::LambdaMir(Box::new(LambdaMir {
             env,
@@ -343,6 +355,7 @@ impl IndexPropertyAST {
         )
     }
 }
+
 impl NamePropertyAST {
     fn to_mir(
         self,
@@ -382,20 +395,21 @@ fn ast_to_ir_test() {
         })],
     };
     let mut func_list = vec![];
-    func_list.push(FuncMir {
-        name: "main".to_string(),
-        body: ExprMir::create_variable_mir(0, SourcePosition { line: 0, column: 0 }, TypeId::new(0)),
-        params_len: 2,
-        pos: SourcePosition { column: 0, line: 0 },
+    func_list.push(ImplicitFunc {
+        func: FuncMir {
+            name: "main".to_string(),
+            body: ExprMir::create_variable_mir(0, SourcePosition { line: 0, column: 0 }, TypeId::new(0)),
+            params_len: 2,
+            pos: SourcePosition { column: 0, line: 0 },
+        }
     });
     let ir = ProgramMir {
-        dec_func_list: vec![],
-        func_list,
+        explicit_func_list: vec![],
+        implicit_func_list: func_list,
         ex_dec_func_list: vec![],
         ty_info: TypeInfo::new(),
     };
     let ir2 = ast.to_hir().unwrap().to_mir().unwrap();
-    assert_eq!(ir2.func_list, ir.func_list);
-    assert_eq!(ir2.dec_func_list, ir.dec_func_list);
+    assert_eq!(ir2.implicit_func_list, ir.implicit_func_list);
     assert_eq!(ir2.ex_dec_func_list, ir.ex_dec_func_list);
 }

@@ -1,15 +1,14 @@
 use combine::stream::state::SourcePosition;
 use super::ast::*;
-use super::super::types::types::{TypeId, FuncType, StructType};
+use super::super::types::types::{TypeId, FuncType, StructType, Scheme};
 use super::super::semantic_analysis::type_env::TypeInfo;
 
 #[derive(Debug, PartialEq)]
 pub struct ProgramMir {
-    //関数宣言のリスト
-    pub dec_func_list: Vec<DecFuncMir>,
     //関数定義のリスト
-    pub func_list: Vec<FuncMir>,
-    //extern　宣言された関数のリスト
+    pub implicit_func_list: Vec<ImplicitFunc>,
+    pub explicit_func_list: Vec<ExplicitFunc>,
+
     pub ex_dec_func_list: Vec<DecFuncMir>,
 
     pub ty_info: TypeInfo,
@@ -18,13 +17,27 @@ pub struct ProgramMir {
 impl ProgramMir {
     pub fn empty() -> ProgramMir {
         ProgramMir {
-            dec_func_list: vec![],
-            func_list: vec![],
+            implicit_func_list: vec![],
+            explicit_func_list: vec![],
             ex_dec_func_list: vec![],
             ty_info: TypeInfo::new(),
         }
     }
 }
+
+#[derive(Debug, PartialEq)]
+//明示的に型が分かっている関数
+pub struct ExplicitFunc {
+    pub func: FuncMir,
+    pub scheme: Scheme,
+}
+
+#[derive(Debug, PartialEq)]
+//型が分からない関数
+pub struct ImplicitFunc {
+   pub func: FuncMir
+}
+
 
 #[derive(Debug, PartialEq)]
 pub struct FuncMir {
