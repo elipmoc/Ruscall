@@ -6,18 +6,7 @@ type TypeSubstituteHashMap = HashMap<TypeId, Type>;
 //TypeにTypeIdが出現するか検査
 pub fn occurs_check(hash_map: &TypeSubstituteHashMap, ty: &Type, ty_id: &TypeId) -> bool {
     match ty {
-        Type::TyVar(id, ref pred) => {
-            (match &pred.cond {
-                Condition::Call(ref x) =>
-                    {
-                        occurs_check(hash_map, &x.ret_type, &ty_id)
-                            ||
-                            x.param_types.iter().any(|x| occurs_check(hash_map, x, &ty_id))
-                    }
-                Condition::Empty => false,
-                Condition::Items(x) => x.get_index_property_types().any(|x| occurs_check(hash_map, &x, &ty_id))
-            })
-                ||
+        Type::TyVar(id) => {
                 if id == ty_id { true } else {
                     if hash_map.contains_key(&id) {
                         occurs_check(hash_map, &hash_map[id], &ty_id)

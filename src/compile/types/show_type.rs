@@ -21,15 +21,7 @@ impl ShowType for Type {
         match self {
             Type::TCon { name } => name.clone(),
             Type::TupleType(x) => x.show(),
-            Type::TyVar(ty_id, pred) => {
-                ty_id.get_id().to_string() + "[" +
-                    &match &pred.cond {
-                        Condition::Empty => "".to_string(),
-                        Condition::Call(x) => x.show(),
-                        Condition::Items(x) => x.show()
-                    }
-                    + "]"
-            }
+            Type::TyVar(ty_id) => ty_id.get_id().to_string(),
             Type::LambdaType(x) => x.show(),
             Type::StructType(x) => x.show(),
         }

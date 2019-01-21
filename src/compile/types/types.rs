@@ -34,30 +34,6 @@ impl Hash for Pred {
 use self::Condition::*;
 
 impl Pred {
-    pub fn new() -> Self {
-        Pred { ty_id: TypeId::new(0), cond: Empty }
-    }
-
-    pub fn with_call(fn_ty: FuncType) -> Self {
-        Pred { ty_id: TypeId::new(0), cond: Call(Box::new(fn_ty)) }
-    }
-
-    pub fn with_impl_index_property(index: u32, ty: Type) -> Self {
-        Pred {
-            ty_id: TypeId::new(0),
-            cond: Items(Box::new(ImplItems::with_index_property(index, ty))),
-        }
-    }
-
-    pub fn with_impl_name_property(name: String, ty: Type) -> Self {
-        Pred {
-            ty_id: TypeId::new(0),
-            cond: Items(Box::new(
-                ImplItems::with_name_property(name, ty)
-            )),
-        }
-    }
-
     pub fn is_call(&self) -> bool {
         if let Call(_) = self.cond {
             true
@@ -88,23 +64,22 @@ pub struct ImplItems {
 }
 
 impl ImplItems {
-    fn with_index_property(index: u32, ty: Type) -> Self {
+    pub fn with_index_property(index: u32, ty: Type) -> Self {
         let mut x = ImplItems { index_properties: HashMap::new(), name_properties: HashMap::new() };
         x.index_properties.insert(index, ty);
         x
     }
 
-    fn with_name_property(name: String, ty: Type) -> Self {
+    pub fn with_name_property(name: String, ty: Type) -> Self {
         let mut x = ImplItems { index_properties: HashMap::new(), name_properties: HashMap::new() };
         x.name_properties.insert(name, ty);
         x
     }
 
-    pub fn merge<ACC, F: Fn(ACC, Type, Type) -> Result<(ACC, Type), String>>(mut other1: Self, other2: Self, mut acc: ACC, func: &mut F) -> Result<(ACC, Self), String> {
+    pub fn merge<F: FnMut(Type, Type) -> Result<Type, String>>(mut other1: Self, other2: Self, func: &mut F) -> Result<Self, String> {
         for (key, ty) in other2.index_properties {
             if let Some(ty2) = other1.index_properties.remove(&key) {
-                let (new_acc, ty) = func(acc, ty2, ty)?;
-                acc = new_acc;
+                let ty = func(ty2, ty)?;
                 other1.index_properties.insert(key, ty);
             } else {
                 other1.index_properties.insert(key, ty);
@@ -112,20 +87,19 @@ impl ImplItems {
         }
         for (key, ty) in other2.name_properties {
             if let Some(ty2) = other1.name_properties.remove(&key) {
-                let (new_acc, ty) = func(acc, ty2, ty)?;
-                acc = new_acc;
+                let ty = func(ty2, ty)?;
                 other1.name_properties.insert(key, ty);
             } else {
                 other1.name_properties.insert(key, ty);
             }
         }
 
-        Ok((
-            acc,
+        Ok(
             ImplItems {
                 index_properties: other1.index_properties,
                 name_properties: other1.name_properties,
-            }))
+            }
+        )
     }
 
     pub fn get_index_property_types(&self) -> Values<u32, Type> {
@@ -149,7 +123,7 @@ impl ImplItems {
 pub enum Type {
     TCon { name: String },
     TupleType(Box<TupleType>),
-    TyVar(TypeId, Pred),
+    TyVar(TypeId),
     LambdaType(Box<LambdaType>),
     StructType(Box<StructType>),
 }
@@ -287,8 +261,24 @@ pub trait TupleTypeBase {
 //例: ps: aはNum制約がある。 t:a->a
 //説明：　Num制約がかかった型変数aがあり、型はa->aである
 pub struct Qual<T> {
-    pub ps: Vec<Pred>,
+    pub ps: HashMap<TypeId, Pred>,
     pub t: T,
+}
+
+impl<T> Qual<T> {
+    pub fn new(t: T) -> Qual<T> {
+        Qual { ps: HashMap::new(), t }
+    }
+    //複数のqualをpredとtでそれぞれ分割する。
+    pub fn split(qs: Vec<Qual<T>>) -> (Vec<HashMap<TypeId, Pred>>, Vec<T>) {
+        let mut pss = Vec::with_capacity(qs.len());
+        let mut ts = Vec::with_capacity(qs.len());
+        for q in qs {
+            pss.push(q.ps);
+            ts.push(q.t);
+        }
+        (pss, ts)
+    }
 }
 
 
@@ -298,5 +288,10 @@ pub enum Scheme {
     Forall { qual: Qual<Type> }
 }
 
-//変数の型の仮定
-pub struct AssumpList(HashMap<String, Scheme>);
+impl Scheme {
+    pub fn get_qual(&self) -> &Qual<Type> {
+        match self {
+            Scheme::Forall { qual } => &qual
+        }
+    }
+}

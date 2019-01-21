@@ -72,11 +72,14 @@ impl TypeEnv {
 
 //型代入環境
 #[derive(Debug, PartialEq)]
-pub(in super) struct TypeSubstitute(pub HashMap<TypeId, Type>);
+pub(in super) struct TypeSubstitute {
+    pub ty_sub: HashMap<TypeId, Type>,
+    pub ty_env: TypeEnv,
+}
 
 impl TypeSubstitute {
     fn new() -> Self {
-        TypeSubstitute(HashMap::new())
+        TypeSubstitute { ty_sub: HashMap::new(), ty_env: TypeEnv::new() }
     }
 }
 
@@ -109,49 +112,74 @@ impl fmt::Debug for TypeResolved
 
 //型環境と型代入をひとまとめにした
 #[derive(Debug, PartialEq)]
-pub struct TypeInfo(TypeEnv, TypeSubstitute);
+pub struct TypeInfo(TypeSubstitute);
 
 impl TypeInfo {
     pub fn new() -> TypeInfo {
-        TypeInfo(TypeEnv::new(), TypeSubstitute::new())
+        TypeInfo(TypeSubstitute::new())
     }
 
     pub fn look_up(&self, ty_id: &TypeId) -> Type {
-        self.1.look_up(ty_id)
+        self.0.look_up(ty_id)
     }
+    pub fn type_look_up(&self, ty: &Type) -> Type { self.0.type_look_up(ty) }
 
     pub fn look_up_func_name(&mut self, name: String) -> Type {
-        self.1.look_up(&self.0.global_get(name))
+        let ty_id = self.0.ty_env.global_get(name);
+        self.0.look_up(&ty_id)
     }
 
     pub fn get(&mut self, id: String) -> TypeId {
-        self.0.get(id)
+        self.0.ty_env.get(id)
     }
 
     pub fn global_get(&mut self, id: String) -> TypeId {
-        self.0.global_get(id)
+        self.0.ty_env.global_get(id)
     }
 
     pub fn no_name_get(&mut self) -> TypeId {
-        self.0.no_name_get()
+        self.0.ty_env.no_name_get()
     }
 
     pub fn unify(mut self, ty1: Type, ty2: Type) -> Result<TypeInfo, String> {
-        let (ty_sub, _, ty_env) = self.1.start_unify(self.0, ty1, ty2)?;
-        self.1 = ty_sub;
-        self.0 = ty_env;
+        self.0.unify(ty1, ty2)?;
         Ok(self)
     }
 
+    pub fn qual_unify(mut self, q1: Qual<Type>, q2: Qual<Type>) -> Result<(TypeInfo, Qual<Type>), String> {
+        let q = self.0.qual_unify(q1, q2)?;
+        Ok((self, q))
+    }
+
+    pub fn qual_condition_add_unify(mut self, q: Qual<Type>, c: Condition) -> Result<(TypeInfo, Qual<Type>), String> {
+        let q = self.0.qual_add_condition_unify(q, c)?;
+        Ok((self, q))
+    }
+
+    pub fn preds_merge_unify(mut self, ps1: HashMap<TypeId, Pred>, ps2: HashMap<TypeId, Pred>) -> Result<(TypeInfo, HashMap<TypeId, Pred>), String> {
+        let ps = self.0.preds_merge_unify(ps1, ps2)?;
+        Ok((self, ps))
+    }
+    pub fn predss_merge_unify(self, pss: Vec<HashMap<TypeId, Pred>>) -> Result<(TypeInfo, HashMap<TypeId, Pred>), String> {
+        let (ty_info, ps) = pss.into_iter()
+            .fold(Ok((self, HashMap::<TypeId, Pred>::new())), |acc: Result<_, String>, ps2| {
+                let (ty_info, ps1) = acc?;
+                let (ty_info, ps) = ty_info.preds_merge_unify(ps1, ps2)?;
+                Ok((ty_info, ps))
+            })?;
+        Ok((ty_info, ps))
+    }
+
+
     pub fn get_type_resolved(&self) -> TypeResolved {
-        TypeResolved::new(&self.0, &self.1)
+        TypeResolved::new(&self.0.ty_env, &self.0)
     }
 
     pub fn in_nest(&mut self) {
-        self.0.in_nest();
+        self.0.ty_env.in_nest();
     }
 
     pub fn out_nest(&mut self) {
-        self.0.out_nest();
+        self.0.ty_env.out_nest();
     }
 }

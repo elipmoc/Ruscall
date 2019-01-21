@@ -1,6 +1,6 @@
 use combine::stream::state::SourcePosition;
 use super::ast::*;
-use super::super::types::types::{TypeId, FuncType, StructType, Scheme};
+use super::super::types::types::{TypeId, FuncType, StructType, Scheme, Qual};
 use super::super::semantic_analysis::type_env::TypeInfo;
 use indexmap::IndexMap;
 
@@ -13,6 +13,7 @@ pub struct ProgramMir {
     pub ex_dec_func_list: Vec<DecFuncMir>,
 
     pub ty_info: TypeInfo,
+
 }
 
 impl ProgramMir {
@@ -215,7 +216,7 @@ pub struct LambdaMir {
 #[derive(Debug, Clone, PartialEq)]
 pub struct DecFuncMir {
     pub name: String,
-    pub ty: FuncType,
+    pub ty: Qual<FuncType>,
     pub extern_flag: bool,
     pub pos: SourcePosition,
 }

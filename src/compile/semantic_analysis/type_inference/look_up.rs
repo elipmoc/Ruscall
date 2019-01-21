@@ -4,23 +4,21 @@ use super::type_env::TypeSubstitute;
 impl TypeSubstitute {
     // 型変数に対応する単相型を見つけて返す。見つからなかったら空タプルの型を返す
     pub fn look_up(&self, ty_id: &TypeId) -> Type {
-        match self.0.get(ty_id) {
+        match self.ty_sub.get(ty_id) {
             Some(ty) => self.type_look_up(ty),
             None => {
-                Type::TupleType(Box::new(TupleType {
-                    element_tys: vec![],
-                }))
+                Type::TyVar(ty_id.clone())
             }
         }
     }
 
-    fn type_look_up(&self, ty: &Type) -> Type {
+    pub fn type_look_up(&self, ty: &Type) -> Type {
         match ty {
-            Type::TyVar(ty_id, _) => self.look_up(ty_id),
+            Type::TyVar(ty_id) => self.look_up(ty_id),
             Type::TupleType(x) => Type::TupleType(Box::new(self.tuple_look_up(x))),
             Type::LambdaType(x) => self.lambda_look_up(x),
             Type::StructType(x) => self.struct_look_up(x),
-            Type::TCon {..}=> ty.clone(),
+            Type::TCon { .. } => ty.clone(),
         }
     }
     fn func_look_up(&self, ty: &FuncType) -> FuncType {

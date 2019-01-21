@@ -71,9 +71,10 @@ impl DefFuncAST {
         match dec_func_list.remove(&func_ir.name) {
             Some(x) => {
                 let mut ty_var_table = TypeVariableTable::new();
+                let func_q = x.ty.to_ty(struct_list, &mut ty_var_table, &mut program_ir.ty_info);
                 program_ir.explicit_func_list.push(ExplicitFunc {
                     func: func_ir,
-                    scheme: Scheme::Forall { qual: Qual { ps: vec![], t: Type::create_func_type2(x.ty.to_ty(struct_list, &mut ty_var_table, &mut program_ir.ty_info)) } },
+                    scheme: Scheme::Forall { qual: Qual { ps: func_q.ps, t: Type::create_func_type2(func_q.t) } },
                 })
             }
             None => { program_ir.implicit_func_list.insert(func_ir.name.clone(), ImplicitFunc { func: func_ir }); }
@@ -103,31 +104,46 @@ impl DecFuncAST {
 }
 
 impl FuncTypeAST {
-    fn to_ty(self, struct_list: &HashMap<String, DecStructHir>, ty_var_table: &mut TypeVariableTable, ty_info: &mut TypeInfo) -> FuncType {
-        FuncType {
-            ret_type: self.ret_ty.to_ty(struct_list, ty_var_table, ty_info),
-            param_types: self.params_ty.into_iter()
-                .map(|x| x.to_ty(struct_list, ty_var_table, ty_info)).collect(),
+    fn to_ty(self, struct_list: &HashMap<String, DecStructHir>, ty_var_table: &mut TypeVariableTable, ty_info: &mut TypeInfo) -> Qual<FuncType> {
+        let ret_q = self.ret_ty.to_ty(struct_list, ty_var_table, ty_info);
+        let param_qs: Vec<_> = self.params_ty.into_iter()
+            .map(|x| x.to_ty(struct_list, ty_var_table, ty_info)).collect();
+        let (pss, param_ts) = Qual::split(param_qs);
+        let mut ps = pss.into_iter().fold(HashMap::new(), |mut acc, ps| {
+            acc.extend(ps.into_iter());
+            acc
+        });
+        ps.extend(ret_q.ps.into_iter());
+        Qual {
+            t: FuncType {
+                ret_type: ret_q.t,
+                param_types: param_ts,
+            },
+            ps,
         }
     }
 }
 
 impl TupleTypeAST {
     fn to_ty(self, struct_list: &HashMap<String, DecStructHir>, ty_var_table: &mut TypeVariableTable, ty_info: &mut TypeInfo) -> TupleType {
+        let element_qs: Vec<_> = self.elements_ty.into_iter()
+            .map(|x| x.to_ty(struct_list, ty_var_table, ty_info)).collect();
+        let (_pss, element_ts) = Qual::split(element_qs);
         TupleType {
-            element_tys: self.elements_ty.into_iter()
-                .map(|x| x.to_ty(struct_list, ty_var_table, ty_info)).collect()
+            element_tys: element_ts
         }
     }
 }
 
 impl RecordTypeAST {
     fn to_ty(self, struct_list: &HashMap<String, DecStructHir>, ty_var_table: &mut TypeVariableTable, ty_info: &mut TypeInfo) -> RecordType {
+        let (names, element_qs): (Vec<_>, Vec<_>) = self.elements_ty.into_iter()
+            .map(|(name, type_ast)|
+                (name, type_ast.to_ty(struct_list, ty_var_table, ty_info))
+            ).unzip();
+        let (_pss, element_ts) = Qual::split(element_qs);
         RecordType {
-            element_tys: self.elements_ty.into_iter()
-                .map(|(name, type_ast)|
-                    (name, type_ast.to_ty(struct_list, ty_var_table, ty_info))
-                ).collect()
+            element_tys: names.into_iter().zip(element_ts.into_iter()).collect()
         }
     }
 }
@@ -144,18 +160,25 @@ impl StructTypeAST {
 }
 
 impl TypeAST {
-    fn to_ty(self, struct_list: &HashMap<String, DecStructHir>, ty_var_table: &mut TypeVariableTable, ty_info: &mut TypeInfo) -> Type {
+    fn to_ty(self, struct_list: &HashMap<String, DecStructHir>, ty_var_table: &mut TypeVariableTable, ty_info: &mut TypeInfo) -> Qual<Type> {
         match self {
-            TypeAST::Type(x) => x,
-            TypeAST::FuncTypeAST(x) => Type::TyVar(ty_info.no_name_get(), Pred::with_call(x.to_ty(struct_list, ty_var_table, ty_info))),
-            TypeAST::TupleTypeAST(x) => Type::TupleType(
+            TypeAST::Type(x) => Qual::new(x),
+            TypeAST::FuncTypeAST(x) => {
+                let ty_id = ty_info.no_name_get();
+                let func_q = x.to_ty(struct_list, ty_var_table, ty_info);
+                let cond = Condition::Call(Box::new(func_q.t));
+                let mut ps = func_q.ps;
+                ps.insert(ty_id.clone(), Pred { ty_id: ty_id.clone(), cond });
+                Qual { t: Type::TyVar(ty_id), ps }
+            }
+            TypeAST::TupleTypeAST(x) => Qual::new(Type::TupleType(
                 Box::new(x.to_ty(struct_list, ty_var_table, ty_info))
-            ),
-            TypeAST::TypeVarName(ty_name) => ty_var_table.get_ty(ty_name, ty_info),
-            TypeAST::StructTypeAST(x) => Type::StructType(Box::new(x.to_ty(struct_list, ty_var_table, ty_info))),
+            )),
+            TypeAST::TypeVarName(ty_name) => Qual::new(ty_var_table.get_ty(ty_name, ty_info)),
+            TypeAST::StructTypeAST(x) => Qual::new(Type::StructType(Box::new(x.to_ty(struct_list, ty_var_table, ty_info)))),
             TypeAST::IdTypeAST(id) => {
                 if struct_list.contains_key(&id) {
-                    Type::StructType(Box::new((&struct_list[&id]).ty.clone().to_ty(struct_list, ty_var_table, ty_info)))
+                    Qual::new(Type::StructType(Box::new((&struct_list[&id]).ty.clone().to_ty(struct_list, ty_var_table, ty_info))))
                 } else {
                     panic!("実装めんどいな")
                 }

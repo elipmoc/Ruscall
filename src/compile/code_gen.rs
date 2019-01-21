@@ -77,7 +77,7 @@ impl Type {
                     _ => panic!("undefined!")
                 },
             Type::TupleType(x) => x.to_llvm_type().as_basic_type_enum(),
-            Type::TyVar(_, _) => panic!("TyVar type!"),
+            Type::TyVar(_) => Type::TupleType(Box::new(TupleType {element_tys: vec![]})).to_llvm_basic_type(),
             Type::LambdaType(x) => x.to_llvm_basic_type(),
             Type::StructType(x) => x.to_llvm_type().as_basic_type_enum(),
         }
@@ -92,7 +92,7 @@ impl Type {
                     _ => panic!("undefined!")
                 },
             Type::TupleType(x) => x.to_llvm_type().as_any_type_enum(),
-            Type::TyVar(_, _) => panic!("TyVar type!"),
+            Type::TyVar(_) =>Type::TupleType(Box::new(TupleType {element_tys: vec![]})).to_llvm_any_type(fn_pointer_flag),
             Type::LambdaType(x) => x.to_llvm_any_type(fn_pointer_flag),
             Type::StructType(x) => x.to_llvm_type().as_any_type_enum(),
         }
