@@ -129,6 +129,10 @@ impl TypeInfo {
         self.0.look_up(&ty_id)
     }
 
+    pub fn last_qual(&mut self, q: Qual<Type>) -> Result<Qual<Type>, String> {
+        self.0.last_qual(q)
+    }
+
     pub fn get(&mut self, id: String) -> TypeId {
         self.0.ty_env.get(id)
     }
@@ -141,9 +145,8 @@ impl TypeInfo {
         self.0.ty_env.no_name_get()
     }
 
-    pub fn unify(mut self, ty1: Type, ty2: Type) -> Result<TypeInfo, String> {
-        self.0.unify(ty1, ty2)?;
-        Ok(self)
+    pub fn unify(&mut self, ty1: Type, ty2: Type) -> Result<Type, String> {
+        self.0.unify(ty1, ty2)
     }
 
     pub fn qual_unify(mut self, q1: Qual<Type>, q2: Qual<Type>) -> Result<(TypeInfo, Qual<Type>), String> {
@@ -156,13 +159,13 @@ impl TypeInfo {
         Ok((self, q))
     }
 
-    pub fn preds_merge_unify(mut self, ps1: HashMap<TypeId, Pred>, ps2: HashMap<TypeId, Pred>) -> Result<(TypeInfo, HashMap<TypeId, Pred>), String> {
+    pub fn preds_merge_unify(mut self, ps1: Preds, ps2: Preds) -> Result<(TypeInfo, Preds), String> {
         let ps = self.0.preds_merge_unify(ps1, ps2)?;
         Ok((self, ps))
     }
-    pub fn predss_merge_unify(self, pss: Vec<HashMap<TypeId, Pred>>) -> Result<(TypeInfo, HashMap<TypeId, Pred>), String> {
+    pub fn predss_merge_unify(self, pss: Vec<Preds>) -> Result<(TypeInfo, Preds), String> {
         let (ty_info, ps) = pss.into_iter()
-            .fold(Ok((self, HashMap::<TypeId, Pred>::new())), |acc: Result<_, String>, ps2| {
+            .fold(Ok((self, Preds::new())), |acc: Result<_, String>, ps2| {
                 let (ty_info, ps1) = acc?;
                 let (ty_info, ps) = ty_info.preds_merge_unify(ps1, ps2)?;
                 Ok((ty_info, ps))

@@ -1,9 +1,9 @@
-use compile::types::types::{Qual, Type};
+use compile::types::types::Scheme;
 use std::collections::HashMap;
 
 #[derive(Debug, PartialEq)]
 pub struct AssumpEnv {
-    env: Vec<HashMap<String, Qual<Type>>>,
+    env: Vec<HashMap<String, Scheme>>,
     nest: usize,
 }
 
@@ -28,20 +28,20 @@ impl AssumpEnv {
         self.env.pop();
     }
 
-    pub fn global_get(&self, symbol: &String) -> Option<&Qual<Type>> {
+    pub fn global_get(&self, symbol: &String) -> Option<&Scheme> {
         self.env[0].get(symbol)
     }
 
-    pub fn get(&self, symbol: &String) -> Option<&Qual<Type>> {
+    pub fn get(&self, symbol: &String) -> Option<&Scheme> {
         self.env[self.nest].get(symbol)
     }
 
-    pub fn global_set(&mut self, symbol: String, q: Qual<Type>) {
-        println!("global_set {} {:?}",symbol,q);
+    pub fn global_set(&mut self, symbol: String, q: Scheme) {
+        println!("global_set {} {:?}", symbol, q);
         self.env[0].insert(symbol, q);
     }
 
-    pub fn set(&mut self, symbol: String, q: Qual<Type>) {
+    pub fn set(&mut self, symbol: String, q: Scheme) {
         self.env[self.nest].insert(symbol, q);
     }
 }

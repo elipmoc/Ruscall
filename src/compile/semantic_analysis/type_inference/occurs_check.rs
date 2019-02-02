@@ -7,15 +7,15 @@ type TypeSubstituteHashMap = HashMap<TypeId, Type>;
 pub fn occurs_check(hash_map: &TypeSubstituteHashMap, ty: &Type, ty_id: &TypeId) -> bool {
     match ty {
         Type::TyVar(id) => {
-                if id == ty_id { true } else {
-                    if hash_map.contains_key(&id) {
-                        occurs_check(hash_map, &hash_map[id], &ty_id)
-                    } else {
-                        false
-                    }
+            if id == ty_id { true } else {
+                if hash_map.contains_key(&id) {
+                    occurs_check(hash_map, &hash_map[id], &ty_id)
+                } else {
+                    false
                 }
+            }
         }
-        Type::TCon { .. } => false,
+        Type::TCon { .. } | Type::TGen(_) => false,
         Type::TupleType(x) => x.occurs_check(hash_map, ty_id),
         Type::LambdaType(x) => {
             let x = &**x;

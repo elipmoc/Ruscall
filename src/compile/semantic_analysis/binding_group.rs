@@ -77,6 +77,7 @@ impl Binding {
 #[test]
 fn binding_group_test() {
     use combine::stream::state::SourcePosition;
+    use compile::types::types::TypeId;
     fn create_func_mir(name: &str) -> FuncMir {
         FuncMir {
             name: name.to_string(),
@@ -89,7 +90,7 @@ fn binding_group_test() {
         ImplicitFunc {
             func: FuncMir {
                 name: name.to_string(),
-                body: ExprMir::GlobalVariableMir(GlobalVariableMir::new(f_name.to_string(), SourcePosition::new())),
+                body: ExprMir::create_global_variable_mir(f_name.to_string(), SourcePosition::new(), TypeId::new(0)),
                 params_len: 0,
                 pos: SourcePosition::new(),
             }

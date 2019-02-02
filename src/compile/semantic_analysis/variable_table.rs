@@ -27,9 +27,9 @@ impl VariableTable {
         match a {
             Some(id) => Some(ExprMir::create_variable_mir(id, var.pos, ty_info.no_name_get())),
             _ => {
-                if self.global_var_names.contains_key(&var.id){
-                    Some(ExprMir::GlobalVariableMir(var))
-                } else{
+                if self.global_var_names.contains_key(&var.id) {
+                    Some(ExprMir::create_global_variable_mir(var.id, var.pos, ty_info.no_name_get()))
+                } else {
                     None
                 }
             }

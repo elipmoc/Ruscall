@@ -6,5 +6,5 @@ pub fn mangle(base_name: &String, ty: &Type) -> String {
     use std::hash::{Hash, Hasher};
     let mut hasher = DefaultHasher::new();
     ty.hash(&mut hasher);
-    base_name.clone() + &hasher.finish().to_string()
+    base_name.clone() + "#" + &hasher.finish().to_string()
 }

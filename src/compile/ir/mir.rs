@@ -41,7 +41,7 @@ pub struct ImplicitFunc {
 }
 
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct FuncMir {
     pub name: String,
     pub body: ExprMir,
@@ -50,7 +50,7 @@ pub struct FuncMir {
 }
 
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum ExprMir {
     OpMir(Box<OpMir>),
     NumMir(NumMir),
@@ -99,10 +99,11 @@ impl ExprMir {
     pub fn create_variable_mir(id: usize, pos: SourcePosition, ty_id: TypeId) -> ExprMir {
         ExprMir::VariableMir(VariableMir { id, pos, ty_id })
     }
-    pub fn create_global_variable_mir(id: String, pos: SourcePosition) -> ExprMir {
+    pub fn create_global_variable_mir(id: String, pos: SourcePosition, ty_id: TypeId) -> ExprMir {
         ExprMir::GlobalVariableMir(GlobalVariableMir {
             id,
             pos,
+            ty_id,
         })
     }
     pub fn create_call_mir(func: ExprMir, params: Vec<ExprMir>, ty_id: TypeId) -> ExprMir {
@@ -140,7 +141,7 @@ impl ExprMir {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct OpMir {
     pub op: String,
     pub l_expr: ExprMir,
@@ -150,7 +151,7 @@ pub struct OpMir {
 pub type NumMir = NumAST;
 pub type BoolMir = BoolAST;
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct IfMir {
     pub cond: ExprMir,
     pub t_expr: ExprMir,
@@ -159,20 +160,20 @@ pub struct IfMir {
     pub ty_id: TypeId,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct TupleMir {
     pub elements: Vec<ExprMir>,
     pub pos: SourcePosition,
     pub ty_id: TypeId,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct TupleStructMir {
     pub tuple: TupleMir,
     pub ty: StructType,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct IndexPropertyMir {
     pub expr: ExprMir,
     pub index: u32,
@@ -180,7 +181,7 @@ pub struct IndexPropertyMir {
     pub ty_id: TypeId,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct NamePropertyMir {
     pub expr: ExprMir,
     pub property_name: String,
@@ -188,32 +189,38 @@ pub struct NamePropertyMir {
     pub ty_id: TypeId,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct VariableMir {
     pub id: usize,
     pub pos: SourcePosition,
     pub ty_id: TypeId,
 }
 
-pub type GlobalVariableMir = VariableAST;
+#[derive(Clone, Debug, PartialEq)]
+pub struct GlobalVariableMir {
+    pub id: String,
+    pub pos: SourcePosition,
+    pub ty_id: TypeId,
+}
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct CallMir {
     pub func: ExprMir,
     pub params: Vec<ExprMir>,
     pub ty_id: TypeId,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct LambdaMir {
     pub env: Vec<VariableMir>,
     pub func_name: String,
     pub params_len: usize,
     pub pos: SourcePosition,
     pub ty_id: TypeId,
+    pub func_id: TypeId,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct DecFuncMir {
     pub name: String,
     pub ty: Qual<FuncType>,

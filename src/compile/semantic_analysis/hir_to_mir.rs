@@ -74,7 +74,7 @@ impl DefFuncAST {
                 let func_q = x.ty.to_ty(struct_list, &mut ty_var_table, &mut program_ir.ty_info);
                 program_ir.explicit_func_list.push(ExplicitFunc {
                     func: func_ir,
-                    scheme: Scheme::Forall { qual: Qual { ps: func_q.ps, t: Type::create_func_type2(func_q.t) } },
+                    scheme: Scheme::Forall { qual: Qual { ps: func_q.ps, t: Type::create_func_type2(func_q.t) }, tgen_count: 0 },
                 })
             }
             None => { program_ir.implicit_func_list.insert(func_ir.name.clone(), ImplicitFunc { func: func_ir }); }
@@ -168,7 +168,7 @@ impl TypeAST {
                 let func_q = x.to_ty(struct_list, ty_var_table, ty_info);
                 let cond = Condition::Call(Box::new(func_q.t));
                 let mut ps = func_q.ps;
-                ps.insert(ty_id.clone(), Pred { ty_id: ty_id.clone(), cond });
+                ps.insert(Type::TyVar(ty_id.clone()), Pred { ty: Type::TyVar(ty_id.clone()), cond });
                 Qual { t: Type::TyVar(ty_id), ps }
             }
             TypeAST::TupleTypeAST(x) => Qual::new(Type::TupleType(
@@ -354,6 +354,7 @@ impl LambdaAST {
             env,
             func_name: lambda_name,
             ty_id: program_ir.ty_info.no_name_get(),
+            func_id: program_ir.ty_info.no_name_get(),
             pos: self.pos,
             params_len,
         })))

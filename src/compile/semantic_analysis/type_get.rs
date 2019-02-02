@@ -39,7 +39,7 @@ impl ProgramMir {
                     ps: x.ty.ps.clone(),
                 }
             )))
-            .for_each(|(name, qual)| assump.global_set(name, qual));
+            .for_each(|(name, qual)| assump.global_set(name, Scheme::Forall { qual, tgen_count: 0 }));
         //関数宣言の型チェック
         let (ty_info, assump, _) =
             ty_get_all(self.implicit_func_list.iter().map(|(_, x)| x), ty_info, assump)?;
@@ -53,23 +53,25 @@ impl ProgramMir {
 
 impl<'a> TypeGet for &'a ImplicitFunc {
     fn ty_get(&self, ty_info: TypeInfo, assump: AssumpEnv) -> TyCheckResult<(TypeInfo, AssumpEnv, Qual<Type>)> {
-        let (ty_info, mut assump, ty) = (&self.func).ty_get(ty_info, assump)?;
-        assump.global_set(self.func.name.clone(), ty.clone());
-        Ok((ty_info, assump, ty))
+        let (mut ty_info, mut assump, q) = (&self.func).ty_get(ty_info, assump)?;
+        let scheme = Scheme::quantify(q, &mut ty_info)
+            .map_err(|msg| Error::new(self.func.pos, &msg))?;
+        assump.global_set(self.func.name.clone(), scheme.clone());
+        Ok((ty_info, assump, scheme.get_qual().clone()))
     }
 }
 
 impl<'a> TypeGet for &'a ExplicitFunc {
     fn ty_get(&self, ty_info: TypeInfo, assump: AssumpEnv) -> TyCheckResult<(TypeInfo, AssumpEnv, Qual<Type>)> {
         match &self.scheme {
-            Scheme::Forall { qual } => {
+            Scheme::Forall { qual, .. } => {
                 let (ty_info, assump, ty) = (&self.func).ty_get(ty_info, assump)?;
                 let (mut ty_info, q) = ty_info.qual_unify(
                     ty,
                     qual.clone(),
                 ).map_err(|msg| Error::new(self.func.pos, &msg))?;
                 let func_ty_id = ty_info.global_get(self.func.name.clone());
-                let ty_info = ty_info.unify(
+                ty_info.unify(
                     Type::TyVar(func_ty_id.clone()),
                     q.t.clone(),
                 ).map_err(|msg| Error::new(self.func.pos, &msg))?;
@@ -83,7 +85,7 @@ impl<'a> TypeGet for &'a DecFuncMir {
     fn ty_get(&self, mut ty_info: TypeInfo, assump: AssumpEnv) -> TyCheckResult<(TypeInfo, AssumpEnv, Qual<Type>)> {
         let func_q = self.ty.clone();
         let func_ty_id = ty_info.global_get(self.name.clone());
-        let ty_info = ty_info.unify(
+        ty_info.unify(
             Type::TyVar(func_ty_id.clone()),
             Type::LambdaType(Box::new(LambdaType { env_ty: None, func_ty: func_q.t })),
         ).map_err(|msg| Error::new(self.pos, &msg))?;
@@ -104,7 +106,7 @@ impl<'a> TypeGet for &'a FuncMir {
         let (mut ty_info, assump, ret_q) = (&self.body).ty_get(ty_info, assump)?;
         let func_q =
             match assump.global_get(&self.name) {
-                Some(q) => q.clone(),
+                Some(scheme) => scheme.get_qual().clone(),
                 None => Qual::new(Type::TyVar(ty_info.global_get(self.name.clone())))
             };
 
@@ -229,10 +231,17 @@ impl<'a> TypeGet for &'a VariableMir {
 impl TypeGet for GlobalVariableMir {
     fn ty_get(&self, mut ty_info: TypeInfo, assump: AssumpEnv) -> TyCheckResult<(TypeInfo, AssumpEnv, Qual<Type>)> {
         match assump.global_get(&self.id).cloned() {
-            Some(q) => Ok((ty_info, assump, q.clone())),
+            Some(scheme) => {
+                let q = scheme.fresh_inst(&mut ty_info);
+                let (ty_info, q) = ty_info.qual_unify(q, Qual::new(Type::TyVar(self.ty_id.clone())))
+                    .map_err(|msg| Error::new(self.pos, &msg))?;
+                Ok((ty_info, assump, q))
+            }
             None => {
                 let ty_var_id = ty_info.global_get(self.id.clone());
-                Ok((ty_info, assump, Qual::new(Type::TyVar(ty_var_id))))
+                let ty = ty_info.unify(Type::TyVar(ty_var_id), Type::TyVar(self.ty_id.clone()))
+                    .map_err(|msg| Error::new(self.pos, &msg))?;
+                Ok((ty_info, assump, Qual::new(ty)))
             }
         }
     }
@@ -282,9 +291,11 @@ impl TypeGet for LambdaMir {
                     Type::TyVar(ty_id)
                 }).collect();
         let func_ty = match assump.global_get(&self.func_name) {
-            Some(ty) => ty.clone(),
+            Some(scheme) => scheme.clone().fresh_inst(&mut ty_info),
             None => Qual::new(Type::TyVar(ty_info.global_get(self.func_name.clone())))
         };
+        let (mut ty_info, func_ty) = ty_info.qual_unify(func_ty, Qual::new(Type::TyVar(self.func_id.clone())))
+            .map_err(|msg| Error::new(self.pos, &msg))?;
         ty_info.out_nest();
         let mut new_envs_qs = Vec::with_capacity(envs_qs.len());
         {

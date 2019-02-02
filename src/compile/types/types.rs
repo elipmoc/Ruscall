@@ -14,7 +14,7 @@ impl TypeId {
 //型制約
 #[derive(Clone, PartialEq, Debug)]
 pub struct Pred {
-    pub ty_id: TypeId,
+    pub ty: Type,
     pub cond: Condition,
 }
 
@@ -119,9 +119,10 @@ impl ImplItems {
     }
 }
 
-#[derive(Clone, PartialEq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub enum Type {
     TCon { name: String },
+    TGen(usize),
     TupleType(Box<TupleType>),
     TyVar(TypeId),
     LambdaType(Box<LambdaType>),
@@ -149,14 +150,14 @@ impl Type {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FuncType {
     pub param_types: Vec<Type>,
     pub ret_type: Type,
 }
 
 
-#[derive(Debug, Clone, PartialEq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TupleType {
     pub element_tys: Vec<Type>
 }
@@ -171,7 +172,7 @@ impl TupleTypeBase for TupleType {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum StructInternalType {
     RecordType(RecordType),
     TupleType(TupleType),
@@ -200,7 +201,7 @@ impl TupleTypeBase for StructInternalType {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct StructType {
     pub ty: StructInternalType,
     pub name: String,
@@ -221,7 +222,7 @@ impl TupleTypeBase for StructType {
 }
 
 
-#[derive(Debug, Clone, PartialEq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RecordType {
     pub element_tys: Vec<(String, Type)>
 }
@@ -239,7 +240,7 @@ impl TupleTypeBase for RecordType {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LambdaType {
     pub env_ty: Option<TupleType>,
     pub func_ty: FuncType,
@@ -254,6 +255,121 @@ pub trait TupleTypeBase {
     }
 }
 
+use std::collections::HashSet;
+
+pub trait Types {
+    //型が持っている型変数一覧を列挙する
+    fn tv_list(&self) -> HashSet<TypeId>;
+}
+
+impl<'a, T: Types> Types for &'a T {
+    fn tv_list(&self) -> HashSet<TypeId> {
+        (*self).tv_list()
+    }
+}
+
+impl<Item: Types> Types for Vec<Item> {
+    fn tv_list(&self) -> HashSet<TypeId> {
+        self.iter().fold(HashSet::new(), |mut acc, ty| {
+            acc.extend(ty.tv_list());
+            acc
+        })
+    }
+}
+
+impl Types for Type {
+    fn tv_list(&self) -> HashSet<TypeId> {
+        use self::Type::*;
+        match self {
+            TCon { .. } | TGen(_) => HashSet::new(),
+            TyVar(ty_id) => {
+                let mut tv = HashSet::new();
+                tv.insert(ty_id.clone());
+                tv
+            }
+            TupleType(tuple_ty) => tuple_ty.element_tys.tv_list(),
+            StructType(struct_ty) => {
+                match &struct_ty.ty {
+                    StructInternalType::TupleType(tuple_ty) => tuple_ty.element_tys.tv_list(),
+                    StructInternalType::RecordType(record_ty) => record_ty.element_tys.iter().map(|(_, ty)| ty).collect::<Vec<_>>().tv_list()
+                }
+            }
+            LambdaType(lambda_ty) => {
+                let mut tv = match &lambda_ty.env_ty {
+                    Some(tuple_ty) => tuple_ty.element_tys.tv_list(),
+                    None => HashSet::new()
+                };
+                tv.extend(lambda_ty.func_ty.param_types.tv_list());
+                tv.extend(lambda_ty.func_ty.ret_type.tv_list());
+                tv
+            }
+        }
+    }
+}
+
+//量化された型を実体化できる性質を持つ型クラス
+pub trait Instantiate {
+    fn inst(self, fresh_types: &Vec<Type>) -> Self;
+}
+
+impl<Item: Instantiate> Instantiate for Vec<Item> {
+    fn inst(self, fresh_types: &Vec<Type>) -> Vec<Item> {
+        self.into_iter().map(|x| x.inst(fresh_types)).collect()
+    }
+}
+
+impl<Item: Instantiate> Instantiate for Vec<(String, Item)> {
+    fn inst(self, fresh_types: &Vec<Type>) -> Vec<(String, Item)> {
+        self.into_iter().map(|(s, i)| (s, i.inst(fresh_types))).collect()
+    }
+}
+
+impl Instantiate for Type {
+    fn inst(self, fresh_types: &Vec<Type>) -> Type {
+        use self::Type::*;
+        match self {
+            ty @ TCon { .. } => ty,
+            TGen(n) => fresh_types[n].clone(),
+            ty @ TyVar(_) => ty,
+            TupleType(tuple_ty) => {
+                let mut tuple_ty = *tuple_ty;
+                tuple_ty.element_tys = tuple_ty.element_tys.inst(fresh_types);
+                TupleType(Box::new(tuple_ty))
+            }
+            StructType(struct_ty) => {
+                let mut struct_ty = *struct_ty;
+                struct_ty.ty = match struct_ty.ty {
+                    StructInternalType::TupleType(mut tuple_ty) => {
+                        tuple_ty.element_tys = tuple_ty.element_tys.inst(fresh_types);
+                        StructInternalType::TupleType(tuple_ty)
+                    }
+                    StructInternalType::RecordType(mut record_ty) => {
+                        record_ty.element_tys = record_ty.element_tys.inst(fresh_types);
+                        StructInternalType::RecordType(record_ty)
+                    }
+                };
+                StructType(Box::new(struct_ty))
+            }
+            LambdaType(lambda_ty) => {
+                let mut lambda_ty = *lambda_ty;
+                lambda_ty.env_ty = match lambda_ty.env_ty {
+                    Some(mut tuple_ty) => {
+                        tuple_ty.element_tys = tuple_ty.element_tys.inst(fresh_types);
+                        Some(tuple_ty)
+                    }
+                    None => None
+                };
+                lambda_ty.func_ty.param_types = (lambda_ty.func_ty.param_types.inst(fresh_types));
+                lambda_ty.func_ty.ret_type = lambda_ty.func_ty.ret_type.inst(fresh_types);
+                LambdaType(Box::new(lambda_ty))
+            }
+        }
+    }
+}
+
+
+pub type Preds = HashMap<Type, Pred>;
+
 #[derive(Clone, PartialEq, Debug)]
 //制約と型をセットにしたもの
 //psが制約
@@ -261,7 +377,7 @@ pub trait TupleTypeBase {
 //例: ps: aはNum制約がある。 t:a->a
 //説明：　Num制約がかかった型変数aがあり、型はa->aである
 pub struct Qual<T> {
-    pub ps: HashMap<TypeId, Pred>,
+    pub ps: Preds,
     pub t: T,
 }
 
@@ -270,7 +386,7 @@ impl<T> Qual<T> {
         Qual { ps: HashMap::new(), t }
     }
     //複数のqualをpredとtでそれぞれ分割する。
-    pub fn split(qs: Vec<Qual<T>>) -> (Vec<HashMap<TypeId, Pred>>, Vec<T>) {
+    pub fn split(qs: Vec<Qual<T>>) -> (Vec<Preds>, Vec<T>) {
         let mut pss = Vec::with_capacity(qs.len());
         let mut ts = Vec::with_capacity(qs.len());
         for q in qs {
@@ -285,13 +401,35 @@ impl<T> Qual<T> {
 #[derive(Clone, PartialEq, Debug)]
 //型スキーム
 pub enum Scheme {
-    Forall { qual: Qual<Type> }
+    Forall { qual: Qual<Type>, tgen_count: usize }
 }
+
+use super::super::semantic_analysis::type_inference::type_env::*;
 
 impl Scheme {
     pub fn get_qual(&self) -> &Qual<Type> {
         match self {
-            Scheme::Forall { qual } => &qual
+            Scheme::Forall { qual, .. } => &qual
+        }
+    }
+
+    //量化する
+    pub fn quantify(q: Qual<Type>, ty_info: &mut TypeInfo) -> Result<Self, String> {
+        let mut n: usize = 0;
+        for ty_id in q.t.tv_list() {
+            ty_info.unify(Type::TyVar(ty_id), Type::TGen(n))?;
+            n += 1;
+        };
+        Ok(Scheme::Forall { qual: ty_info.last_qual(q)?, tgen_count: n })
+    }
+    //型スキームのTGenをフレッシュな型変数に置き換えたQualを生成
+    pub fn fresh_inst(self, ty_info: &mut TypeInfo) -> Qual<Type> {
+        match self {
+            Scheme::Forall { mut qual, tgen_count } => {
+                let fresh_types = (0..tgen_count).map(|_| Type::TyVar(ty_info.no_name_get())).collect::<Vec<_>>();
+                qual.t = qual.t.inst(&fresh_types);
+                qual
+            }
         }
     }
 }
