@@ -1,8 +1,9 @@
 use super::super::super::types::*;
 use std::collections::HashMap;
+use super::type_substitute::TypeSubstitute;
 
 #[derive(Debug, PartialEq)]
-pub(in super) struct TypeEnv {
+pub struct TypeEnv {
     env: Vec<HashMap<String, TypeId>>,
     id: usize,
     nest: usize,
@@ -10,7 +11,7 @@ pub(in super) struct TypeEnv {
 
 //型環境
 impl TypeEnv {
-    fn new() -> TypeEnv {
+    pub fn new() -> TypeEnv {
         TypeEnv {
             env: vec![HashMap::new()],
             id: 0,
@@ -67,19 +68,6 @@ impl TypeEnv {
         self.id += 1;
         println!("{{no_symbol}}:={:?}", self.id - 1);
         TypeId::new(self.id - 1)
-    }
-}
-
-//型代入環境
-#[derive(Debug, PartialEq)]
-pub(in super) struct TypeSubstitute {
-    pub ty_sub: HashMap<TypeId, Type>,
-    pub ty_env: TypeEnv,
-}
-
-impl TypeSubstitute {
-    fn new() -> Self {
-        TypeSubstitute { ty_sub: HashMap::new(), ty_env: TypeEnv::new() }
     }
 }
 
@@ -149,28 +137,28 @@ impl TypeInfo {
         self.0.unify(ty1, ty2)
     }
 
-    pub fn qual_unify(mut self, q1: Qual<Type>, q2: Qual<Type>) -> Result<(TypeInfo, Qual<Type>), String> {
+    pub fn qual_unify(&mut self, q1: Qual<Type>, q2: Qual<Type>) -> Result<Qual<Type>, String> {
         let q = self.0.qual_unify(q1, q2)?;
-        Ok((self, q))
+        Ok(q)
     }
 
-    pub fn qual_condition_add_unify(mut self, q: Qual<Type>, c: Condition) -> Result<(TypeInfo, Qual<Type>), String> {
+    pub fn qual_condition_add_unify(&mut self, q: Qual<Type>, c: Condition) -> Result<Qual<Type>, String> {
         let q = self.0.qual_add_condition_unify(q, c)?;
-        Ok((self, q))
+        Ok(q)
     }
 
-    pub fn preds_merge_unify(mut self, ps1: Preds, ps2: Preds) -> Result<(TypeInfo, Preds), String> {
+    pub fn preds_merge_unify(&mut self, ps1: Preds, ps2: Preds) -> Result<Preds, String> {
         let ps = self.0.preds_merge_unify(ps1, ps2)?;
-        Ok((self, ps))
+        Ok(ps)
     }
-    pub fn predss_merge_unify(self, pss: Vec<Preds>) -> Result<(TypeInfo, Preds), String> {
-        let (ty_info, ps) = pss.into_iter()
-            .fold(Ok((self, Preds::new())), |acc: Result<_, String>, ps2| {
-                let (ty_info, ps1) = acc?;
-                let (ty_info, ps) = ty_info.preds_merge_unify(ps1, ps2)?;
-                Ok((ty_info, ps))
+    pub fn predss_merge_unify(&mut self, pss: Vec<Preds>) -> Result<Preds, String> {
+        let ps = pss.into_iter()
+            .fold(Ok(Preds::new()), |acc: Result<_, String>, ps2| {
+                let ps1 = acc?;
+                let ps = self.preds_merge_unify(ps1, ps2)?;
+                Ok(ps)
             })?;
-        Ok((ty_info, ps))
+        Ok(ps)
     }
 
 

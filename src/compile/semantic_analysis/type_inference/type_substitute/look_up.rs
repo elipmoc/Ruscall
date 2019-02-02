@@ -1,5 +1,5 @@
-use super::super::super::types::types::*;
-use super::type_env::TypeSubstitute;
+use crate::compile::types::*;
+use super::type_substitute::TypeSubstitute;
 
 impl TypeSubstitute {
     // 型変数に対応する単相型を見つけて返す。見つからなかったら空タプルの型を返す

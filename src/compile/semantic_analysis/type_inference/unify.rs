@@ -1,5 +1,5 @@
 use super::super::super::types::*;
-use super::type_env::TypeSubstitute;
+use super::type_substitute::TypeSubstitute;
 use super::occurs_check::occurs_check;
 use std::fmt::Debug;
 use std::collections::HashMap;
