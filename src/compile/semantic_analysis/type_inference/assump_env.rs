@@ -1,4 +1,4 @@
-use compile::types::types::Scheme;
+use compile::types::*;
 use std::collections::HashMap;
 
 #[derive(Debug, PartialEq)]

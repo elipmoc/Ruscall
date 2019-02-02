@@ -1,4 +1,4 @@
-use super::super::super::types::types::*;
+use super::super::super::types::*;
 use super::type_env::TypeSubstitute;
 use super::occurs_check::occurs_check;
 use std::fmt::Debug;
@@ -25,6 +25,7 @@ impl TypeSubstitute {
         let (ty1, ty2) = (self.type_look_up(&ty1), self.type_look_up(&ty2));
         if ty1 == ty2 { return Ok(ty1); }
         match (ty1, ty2) {
+            (Type::TGen(_), Type::TGen(_)) => panic!("hoge"),
             (Type::TGen(_), ty) | (ty, Type::TGen(_)) => Ok(ty),
             (Type::TyVar(id), ty) | (ty, Type::TyVar(id)) => {
                 self.safe_insert(id.clone(), ty.clone());
@@ -32,7 +33,6 @@ impl TypeSubstitute {
             }
             (Type::LambdaType(ty1), Type::LambdaType(ty2)) => self.lambda_unify(*ty1, *ty2),
             (Type::TupleType(ty1), Type::TupleType(ty2)) => self.tuple_unify(*ty1, *ty2),
-            (Type::TGen(_), Type::TGen(_)) => panic!("hoge"),
             (ty1, ty2) => create_error(&ty1, &ty2)
         }
     }

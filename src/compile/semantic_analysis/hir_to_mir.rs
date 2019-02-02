@@ -2,7 +2,7 @@ use super::super::ir::ast::*;
 use super::mir::*;
 use super::super::ir::hir::*;
 use super::variable_table::VariableTable;
-use super::super::types::types::*;
+use super::super::types::*;
 use super::type_env::TypeInfo;
 use super::Error;
 use super::type_variable_table::TypeVariableTable;

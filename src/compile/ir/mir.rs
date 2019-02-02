@@ -1,6 +1,6 @@
 use combine::stream::state::SourcePosition;
 use super::ast::*;
-use super::super::types::types::{TypeId, FuncType, StructType, Scheme, Qual};
+use super::super::types::*;
 use super::super::semantic_analysis::type_env::TypeInfo;
 use indexmap::IndexMap;
 

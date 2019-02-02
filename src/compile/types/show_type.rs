@@ -1,4 +1,4 @@
-use self::super::types::*;
+use self::super::*;
 use std::fmt;
 
 impl fmt::Debug for Type

@@ -1,5 +1,5 @@
 use super::super::error::Error;
-use super::super::types::types::*;
+use super::super::types::*;
 use super::type_env::*;
 use super::mir::*;
 use super::type_inference::assump_env::AssumpEnv;
