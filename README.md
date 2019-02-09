@@ -6,7 +6,7 @@
 
 自作言語処理系のコンパイラ
 
-![ラスカル](https://raw.githubusercontent.com/elipmoc/Ruscall/develop/image.jpg "ラスカル")
+![ラスカル](https://raw.githubusercontent.com/elipmoc/Ruscall/develop/image.png "ラスカル")
 
 # 一緒に開発してくれる人募集！
   お願いします。
