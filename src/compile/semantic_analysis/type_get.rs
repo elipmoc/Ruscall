@@ -31,7 +31,6 @@ impl ProgramMir {
                 self.ex_dec_func_list.iter(), &mut self.ty_info, assump,
             )?;
         {
-            let mut ty_info = &mut self.ty_info;
             self.explicit_func_list.iter()
                 .map(|x| (x.func.name.clone(), x.scheme.get_qual().clone()))
                 .chain(self.ex_dec_func_list.iter().map(|x| (

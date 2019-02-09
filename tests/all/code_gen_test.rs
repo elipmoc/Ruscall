@@ -48,3 +48,4 @@ helper!(tuple_property,14);
 helper!(record_property,20);
 helper!(record_name_property,11);
 helper!(quantify,25);
+helper!(explicit_quantify,7);
