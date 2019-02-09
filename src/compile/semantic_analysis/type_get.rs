@@ -30,16 +30,19 @@ impl ProgramMir {
             ty_get_all(
                 self.ex_dec_func_list.iter(), &mut self.ty_info, assump,
             )?;
-        self.explicit_func_list.iter()
-            .map(|x| (x.func.name.clone(), x.scheme.get_qual().clone()))
-            .chain(self.ex_dec_func_list.iter().map(|x| (
-                x.name.clone(),
-                Qual {
-                    t: Type::LambdaType(Box::new(LambdaType { env_ty: None, func_ty: x.ty.t.clone() })),
-                    ps: x.ty.ps.clone(),
-                }
-            )))
-            .for_each(|(name, qual)| assump.global_set(name, Scheme::Forall { qual, tgen_count: 0 }));
+        {
+            let mut ty_info = &mut self.ty_info;
+            self.explicit_func_list.iter()
+                .map(|x| (x.func.name.clone(), x.scheme.get_qual().clone()))
+                .chain(self.ex_dec_func_list.iter().map(|x| (
+                    x.name.clone(),
+                    Qual {
+                        t: Type::LambdaType(Box::new(LambdaType { env_ty: None, func_ty: x.ty.t.clone() })),
+                        ps: x.ty.ps.clone(),
+                    }
+                )))
+                .for_each(|(name, qual)| assump.global_set(name, Scheme::quantify(qual.t.get_lambda_ty().func_ty.param_types.tv_list(), qual)));
+        }
         //関数宣言の型チェック
         let (assump, _) =
             ty_get_all(self.implicit_func_list.iter().map(|(_, x)| x), &mut self.ty_info, assump)?;
@@ -55,8 +58,7 @@ impl ProgramMir {
 impl<'a> TypeGet for &'a ImplicitFunc {
     fn ty_get(&self, ty_info: &mut TypeInfo, assump: AssumpEnv) -> TyCheckResult<(AssumpEnv, Qual<Type>)> {
         let (mut assump, q) = (&self.func).ty_get(ty_info, assump)?;
-        let scheme = Scheme::quantify(q, ty_info)
-            .map_err(|msg| Error::new(self.func.pos, &msg))?;
+        let scheme = Scheme::quantify(q.tv_list(), q);
         assump.global_set(self.func.name.clone(), scheme.clone());
         Ok((assump, scheme.get_qual().clone()))
     }
@@ -101,7 +103,7 @@ impl<'a> TypeGet for &'a FuncMir {
     fn ty_get(&self, ty_info: &mut TypeInfo, assump: AssumpEnv) -> TyCheckResult<(AssumpEnv, Qual<Type>)> {
         ty_info.in_nest();
         let params_ty: Vec<Type>
-        = (0..self.params_len)
+            = (0..self.params_len)
             .map(|id| {
                 let id = self.params_len - id - 1;
                 let ty = ty_info.get(id.to_string());

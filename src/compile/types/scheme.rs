@@ -7,6 +7,7 @@ pub enum Scheme {
 }
 
 use super::super::semantic_analysis::type_inference::type_env::*;
+use std::collections::HashSet;
 
 impl Scheme {
     pub fn get_qual(&self) -> &Qual<Type> {
@@ -20,17 +21,16 @@ impl Scheme {
     }
 
     //量化する
-    pub fn quantify(q: Qual<Type>, ty_info: &mut TypeInfo) -> Result<Self, String> {
-        let mut q = ty_info.last_qual(q.clone())?;
+    pub fn quantify(ty_id_list: HashSet<TypeId>, mut q: Qual<Type>) -> Self {
         use super::super::semantic_analysis::type_inference::type_substitute::TypeSubstitute;
         let mut ty_sub = TypeSubstitute::new();
         let mut n: usize = 0;
-        for ty_id in q.tv_list() {
+        for ty_id in ty_id_list {
             ty_sub.ty_sub.insert(ty_id, Type::TGen(n, ty_id));
             n += 1;
         };
         q = q.apply(&ty_sub, false);
-        Ok(Scheme::Forall { qual: q, tgen_count: n })
+        Scheme::Forall { qual: q, tgen_count: n }
     }
     //型スキームのTGenをフレッシュな型変数に置き換えたQualを生成
     pub fn fresh_inst(self, ty_info: &mut TypeInfo) -> Qual<Type> {
