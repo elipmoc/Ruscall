@@ -8,6 +8,7 @@ pub mod ast_transformer;
 pub mod mangling;
 pub mod ir;
 
+use super::compile::semantic_analysis::type_inference::assump_env::AssumpEnv;
 use self::error::Error;
 use self::output_file::output_file;
 use self::ir::mir;
@@ -21,7 +22,7 @@ pub fn compile(input_file_name: &str, output_file_name: &str) -> Result<(), Stri
 
 pub fn compile_from_str(str: &str, output_file_name: &str) -> Result<(), String> {
     match parse(str) {
-        Ok(program_ir) => Ok(output_file(program_ir.code_gen(output_file_name))),
+        Ok((program_ir, assump)) => Ok(output_file(program_ir.code_gen(output_file_name, assump))),
         Err(err) => Err(err),
     }
 }
@@ -33,15 +34,15 @@ pub fn src_file_to_str(file_name: &str) -> String {
     src_str
 }
 
-pub fn parse(src_str: &str) -> Result<mir::ProgramMir, String> {
+pub fn parse(src_str: &str) -> Result<(mir::ProgramMir, AssumpEnv), String> {
     match parser::parse(src_str) {
         Ok(ast) => {
             println!("\nparse\n{:?}\n", ast);
             let result = semantic_analysis::analysis(ast.0);
             match result {
-                Ok(x) => {
-                    println!("resolve_op\n\n{:?}\n", x);
-                    Result::Ok(x)
+                Ok((ir, assump)) => {
+                    println!("resolve_op\n\n{:?}\n", ir);
+                    Result::Ok((ir, assump))
                 }
                 Err(err) => Result::Err(err.to_string()),
             }

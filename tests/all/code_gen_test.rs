@@ -14,8 +14,8 @@ macro_rules! helper {
         #[test]
         fn $file_name(){
             match parse(include_str!(concat!("test_data/", stringify!($file_name), ".rsc"))) {
-                Ok(ir) => {
-                    let CodeGenResult{ module , .. } = ir.code_gen(stringify!($file_name));
+                Ok((ir,assump)) => {
+                    let CodeGenResult{ module , .. } = ir.code_gen(stringify!($file_name),assump);
                     let execution_engine = module.create_jit_execution_engine(OptimizationLevel::None).unwrap();
                     assert!(execution_engine.add_module(&create_moc_llvm_module()).is_ok(),"add_module error!");
                     unsafe {
@@ -47,3 +47,4 @@ helper!(fact,120);
 helper!(tuple_property,14);
 helper!(record_property,20);
 helper!(record_name_property,11);
+helper!(quantify,25);

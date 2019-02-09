@@ -2,7 +2,6 @@ use super::super::super::types::*;
 use super::type_substitute::TypeSubstitute;
 use super::occurs_check::occurs_check;
 use std::fmt::Debug;
-use std::collections::HashMap;
 
 //型エラーの生成
 fn create_error<A: Debug, B: Debug, T>(ty1: &A, ty2: &B) -> Result<T, String> {
@@ -22,11 +21,11 @@ fn create_error_msg<T>(msg: String) -> Result<T, String> {
 impl TypeSubstitute {
     //単一化処理
     pub fn unify(&mut self, ty1: Type, ty2: Type) -> Result<Type, String> {
-        let (ty1, ty2) = (self.type_look_up(&ty1), self.type_look_up(&ty2));
+        let (ty1, ty2) = (self.type_look_up(&ty1, false), self.type_look_up(&ty2, true));
         if ty1 == ty2 { return Ok(ty1); }
         match (ty1, ty2) {
-            (Type::TGen(_), Type::TGen(_)) => panic!("hoge"),
-            (Type::TGen(_), ty) | (ty, Type::TGen(_)) => Ok(ty),
+            (Type::TGen(_, _), Type::TGen(_, _)) => panic!("hoge"),
+            (Type::TGen(_, ty_id), ty) | (ty, Type::TGen(_, ty_id)) => self.unify(ty, Type::TyVar(ty_id)),
             (Type::TyVar(id), ty) | (ty, Type::TyVar(id)) => {
                 self.safe_insert(id.clone(), ty.clone());
                 Ok(ty)
@@ -47,14 +46,9 @@ impl TypeSubstitute {
         }
     }
     fn qual_left(&mut self, q1: Qual<Type>, q2: &Qual<Type>) -> Result<Qual<Type>, String> {
-        match &q2.t {
-            Type::TyVar(id) => {
-                match q2.ps.get(&Type::TyVar(id.clone())) {
-                    Some(p) => self.qual_add_condition_unify(q1, p.cond.clone()),
-                    None => Ok(q1)
-                }
-            }
-            _ => Ok(q1)
+        match q2.ps.get(&q2.t) {
+            Some(p) => self.qual_add_condition_unify(q1, p.cond.clone()),
+            None => Ok(q1)
         }
     }
 
@@ -69,35 +63,37 @@ impl TypeSubstitute {
     }
 
     pub fn last_qual(&mut self, q: Qual<Type>) -> Result<Qual<Type>, String> {
-        let ty = self.type_look_up(&q.t);
+        let ty = self.type_look_up(&q.t, true);
         let ps = self.preds_reduction(q.ps)?;
         Ok(Qual { ps, t: ty })
     }
 
     pub fn preds_reduction(&mut self, ps: Preds) -> Result<Preds, String> {
-        let mut new_ps = HashMap::new();
-        for (_, p) in ps {
-            match self.type_look_up(&p.ty) {
-                Type::TyVar(id) => {
-                    let p = Pred { ty: Type::TyVar(id.clone()), cond: p.cond };
-                    match new_ps.remove(&Type::TyVar(id.clone())) {
-                        Some(p2) => {
-                            let p = self.pred_unify(p2, p)?;
-                            new_ps.insert(Type::TyVar(id.clone()), p);
-                        }
-                        None => { new_ps.insert(Type::TyVar(id), p); }
-                    }
+        let mut new_ps = Preds::new();
+        for (_, p) in ps.into_iter() {
+            let p = p.apply(&self, true);
+            match new_ps.remove(&p.ty) {
+                Some(p2) => {
+                    let p = self.pred_unify(p2, p)?;
+                    new_ps.insert(p.ty.clone(), p);
                 }
-                t => { self.qual_add_condition_unify(Qual::new(t), p.cond)?; }
+                None => {
+                    let q = self.qual_add_condition_unify(Qual::new(p.ty), p.cond)?;
+                    new_ps = self.preds_merge_unify(new_ps, q.ps)?;
+                }
             }
         };
-        Ok(new_ps)
+        if new_ps == new_ps.clone().apply(&self, true) {
+            Ok(new_ps)
+        } else {
+            self.preds_reduction(new_ps)
+        }
     }
 
     pub fn preds_merge_unify(&mut self, ps1: Preds, mut ps2: Preds) -> Result<Preds, String> {
         let ps1 = self.preds_reduction(ps1)?;
-        let mut new_ps = HashMap::new();
-        for (k, p1) in ps1 {
+        let mut new_ps = Preds::new();
+        for (k, p1) in ps1.into_iter() {
             match ps2.remove(&k) {
                 Some(p2) => {
                     let p = self.pred_unify(p1, p2)?;
@@ -126,15 +122,13 @@ impl TypeSubstitute {
                     None => q.ps.insert(TyVar(x.clone()), Pred { ty: TyVar(x.clone()), cond: c })
                 };
             }
-            tgen @ TGen(_) => {
-                let p = q.ps.remove(&tgen);
-                let fresh_tvar = TyVar(self.ty_env.no_name_get());
-                match p {
+            tgen @ TGen(_, _) => {
+                match q.ps.remove(&tgen) {
                     Some(p) => {
-                        let p = self.pred_unify(p, Pred { ty: fresh_tvar.clone(), cond: c })?;
-                        q.ps.insert(fresh_tvar, p)
+                        let p = self.pred_unify(p, Pred { ty: tgen.clone(), cond: c })?;
+                        q.ps.insert(tgen.clone(), p)
                     }
-                    None => q.ps.insert(fresh_tvar.clone(), Pred { ty: fresh_tvar, cond: c })
+                    None => q.ps.insert(tgen.clone(), Pred { ty: tgen.clone(), cond: c })
                 };
             }
             LambdaType(x) => {
@@ -162,12 +156,12 @@ impl TypeSubstitute {
         match (p1.cond, p2.cond) {
             (Call(fn_ty1), Call(fn_ty2)) => {
                 let new_fn_ty = self.fn_unify(*fn_ty1, *fn_ty2)?;
-                let ty_id = self.ty_env.no_name_get();
-                Ok(Pred { cond: Condition::Call(Box::new(new_fn_ty)), ty: Type::TyVar(ty_id) })
+                let ty = self.ty_env.no_name_get();
+                Ok(Pred { cond: Condition::Call(Box::new(new_fn_ty)), ty })
             }
             (c, Empty) | (Empty, c) => {
-                let ty_id = self.ty_env.no_name_get();
-                Ok(Pred { ty: Type::TyVar(ty_id), cond: c })
+                let mut ty = self.ty_env.no_name_get();
+                Ok(Pred { ty, cond: c })
             }
             (Items(impl_items1), Items(impl_items2)) => {
                 let impl_items = ImplItems::merge(

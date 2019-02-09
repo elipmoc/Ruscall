@@ -47,9 +47,9 @@ use std::collections::hash_map::{Values, Iter};
 //ある要素が定義されているという制約を保存する構造体
 pub struct ImplItems {
     //x.1 などのプロパティアクセスの制約
-    index_properties: HashMap<u32, Type>,
+    pub(in super) index_properties: HashMap<u32, Type>,
     //x.hoge などのプロパティアクセスの制約
-    name_properties: HashMap<String, Type>,
+    pub(in super) name_properties: HashMap<String, Type>,
 }
 
 impl ImplItems {
@@ -108,4 +108,25 @@ impl ImplItems {
     }
 }
 
-pub type Preds = HashMap<Type, Pred>;
+#[derive(Clone, PartialEq, Debug)]
+pub struct Preds(pub HashMap<Type, Pred>);
+
+use std::collections::hash_map::IntoIter;
+
+impl Preds {
+    pub fn new() -> Preds {
+        Preds(HashMap::new())
+    }
+    pub fn insert(&mut self, ty: Type, p: Pred) {
+        self.0.insert(ty, p);
+    }
+    pub fn remove(&mut self, ty: &Type) -> Option<Pred> {
+        self.0.remove(ty)
+    }
+    pub fn into_iter(self) -> IntoIter<Type, Pred> {
+        self.0.into_iter()
+    }
+    pub fn get(&self, ty: &Type) -> Option<&Pred> {
+        self.0.get(ty)
+    }
+}

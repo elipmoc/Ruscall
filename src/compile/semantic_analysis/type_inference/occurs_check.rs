@@ -15,7 +15,7 @@ pub fn occurs_check(hash_map: &TypeSubstituteHashMap, ty: &Type, ty_id: &TypeId)
                 }
             }
         }
-        Type::TCon { .. } | Type::TGen(_) => false,
+        Type::TCon { .. } | Type::TGen(_, _) => false,
         Type::TupleType(x) => x.occurs_check(hash_map, ty_id),
         Type::LambdaType(x) => {
             let x = &**x;

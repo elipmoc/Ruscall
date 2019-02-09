@@ -14,7 +14,7 @@ pub struct Qual<T> {
 
 impl<T> Qual<T> {
     pub fn new(t: T) -> Qual<T> {
-        Qual { ps: HashMap::new(), t }
+        Qual { ps: Preds(HashMap::new()), t }
     }
     //複数のqualをpredとtでそれぞれ分割する。
     pub fn split(qs: Vec<Qual<T>>) -> (Vec<Preds>, Vec<T>) {

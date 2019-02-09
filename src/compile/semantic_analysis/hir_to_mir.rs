@@ -119,7 +119,7 @@ impl FuncTypeAST {
                 ret_type: ret_q.t,
                 param_types: param_ts,
             },
-            ps,
+            ps: Preds(ps),
         }
     }
 }
@@ -164,7 +164,7 @@ impl TypeAST {
         match self {
             TypeAST::Type(x) => Qual::new(x),
             TypeAST::FuncTypeAST(x) => {
-                let ty_id = ty_info.no_name_get();
+                let ty_id = ty_info.fresh_type_id();
                 let func_q = x.to_ty(struct_list, ty_var_table, ty_info);
                 let cond = Condition::Call(Box::new(func_q.t));
                 let mut ps = func_q.ps;
@@ -231,7 +231,7 @@ impl IfAST {
             self.t_expr.to_mir(program_ir, struct_list, var_table, lambda_count)?,
             self.f_expr.to_mir(program_ir, struct_list, var_table, lambda_count)?,
             self.pos,
-            program_ir.ty_info.no_name_get(),
+            program_ir.ty_info.fresh_type_id(),
         ))
     }
 }
@@ -267,7 +267,7 @@ impl FuncCallAST {
         Ok(ExprMir::create_call_mir(
             func?,
             vec![param],
-            program_ir.ty_info.no_name_get(),
+            program_ir.ty_info.fresh_type_id(),
         ))
     }
 }
@@ -286,7 +286,7 @@ impl TupleAST {
                 .map(|x| x.to_mir(program_ir, struct_list, var_table, lambda_count))
                 .collect::<AstToIrResult<Vec<ExprMir>>>()?,
             self.pos,
-            program_ir.ty_info.no_name_get(),
+            program_ir.ty_info.fresh_type_id(),
         ))
     }
 }
@@ -307,7 +307,7 @@ impl TupleStructAST {
                 .collect::<AstToIrResult<Vec<ExprMir>>>()?,
             self.tuple.pos,
             self.ty.to_ty(struct_list, &mut ty_var_table, &mut program_ir.ty_info),
-            program_ir.ty_info.no_name_get(),
+            program_ir.ty_info.fresh_type_id(),
         ))
     }
 }
@@ -353,8 +353,8 @@ impl LambdaAST {
         Ok(ExprMir::LambdaMir(Box::new(LambdaMir {
             env,
             func_name: lambda_name,
-            ty_id: program_ir.ty_info.no_name_get(),
-            func_id: program_ir.ty_info.no_name_get(),
+            ty_id: program_ir.ty_info.fresh_type_id(),
+            func_id: program_ir.ty_info.fresh_type_id(),
             pos: self.pos,
             params_len,
         })))
@@ -373,7 +373,7 @@ impl IndexPropertyAST {
             ExprMir::create_index_property_mir(
                 self.expr.to_mir(program_ir, struct_list, var_table, lambda_count)?,
                 self.pos,
-                program_ir.ty_info.no_name_get(),
+                program_ir.ty_info.fresh_type_id(),
                 self.index,
             )
         )
@@ -392,7 +392,7 @@ impl NamePropertyAST {
             ExprMir::create_name_property_mir(
                 self.expr.to_mir(program_ir, struct_list, var_table, lambda_count)?,
                 self.pos,
-                program_ir.ty_info.no_name_get(),
+                program_ir.ty_info.fresh_type_id(),
                 self.property_name,
             )
         )

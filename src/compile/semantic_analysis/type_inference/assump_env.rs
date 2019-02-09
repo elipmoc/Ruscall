@@ -1,10 +1,20 @@
 use compile::types::*;
 use std::collections::HashMap;
+use std::fmt;
 
-#[derive(Debug, PartialEq)]
+#[derive(PartialEq)]
 pub struct AssumpEnv {
     env: Vec<HashMap<String, Scheme>>,
     nest: usize,
+}
+
+impl fmt::Debug for AssumpEnv {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let assump_list = self.env[0].iter().fold("".to_string(), |acc, (name, scheme)|
+            acc + &format!("{}=>\n{:?}\n\n", name, scheme),
+        );
+        write!(f, "{}", assump_list)
+    }
 }
 
 //型環境

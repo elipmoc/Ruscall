@@ -25,10 +25,10 @@ impl VariableTable {
             .find(|(_, name)| *name == &var.id)
             .map(|(id, _)| id);
         match a {
-            Some(id) => Some(ExprMir::create_variable_mir(id, var.pos, ty_info.no_name_get())),
+            Some(id) => Some(ExprMir::create_variable_mir(id, var.pos, ty_info.fresh_type_id())),
             _ => {
                 if self.global_var_names.contains_key(&var.id) {
-                    Some(ExprMir::create_global_variable_mir(var.id, var.pos, ty_info.no_name_get()))
+                    Some(ExprMir::create_global_variable_mir(var.id, var.pos, ty_info.fresh_type_id()))
                 } else {
                     None
                 }

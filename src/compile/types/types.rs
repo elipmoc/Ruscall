@@ -1,5 +1,5 @@
 // 型変数のインデックス
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug, Copy)]
 pub struct TypeId(usize);
 
 impl TypeId {
@@ -14,7 +14,7 @@ impl TypeId {
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub enum Type {
     TCon { name: String },
-    TGen(usize),
+    TGen(usize, TypeId),
     TupleType(Box<TupleType>),
     TyVar(TypeId),
     LambdaType(Box<LambdaType>),
@@ -39,6 +39,18 @@ impl Type {
     }
     pub fn create_lambda_type(env_tys: Vec<Type>, func_ty: FuncType) -> Type {
         Type::LambdaType(Box::new(LambdaType { env_ty: Some(TupleType { element_tys: env_tys }), func_ty }))
+    }
+    pub fn get_lambda_ty(&self) -> &LambdaType {
+        match self {
+            Type::LambdaType(ty) => ty,
+            _ => panic!("not LabdaType")
+        }
+    }
+    pub fn get_tuple_ty(&self) -> &TupleType {
+        match self {
+            Type::TupleType(ty) => ty,
+            _ => panic!("not TupleType")
+        }
     }
 }
 

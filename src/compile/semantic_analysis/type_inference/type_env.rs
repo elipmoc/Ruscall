@@ -2,9 +2,9 @@ use super::super::super::types::*;
 use std::collections::HashMap;
 use super::type_substitute::TypeSubstitute;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct TypeEnv {
-    env: Vec<HashMap<String, TypeId>>,
+    env: Vec<HashMap<String, Type>>,
     id: usize,
     nest: usize,
 }
@@ -32,7 +32,7 @@ impl TypeEnv {
     }
 
     //変数名に対応した型変数を生成する
-    fn global_get(&mut self, symbol: String) -> TypeId {
+    fn global_get(&mut self, symbol: String) -> Type {
         match self.env[0].remove(&symbol) {
             Some(x) => {
                 self.env[0].insert(symbol, x.clone());
@@ -40,15 +40,16 @@ impl TypeEnv {
             }
             _ => {
                 println!("{:?}:={:?}", symbol, self.id);
-                self.env[0].insert(symbol, TypeId::new(self.id));
+                let ty = Type::TyVar(TypeId::new(self.id));
+                self.env[0].insert(symbol, ty.clone());
                 self.id += 1;
-                TypeId::new(self.id - 1)
+                ty
             }
         }
     }
 
     //変数名に対応した型変数を生成する
-    fn get(&mut self, symbol: String) -> TypeId {
+    fn get(&mut self, symbol: String) -> Type {
         match self.env[self.nest].remove(&symbol) {
             Some(x) => {
                 self.env[self.nest].insert(symbol, x.clone());
@@ -56,81 +57,61 @@ impl TypeEnv {
             }
             _ => {
                 println!("{:?}:={:?}", symbol, self.id);
-                self.env[self.nest].insert(symbol, TypeId::new(self.id));
+                let ty = Type::TyVar(TypeId::new(self.id));
+                self.env[self.nest].insert(symbol, ty.clone());
                 self.id += 1;
-                TypeId::new(self.id - 1)
+                ty
             }
         }
     }
 
     //無名の変数に対応した型変数を生成する
-    pub fn no_name_get(&mut self) -> TypeId {
+    pub fn no_name_get(&mut self) -> Type {
+        Type::TyVar(self.fresh_type_id())
+    }
+    pub fn fresh_type_id(&mut self) -> TypeId {
+        let ty_id = TypeId::new(self.id);
+        println!("{{no_symbol}}:={:?}", self.id);
         self.id += 1;
-        println!("{{no_symbol}}:={:?}", self.id - 1);
-        TypeId::new(self.id - 1)
-    }
-}
-
-//型を解決した結果を持つ
-pub struct TypeResolved(HashMap<String, Type>);
-
-impl TypeResolved {
-    fn new(ty_env: &TypeEnv, ty_subst: &TypeSubstitute) -> TypeResolved {
-        TypeResolved(
-            ty_env
-                .env[0]
-                .iter()
-                .map(|(k, v)| (k.clone(), ty_subst.look_up(&v)))
-                .collect(),
-        )
-    }
-}
-
-use std::fmt;
-
-impl fmt::Debug for TypeResolved
-{
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use compile::types::show_type::ShowType;
-        write!(f, "{}", self.0.iter().fold("".to_string(), |acc, x|
-            acc + x.0 + "\n=>" + &(x.1.show()) + "\n\n",
-        ))
+        ty_id
     }
 }
 
 //型環境と型代入をひとまとめにした
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct TypeInfo(TypeSubstitute);
 
 impl TypeInfo {
     pub fn new() -> TypeInfo {
         TypeInfo(TypeSubstitute::new())
     }
-
     pub fn look_up(&self, ty_id: &TypeId) -> Type {
-        self.0.look_up(ty_id)
+        self.0.look_up(ty_id, false)
     }
-    pub fn type_look_up(&self, ty: &Type) -> Type { self.0.type_look_up(ty) }
+    pub fn type_look_up(&self, ty: &Type, inst_flag: bool) -> Type { self.0.type_look_up(ty, inst_flag) }
 
     pub fn look_up_func_name(&mut self, name: String) -> Type {
-        let ty_id = self.0.ty_env.global_get(name);
-        self.0.look_up(&ty_id)
+        let ty = self.0.ty_env.global_get(name);
+        self.0.type_look_up(&ty, false)
     }
 
     pub fn last_qual(&mut self, q: Qual<Type>) -> Result<Qual<Type>, String> {
         self.0.last_qual(q)
     }
 
-    pub fn get(&mut self, id: String) -> TypeId {
+    pub fn get(&mut self, id: String) -> Type {
         self.0.ty_env.get(id)
     }
 
-    pub fn global_get(&mut self, id: String) -> TypeId {
+    pub fn global_get(&mut self, id: String) -> Type {
         self.0.ty_env.global_get(id)
     }
 
-    pub fn no_name_get(&mut self) -> TypeId {
+    pub fn no_name_get(&mut self) -> Type {
         self.0.ty_env.no_name_get()
+    }
+    pub fn fresh_type_id(&mut self) -> TypeId {
+        self.0.ty_env.fresh_type_id()
     }
 
     pub fn unify(&mut self, ty1: Type, ty2: Type) -> Result<Type, String> {
@@ -159,11 +140,6 @@ impl TypeInfo {
                 Ok(ps)
             })?;
         Ok(ps)
-    }
-
-
-    pub fn get_type_resolved(&self) -> TypeResolved {
-        TypeResolved::new(&self.0.ty_env, &self.0)
     }
 
     pub fn in_nest(&mut self) {

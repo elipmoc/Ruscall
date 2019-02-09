@@ -20,7 +20,7 @@ impl ShowType for Type {
     fn show(&self) -> String {
         match self {
             Type::TCon { name } => name.clone(),
-            Type::TGen(n) => format!("TGen {}", n),
+            Type::TGen(n, ty_id) => format!("TGen {} {:?}", n, ty_id),
             Type::TupleType(x) => x.show(),
             Type::TyVar(ty_id) => ty_id.get_id().to_string(),
             Type::LambdaType(x) => x.show(),
