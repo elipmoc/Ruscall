@@ -77,7 +77,6 @@ fn get_function(name: &String, ty: &Type, module: &module::Module, builder: &bui
             add_function(name, ty, module, true)
         } else {
             use super::types::Qual;
-            let mut ty_info = ty_info.clone();
             let ty = ty_info.qual_unify(assump.global_get(&name).unwrap().get_qual().clone(), Qual::new(ty.clone())).unwrap().t;
             let ty = ty_info.type_look_up(&ty, true);
             match module.get_function(&mangle(name, &ty)) {
@@ -85,7 +84,7 @@ fn get_function(name: &String, ty: &Type, module: &module::Module, builder: &bui
                 None => {
                     let func = add_function(name, &ty, module, false);
                     let hoge = builder.get_insert_block().unwrap();
-                    func_list[name].clone().code_gen(module, builder, &mut ty_info, &ty, func_list, assump);
+                    func_list[name].clone().code_gen(module, builder, ty_info, &ty, func_list, assump);
                     builder.position_at_end(&hoge);
                     func
                 }
@@ -215,7 +214,8 @@ impl mir::ExprMir {
             mir::ExprMir::NumMir(_) => Type::create_int32(),
             mir::ExprMir::BoolMir(_) => Type::create_bool(),
             mir::ExprMir::OpMir(_) => Type::create_int32(),
-            mir::ExprMir::VariableMir(x) => params_ty[params_ty.len() - x.id - 1].clone(),
+            mir::ExprMir::VariableMir(x) => params_ty[params_ty.len() - x.id - 1].clone()
+
             mir::ExprMir::IfMir(x) => ty_info.look_up(&x.ty_id),
             mir::ExprMir::GlobalVariableMir(x) => ty_info.look_up(&x.ty_id),
             mir::ExprMir::CallMir(x) => ty_info.look_up(&x.ty_id),
@@ -230,12 +230,13 @@ impl mir::ExprMir {
 
 impl mir::FuncMir {
     fn code_gen(self, module: &module::Module, builder: &builder::Builder, ty_info: &mut TypeInfo, ty: &Type, func_list: &FuncList, assump: &AssumpEnv) {
-        println!("ty {} {:?}", self.name, ty);
-        let function = get_function(&self.name, &ty, module, builder, ty_info, func_list, assump);
+        let mut ty_info = ty_info.clone();
+        let function = get_function(&self.name, &ty, module, builder, &mut ty_info, func_list, assump);
+        let ty = ty_info.type_look_up(ty, true);
         let params = function.get_params();
         let entry_block = function.append_basic_block(&"entry");
         builder.position_at_end(&entry_block);
-        let mut gen_info = GenInfo { module, builder, params, ty_info: ty_info, function, func_list, params_ty: &ty.get_lambda_ty().func_ty.param_types, assump };
+        let mut gen_info = GenInfo { module, builder, params, ty_info: &mut ty_info, function, func_list, params_ty: &ty.get_lambda_ty().func_ty.param_types, assump };
         let value = self.body.code_gen(&mut gen_info);
         builder.build_return(Some(&value));
     }
@@ -269,7 +270,7 @@ impl mir::ExprMir {
 impl mir::GlobalVariableMir {
     fn code_gen(self, gen_info: &mut GenInfo) -> values::FunctionValue {
         let func_ty = gen_info.ty_info.look_up(&self.ty_id);
-        get_function(&self.id, &func_ty, gen_info.module, gen_info.builder, gen_info.ty_info, gen_info.func_list, gen_info.assump)
+        get_function(&self.id, &func_ty, gen_info.module, gen_info.builder, &mut gen_info.ty_info.clone(), gen_info.func_list, gen_info.assump)
     }
 }
 
@@ -390,7 +391,7 @@ impl mir::LambdaMir {
     ) -> values::BasicValueEnum {
         //ラムダ式の関数作成
         let func_ty = gen_info.ty_info.look_up(&self.func_id);
-        let func = get_function(&self.func_name, &func_ty, gen_info.module, gen_info.builder, gen_info.ty_info, gen_info.func_list, gen_info.assump);
+        let func = get_function(&self.func_name, &func_ty, gen_info.module, gen_info.builder, &mut gen_info.ty_info.clone(), gen_info.func_list, gen_info.assump);
         let func_llvm_ty = func_ty
             .to_llvm_any_type(false).into_function_type();
 

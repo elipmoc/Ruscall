@@ -79,7 +79,7 @@ impl TypeEnv {
 
 //型環境と型代入をひとまとめにした
 #[derive(Debug, PartialEq, Clone)]
-pub struct TypeInfo(TypeSubstitute);
+pub struct TypeInfo(pub TypeSubstitute);
 
 impl TypeInfo {
     pub fn new() -> TypeInfo {

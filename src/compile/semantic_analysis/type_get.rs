@@ -65,19 +65,19 @@ impl<'a> TypeGet for &'a ImplicitFunc {
 
 impl<'a> TypeGet for &'a ExplicitFunc {
     fn ty_get(&self, ty_info: &mut TypeInfo, assump: AssumpEnv) -> TyCheckResult<(AssumpEnv, Qual<Type>)> {
-        match &self.scheme {
+        match assump.global_get(&self.func.name).unwrap().clone() {
             Scheme::Forall { qual, .. } => {
-                let (assump, ty) = (&self.func).ty_get(ty_info, assump)?;
-                let q = ty_info.qual_unify(
-                    ty,
-                    qual.clone(),
-                ).map_err(|msg| Error::new(self.func.pos, &msg))?;
-                let func_q = Qual::new(ty_info.global_get(self.func.name.clone()));
-                let q = ty_info.qual_unify(
-                    func_q,
-                    q,
-                ).map_err(|msg| Error::new(self.func.pos, &msg))?;
-                Ok((assump, q))
+                let (mut assump, ty) = (&self.func).ty_get(ty_info, assump)?;
+
+                let ty = Scheme::quantify(ty.t.get_lambda_ty().func_ty.param_types.tv_list(), ty);
+                let mut  ty = ty.get_qual().clone().apply(&ty_info.0, true);
+                let mut qual = qual.clone().apply(&ty_info.0, true);
+                ty.ps=ty_info.0.preds_simply(ty.ps,ty.t.tv_list());
+                qual.ps=ty_info.0.preds_simply(qual.ps,qual.t.tv_list());
+                if qual != ty {
+                    return Err(Error::new(self.func.pos, &format!("declar: {:?} \nactual: {:?}", qual, ty)));
+                }
+                Ok((assump, qual))
             }
         }
     }
@@ -190,11 +190,11 @@ impl TypeGet for CallMir {
         let (assump, func_q) = (&self.func).ty_get(ty_info, assump)?;
         let func_q = ty_info.qual_condition_add_unify(func_q, Condition::Call(Box::new(FuncType { param_types, ret_type })))
             .map_err(|msg| Error::new(self.func.get_pos(), &msg))?;
+        let ret_ty = ty_info.look_up(&self.ty_id);
         let ps = ty_info.predss_merge_unify(pss)
             .map_err(|msg| Error::new(self.func.get_pos(), &msg))?;
         let ps = ty_info.preds_merge_unify(ps, func_q.ps)
             .map_err(|msg| Error::new(self.func.get_pos(), &msg))?;
-        let ret_ty = ty_info.look_up(&self.ty_id);
         Ok((assump, Qual { ps, t: ret_ty }))
     }
 }
@@ -254,9 +254,10 @@ impl TypeGet for TupleMir {
         let (assump, elements_qs) =
             ty_get_all(self.elements.iter(), ty_info, assump)?;
         let (pss, element_tys) = Qual::split(elements_qs);
+        let tuple_ty = Type::TupleType(Box::new(TupleType { element_tys }));
         let ps = ty_info.predss_merge_unify(pss)
             .map_err(|msg| Error::new(self.pos, &msg))?;
-        let tuple_q = Qual { ps, t: Type::TupleType(Box::new(TupleType { element_tys })) };
+        let tuple_q = Qual { ps, t: tuple_ty };
         let q = ty_info.qual_unify(tuple_q, Qual::new(Type::TyVar(self.ty_id.clone())))
             .map_err(|msg| Error::new(self.pos, &msg))?;
         Ok((assump, q))

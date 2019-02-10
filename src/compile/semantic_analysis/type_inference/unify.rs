@@ -18,6 +18,8 @@ fn create_error_msg<T>(msg: String) -> Result<T, String> {
     ))
 }
 
+use std::collections::HashSet;
+
 impl TypeSubstitute {
     //単一化処理
     pub fn unify(&mut self, ty1: Type, ty2: Type) -> Result<Type, String> {
@@ -97,13 +99,26 @@ impl TypeSubstitute {
             match ps2.remove(&k) {
                 Some(p2) => {
                     let p = self.pred_unify(p1, p2)?;
-                    new_ps.insert(k, p);
+                    new_ps.insert(p.ty.clone(), p);
                 }
-                None => { new_ps.insert(k, p1); }
+                None => { new_ps.insert(p1.ty.clone(), p1); }
             };
         }
-        ps2.into_iter().for_each(|(k, p)| { new_ps.insert(k, p); });
+        ps2.into_iter().for_each(|(_, p)| { new_ps.insert(p.ty.clone(), p); });
         Ok(new_ps)
+    }
+
+    //不要なpredを取り除く
+    pub fn preds_simply(&self, ps: Preds, tv_list: HashSet<TypeId>) -> Preds {
+        Preds(
+            ps.into_iter().filter(|(t, _)| {
+                match t {
+                    Type::TyVar(ty_id) => tv_list.contains(&ty_id),
+                    Type::TGen(_, _) => true,
+                    Type::TCon { .. } | Type::TupleType(_) | Type::LambdaType(_) | Type::StructType(_) => false
+                }
+            }).collect()
+        )
     }
 
     //Qualに新たに制約を追加する操作と単一化処理
@@ -117,7 +132,7 @@ impl TypeSubstitute {
                 match p {
                     Some(p) => {
                         let p = self.pred_unify(p, Pred { ty: TyVar(x.clone()), cond: c })?;
-                        q.ps.insert(TyVar(x.clone()), p)
+                        q.ps.insert(p.ty.clone(), p)
                     }
                     None => q.ps.insert(TyVar(x.clone()), Pred { ty: TyVar(x.clone()), cond: c })
                 };
@@ -156,12 +171,10 @@ impl TypeSubstitute {
         match (p1.cond, p2.cond) {
             (Call(fn_ty1), Call(fn_ty2)) => {
                 let new_fn_ty = self.fn_unify(*fn_ty1, *fn_ty2)?;
-                let ty = self.ty_env.no_name_get();
-                Ok(Pred { cond: Condition::Call(Box::new(new_fn_ty)), ty })
+                Ok(Pred { cond: Condition::Call(Box::new(new_fn_ty)), ty: p1.ty })
             }
             (c, Empty) | (Empty, c) => {
-                let mut ty = self.ty_env.no_name_get();
-                Ok(Pred { ty, cond: c })
+                Ok(Pred { ty: p1.ty, cond: c })
             }
             (Items(impl_items1), Items(impl_items2)) => {
                 let impl_items = ImplItems::merge(
