@@ -214,8 +214,7 @@ impl mir::ExprMir {
             mir::ExprMir::NumMir(_) => Type::create_int32(),
             mir::ExprMir::BoolMir(_) => Type::create_bool(),
             mir::ExprMir::OpMir(_) => Type::create_int32(),
-            mir::ExprMir::VariableMir(x) => params_ty[params_ty.len() - x.id - 1].clone()
-
+            mir::ExprMir::VariableMir(x) => params_ty[params_ty.len() - x.id - 1].clone(),
             mir::ExprMir::IfMir(x) => ty_info.look_up(&x.ty_id),
             mir::ExprMir::GlobalVariableMir(x) => ty_info.look_up(&x.ty_id),
             mir::ExprMir::CallMir(x) => ty_info.look_up(&x.ty_id),
