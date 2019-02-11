@@ -25,6 +25,12 @@ impl ProgramMir {
             ty_info: TypeInfo::new(),
         }
     }
+    pub fn get_func_mir(&self, name: &String) -> Option<&FuncMir> {
+        self.implicit_func_list.get(name).map(|x| Some(&x.func))
+            .unwrap_or(
+                self.explicit_func_list.iter().find(|x| &x.func.name == name).map(|x| &x.func)
+            )
+    }
 }
 
 #[derive(Debug, PartialEq)]

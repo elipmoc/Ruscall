@@ -48,6 +48,11 @@ impl ProgramMir {
         //関数定義の型チェック
         let (assump, _) =
             ty_get_all(self.explicit_func_list.iter().map(|x| x), &mut self.ty_info, assump)?;
+        // main関数の型をチェック
+        let main_func_q = assump.global_get(&"main".to_string()).unwrap().clone().fresh_inst(&mut self.ty_info);
+        let main_func_ty = Type::create_func_type(vec![Type::create_tuple_type(vec![])], Type::create_int32());
+        self.ty_info.qual_unify(main_func_q, Qual::new(main_func_ty)).map_err(|msg| Error::new(self.get_func_mir(&"main".to_string()).unwrap().pos, &msg))?;
+
         println!("\nAssump List \n");
         println!("{:?}", assump);
         Ok((self, assump))
@@ -70,10 +75,10 @@ impl<'a> TypeGet for &'a ExplicitFunc {
                 let (mut assump, ty) = (&self.func).ty_get(ty_info, assump)?;
 
                 let ty = Scheme::quantify(ty.t.get_lambda_ty().func_ty.param_types.tv_list(), ty);
-                let mut  ty = ty.get_qual().clone().apply(&ty_info.0, true);
+                let mut ty = ty.get_qual().clone().apply(&ty_info.0, true);
                 let mut qual = qual.clone().apply(&ty_info.0, true);
-                ty.ps=ty_info.0.preds_simply(ty.ps,ty.t.tv_list());
-                qual.ps=ty_info.0.preds_simply(qual.ps,qual.t.tv_list());
+                ty.ps = ty_info.0.preds_simply(ty.ps, ty.t.tv_list());
+                qual.ps = ty_info.0.preds_simply(qual.ps, qual.t.tv_list());
                 if qual != ty {
                     return Err(Error::new(self.func.pos, &format!("declar: {:?} \nactual: {:?}", qual, ty)));
                 }

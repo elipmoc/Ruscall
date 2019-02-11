@@ -71,12 +71,12 @@ impl mir::ProgramMir {
 
 //関数を取得する。存在しない場合は新たに登録する。
 fn get_function(name: &String, ty: &Type, module: &module::Module, builder: &builder::Builder, ty_info: &mut TypeInfo, func_list: &FuncList, assump: &AssumpEnv) -> values::FunctionValue {
+    use super::types::Qual;
     match module.get_function(&name) {
         Some(func) => func,
         None => if name == "main" {
-            add_function(name, ty, module, true)
+            add_function(name, &ty, module, true)
         } else {
-            use super::types::Qual;
             let ty = ty_info.qual_unify(assump.global_get(&name).unwrap().get_qual().clone(), Qual::new(ty.clone())).unwrap().t;
             let ty = ty_info.type_look_up(&ty, true);
             match module.get_function(&mangle(name, &ty)) {

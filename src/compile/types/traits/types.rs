@@ -52,8 +52,9 @@ impl Types for Type {
     fn tv_list(&self) -> HashSet<TypeId> {
         use self::Type::*;
         match self {
-            TCon { .. } | TGen(_, _) => HashSet::new(),
-            TyVar(ty_id) => {
+            TCon { .. } => HashSet::new(),
+
+            TGen(_, ty_id) | TyVar(ty_id) => {
                 let mut tv = HashSet::new();
                 tv.insert(ty_id.clone());
                 tv
