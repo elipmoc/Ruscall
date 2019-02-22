@@ -7,6 +7,7 @@ pub mod types;
 pub mod ast_transformer;
 pub mod mangling;
 pub mod ir;
+pub mod to_llvm_type;
 
 use super::compile::semantic_analysis::type_inference::assump_env::AssumpEnv;
 use self::error::Error;

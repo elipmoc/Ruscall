@@ -47,6 +47,7 @@ impl TypeSubstitute {
             println!("occurs! {:?}=>{:?}", ty_id, insert_ty);
         }
     }
+
     fn qual_left(&mut self, q1: Qual<Type>, q2: &Qual<Type>) -> Result<Qual<Type>, String> {
         match q2.ps.get(&q2.t) {
             Some(p) => self.qual_add_condition_unify(q1, p.cond.clone()),
@@ -106,6 +107,16 @@ impl TypeSubstitute {
         }
         ps2.into_iter().for_each(|(_, p)| { new_ps.insert(p.ty.clone(), p); });
         Ok(new_ps)
+    }
+
+    pub fn predss_merge_unify(&mut self, pss: Vec<Preds>) -> Result<Preds, String> {
+        let ps = pss.into_iter()
+            .fold(Ok(Preds::new()), |acc: Result<_, String>, ps2| {
+                let ps1 = acc?;
+                let ps = self.preds_merge_unify(ps1, ps2)?;
+                Ok(ps)
+            })?;
+        Ok(ps)
     }
 
     //不要なpredを取り除く

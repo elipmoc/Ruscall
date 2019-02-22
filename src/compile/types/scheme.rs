@@ -6,7 +6,7 @@ pub enum Scheme {
     Forall { qual: Qual<Type>, tgen_count: usize }
 }
 
-use super::super::semantic_analysis::type_inference::type_env::*;
+use super::super::semantic_analysis::type_inference::type_substitute::TypeSubstitute;
 use std::collections::HashSet;
 
 impl Scheme {
@@ -33,10 +33,10 @@ impl Scheme {
         Scheme::Forall { qual: q, tgen_count: n }
     }
     //型スキームのTGenをフレッシュな型変数に置き換えたQualを生成
-    pub fn fresh_inst(self, ty_info: &mut TypeInfo) -> Qual<Type> {
+    pub fn fresh_inst(self, ty_sub: &mut TypeSubstitute) -> Qual<Type> {
         match self {
             Scheme::Forall { qual, tgen_count } => {
-                let fresh_types = (0..tgen_count).map(|_| ty_info.no_name_get()).collect::<Vec<_>>();
+                let fresh_types = (0..tgen_count).map(|_| ty_sub.ty_env.no_name_get()).collect::<Vec<_>>();
                 qual.inst(&fresh_types)
             }
         }

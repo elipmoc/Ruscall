@@ -1,7 +1,7 @@
 use combine::stream::state::SourcePosition;
 use super::ast::*;
 use super::super::types::*;
-use super::super::semantic_analysis::type_env::TypeInfo;
+use super::super::semantic_analysis::type_inference::type_substitute::TypeSubstitute;
 use indexmap::IndexMap;
 
 #[derive(Debug, PartialEq)]
@@ -12,7 +12,7 @@ pub struct ProgramMir {
 
     pub ex_dec_func_list: Vec<DecFuncMir>,
 
-    pub ty_info: TypeInfo,
+    pub ty_sub: TypeSubstitute,
 
 }
 
@@ -22,7 +22,7 @@ impl ProgramMir {
             implicit_func_list: IndexMap::new(),
             explicit_func_list: vec![],
             ex_dec_func_list: vec![],
-            ty_info: TypeInfo::new(),
+            ty_sub: TypeSubstitute::new(),
         }
     }
     pub fn get_func_mir(&self, name: &String) -> Option<&FuncMir> {

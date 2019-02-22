@@ -3,7 +3,7 @@ extern crate inkwell;
 use self::inkwell::*;
 use self::inkwell::{values::BasicValue, values::AnyValue, types::BasicType, types::AnyType};
 use super::ir::mir;
-use super::semantic_analysis::type_env::TypeInfo;
+use super::semantic_analysis::type_inference::type_substitute::TypeSubstitute;
 use super::semantic_analysis::type_inference::assump_env::AssumpEnv;
 use super::types::types::*;
 use std::collections::hash_map::HashMap;
@@ -22,7 +22,7 @@ struct GenInfo<'a> {
     pub builder: &'a builder::Builder,
     pub params: Vec<values::BasicValueEnum>,
     pub params_ty: &'a Vec<Type>,
-    pub ty_info: &'a mut TypeInfo,
+    pub ty_sub: &'a mut TypeSubstitute,
     pub function: values::FunctionValue,
     pub func_list: &'a FuncList,
     pub assump: &'a AssumpEnv,
@@ -36,11 +36,11 @@ impl mir::ProgramMir {
         let builder = builder::Builder::create();
         let module = module::Module::create(file_name);
 
-        let mut ty_info = self.ty_info;
+        let mut ty_sub = self.ty_sub;
         //外部関数宣言のコード化
         self.ex_dec_func_list
             .into_iter()
-            .for_each(|x| ex_func_gen(x, &module, &mut ty_info));
+            .for_each(|x| ex_func_gen(x, &module, &mut ty_sub));
 
         let main_func = match self.implicit_func_list.get("main") {
             None => &self.explicit_func_list.iter().find(|x| x.func.name == "main").unwrap().func,
@@ -55,7 +55,7 @@ impl mir::ProgramMir {
             .collect::<FuncList>();
 
         let main_func_ty = Type::create_func_type(vec![Type::create_tuple_type(vec![])], Type::create_int32());
-        main_func.code_gen(&module, &builder, &mut ty_info, &main_func_ty, &func_list, &assump);
+        main_func.code_gen(&module, &builder, &mut ty_sub, &main_func_ty, &func_list, &assump);
         if let Err(err_msg) = module.verify() {
             module.print_to_stderr();
             panic!("llvm error:{}", err_msg.to_string());
@@ -70,21 +70,21 @@ impl mir::ProgramMir {
 }
 
 //関数を取得する。存在しない場合は新たに登録する。
-fn get_function(name: &String, ty: &Type, module: &module::Module, builder: &builder::Builder, ty_info: &mut TypeInfo, func_list: &FuncList, assump: &AssumpEnv) -> values::FunctionValue {
+fn get_function(name: &String, ty: &Type, module: &module::Module, builder: &builder::Builder, ty_sub: &mut TypeSubstitute, func_list: &FuncList, assump: &AssumpEnv) -> values::FunctionValue {
     use super::types::Qual;
     match module.get_function(&name) {
         Some(func) => func,
         None => if name == "main" {
             add_function(name, &ty, module, true)
         } else {
-            let ty = ty_info.qual_unify(assump.global_get(&name).unwrap().get_qual().clone(), Qual::new(ty.clone())).unwrap().t;
-            let ty = ty_info.type_look_up(&ty, true);
+            let ty = ty_sub.qual_unify(assump.global_get(&name).unwrap().get_qual().clone(), Qual::new(ty.clone())).unwrap().t;
+            let ty = ty_sub.type_look_up(&ty, true);
             match module.get_function(&mangle(name, &ty)) {
                 Some(func) => func,
                 None => {
                     let func = add_function(name, &ty, module, false);
                     let hoge = builder.get_insert_block().unwrap();
-                    func_list[name].clone().code_gen(module, builder, ty_info, &ty, func_list, assump);
+                    func_list[name].clone().code_gen(module, builder, ty_sub, &ty, func_list, assump);
                     builder.position_at_end(&hoge);
                     func
                 }
@@ -98,144 +98,44 @@ fn add_function(name: &String, ty: &Type, module: &module::Module, no_mangle: bo
     module.add_function(&mangled_name, ty.to_llvm_any_type(false).as_any_type_enum().into_function_type(), Some(module::Linkage::External))
 }
 
-fn ex_func_gen(dec_func_ir: mir::DecFuncMir, module: &module::Module, ty_info: &mut TypeInfo) {
+fn ex_func_gen(dec_func_ir: mir::DecFuncMir, module: &module::Module, ty_sub: &mut TypeSubstitute) {
     use compile::types::show_type::ShowType;
-    match ty_info.look_up_func_name(dec_func_ir.name.clone()) {
+    let func_id_type = ty_sub.ty_env.global_get(dec_func_ir.name.clone());
+    match ty_sub.type_look_up(&func_id_type, false) {
         Type::LambdaType(ty) =>
             add_function(&dec_func_ir.name, &Type::LambdaType(ty.clone()), module, true),
         x => panic!("error!{}", x.show()),
     };
 }
 
-impl Type {
-    fn to_llvm_basic_type(&self) -> types::BasicTypeEnum {
-        match self {
-            Type::TCon { name } =>
-                match name as &str {
-                    "Int32" => types::IntType::i32_type().as_basic_type_enum(),
-                    "Bool" => types::IntType::bool_type().as_basic_type_enum(),
-                    _ => panic!("undefined!")
-                },
-            Type::TupleType(x) => x.to_llvm_type().as_basic_type_enum(),
-            Type::TyVar(_) | Type::TGen(_, _) => Type::TupleType(Box::new(TupleType { element_tys: vec![] })).to_llvm_basic_type(),
-            Type::LambdaType(x) => x.to_llvm_basic_type(),
-            Type::StructType(x) => x.to_llvm_type().as_basic_type_enum(),
-        }
-    }
-
-    fn to_llvm_any_type(&self, fn_pointer_flag: bool) -> types::AnyTypeEnum {
-        match self {
-            Type::TCon { name } =>
-                match name as &str {
-                    "Int32" => types::IntType::i32_type().as_any_type_enum(),
-                    "Bool" => types::IntType::i8_type().as_any_type_enum(),
-                    _ => panic!("undefined!")
-                },
-            Type::TupleType(x) => x.to_llvm_type().as_any_type_enum(),
-            Type::TyVar(_) => Type::TupleType(Box::new(TupleType { element_tys: vec![] })).to_llvm_any_type(fn_pointer_flag),
-            Type::LambdaType(x) => x.to_llvm_any_type(fn_pointer_flag),
-            Type::StructType(x) => x.to_llvm_type().as_any_type_enum(),
-            Type::TGen(_, _) => panic!("TGen error")
-        }
-    }
-}
-
-impl FuncType {
-    fn to_llvm_type(&self) -> types::FunctionType {
-        self.ret_type.to_llvm_basic_type()
-            .fn_type(
-                &self.param_types
-                    .iter()
-                    .map(|x| x.to_llvm_basic_type())
-                    .collect::<Vec<_>>(),
-                false,
-            )
-    }
-}
-
-impl TupleType {
-    fn to_llvm_type(&self) -> types::StructType {
-        types::StructType::struct_type(
-            &self.element_tys
-                .iter()
-                .map(|x| x.to_llvm_basic_type())
-                .collect::<Vec<_>>(),
-            true,
-        )
-    }
-}
-
-impl LambdaType {
-    fn to_llvm_any_type(&self, fn_pointer_flag: bool) -> types::AnyTypeEnum {
-        if fn_pointer_flag {
-            if let Some(env_ty) = self.env_ty.clone() {
-                let env_llvm_ty = env_ty.to_llvm_type();
-                let func_llvm_ty = self.func_ty.to_llvm_type().ptr_type(AddressSpace::Generic);
-                types::StructType::struct_type(&vec![env_llvm_ty.as_basic_type_enum(), func_llvm_ty.as_basic_type_enum()], true).as_any_type_enum()
-            } else {
-                self.func_ty.to_llvm_type().ptr_type(AddressSpace::Generic).as_any_type_enum()
-            }
-        } else {
-            self.func_ty.to_llvm_type().as_any_type_enum()
-        }
-    }
-
-    fn to_llvm_basic_type(&self) -> types::BasicTypeEnum {
-        if let Some(env_ty) = self.env_ty.clone() {
-            let env_llvm_ty = env_ty.to_llvm_type();
-            let func_llvm_ty = self.func_ty.to_llvm_type().ptr_type(AddressSpace::Generic);
-            types::StructType::struct_type(&vec![env_llvm_ty.as_basic_type_enum(), func_llvm_ty.as_basic_type_enum()], true).as_basic_type_enum()
-        } else {
-            self.func_ty.to_llvm_type().ptr_type(AddressSpace::Generic).as_basic_type_enum()
-        }
-    }
-}
-
-impl StructType {
-    fn to_llvm_type(&self) -> types::StructType {
-        match self.ty {
-            StructInternalType::TupleType(ref x) => x.to_llvm_type(),
-            StructInternalType::RecordType(ref x) => {
-                types::StructType::struct_type(
-                    &x.element_tys
-                        .iter()
-                        .map(|(_, x)| x.to_llvm_basic_type())
-                        .collect::<Vec<_>>(),
-                    true,
-                )
-            }
-        }
-    }
-}
-
 impl mir::ExprMir {
-    fn get_ty(&self, ty_info: &mut TypeInfo, params_ty: &Vec<Type>) -> Type {
+    fn get_ty(&self, ty_sub: &mut TypeSubstitute, params_ty: &Vec<Type>) -> Type {
         match self {
             mir::ExprMir::NumMir(_) => Type::create_int32(),
             mir::ExprMir::BoolMir(_) => Type::create_bool(),
             mir::ExprMir::OpMir(_) => Type::create_int32(),
             mir::ExprMir::VariableMir(x) => params_ty[params_ty.len() - x.id - 1].clone(),
-            mir::ExprMir::IfMir(x) => ty_info.look_up(&x.ty_id),
-            mir::ExprMir::GlobalVariableMir(x) => ty_info.look_up(&x.ty_id),
-            mir::ExprMir::CallMir(x) => ty_info.look_up(&x.ty_id),
-            mir::ExprMir::TupleMir(x) => ty_info.look_up(&x.ty_id),
+            mir::ExprMir::IfMir(x) => ty_sub.look_up(&x.ty_id, false),
+            mir::ExprMir::GlobalVariableMir(x) => ty_sub.look_up(&x.ty_id, false),
+            mir::ExprMir::CallMir(x) => ty_sub.look_up(&x.ty_id, false),
+            mir::ExprMir::TupleMir(x) => ty_sub.look_up(&x.ty_id, false),
             mir::ExprMir::TupleStructMir(_) => panic!("undefined"),
-            mir::ExprMir::IndexPropertyMir(x) => ty_info.look_up(&x.ty_id),
-            mir::ExprMir::NamePropertyMir(x) => ty_info.look_up(&x.ty_id),
-            mir::ExprMir::LambdaMir(x) => ty_info.look_up(&x.ty_id),
+            mir::ExprMir::IndexPropertyMir(x) => ty_sub.look_up(&x.ty_id, false),
+            mir::ExprMir::NamePropertyMir(x) => ty_sub.look_up(&x.ty_id, false),
+            mir::ExprMir::LambdaMir(x) => ty_sub.look_up(&x.ty_id, false)
         }
     }
 }
 
 impl mir::FuncMir {
-    fn code_gen(self, module: &module::Module, builder: &builder::Builder, ty_info: &mut TypeInfo, ty: &Type, func_list: &FuncList, assump: &AssumpEnv) {
-        let mut ty_info = ty_info.clone();
-        let function = get_function(&self.name, &ty, module, builder, &mut ty_info, func_list, assump);
-        let ty = ty_info.type_look_up(ty, true);
+    fn code_gen(self, module: &module::Module, builder: &builder::Builder, ty_sub: &mut TypeSubstitute, ty: &Type, func_list: &FuncList, assump: &AssumpEnv) {
+        let mut ty_sub = ty_sub.clone();
+        let function = get_function(&self.name, &ty, module, builder, &mut ty_sub, func_list, assump);
+        let ty = ty_sub.type_look_up(ty, true);
         let params = function.get_params();
         let entry_block = function.append_basic_block(&"entry");
         builder.position_at_end(&entry_block);
-        let mut gen_info = GenInfo { module, builder, params, ty_info: &mut ty_info, function, func_list, params_ty: &ty.get_lambda_ty().func_ty.param_types, assump };
+        let mut gen_info = GenInfo { module, builder, params, ty_sub: &mut ty_sub, function, func_list, params_ty: &ty.get_lambda_ty().func_ty.param_types, assump };
         let value = self.body.code_gen(&mut gen_info);
         builder.build_return(Some(&value));
     }
@@ -268,8 +168,8 @@ impl mir::ExprMir {
 
 impl mir::GlobalVariableMir {
     fn code_gen(self, gen_info: &mut GenInfo) -> values::FunctionValue {
-        let func_ty = gen_info.ty_info.look_up(&self.ty_id);
-        get_function(&self.id, &func_ty, gen_info.module, gen_info.builder, &mut gen_info.ty_info.clone(), gen_info.func_list, gen_info.assump)
+        let func_ty = gen_info.ty_sub.look_up(&self.ty_id, false);
+        get_function(&self.id, &func_ty, gen_info.module, gen_info.builder, &mut gen_info.ty_sub.clone(), gen_info.func_list, gen_info.assump)
     }
 }
 
@@ -292,7 +192,7 @@ impl mir::IfMir {
         gen_info.builder.build_unconditional_branch(&merge_block);
         let else_block = gen_info.builder.get_insert_block().unwrap();
         gen_info.builder.position_at_end(&merge_block);
-        let phi_node = gen_info.builder.build_phi(gen_info.ty_info.look_up(&self.ty_id).to_llvm_basic_type(), "");
+        let phi_node = gen_info.builder.build_phi(gen_info.ty_sub.look_up(&self.ty_id, false).to_llvm_basic_type(), "");
         phi_node.add_incoming(&[(t_value, &then_block), (f_value, &else_block)]);
         phi_node
     }
@@ -308,11 +208,12 @@ impl mir::CallMir {
             .into_iter()
             .map(|x| x.code_gen(gen_info).as_basic_value_enum())
             .collect();
-        match self.func.get_ty(gen_info.ty_info, gen_info.params_ty) {
+        match self.func.get_ty(gen_info.ty_sub, gen_info.params_ty) {
             Type::LambdaType(x) => {
                 let callsite =
                     if let Some(env_ty) = x.env_ty {
                         let lambda = self.func.code_gen(gen_info);
+                        println!("{}", format!("{:?}", lambda.get_type()));
                         let lambda_ptr = gen_info.builder.build_alloca(lambda.as_basic_value_enum().get_type(), "");
                         gen_info.builder.build_store(lambda_ptr, lambda);
                         let envs_tuple_pointer = unsafe { gen_info.builder.build_struct_gep(lambda_ptr, 0, "") };
@@ -389,8 +290,8 @@ impl mir::LambdaMir {
         gen_info: &mut GenInfo,
     ) -> values::BasicValueEnum {
         //ラムダ式の関数作成
-        let func_ty = gen_info.ty_info.look_up(&self.func_id);
-        let func = get_function(&self.func_name, &func_ty, gen_info.module, gen_info.builder, &mut gen_info.ty_info.clone(), gen_info.func_list, gen_info.assump);
+        let func_ty = gen_info.ty_sub.look_up(&self.func_id, false);
+        let func = get_function(&self.func_name, &func_ty, gen_info.module, gen_info.builder, &mut gen_info.ty_sub.clone(), gen_info.func_list, gen_info.assump);
         let func_llvm_ty = func_ty
             .to_llvm_any_type(false).into_function_type();
 
@@ -433,7 +334,7 @@ impl mir::IndexPropertyMir {
         gen_info: &mut GenInfo,
     ) -> values::BasicValueEnum {
         let expr_value = self.expr.clone().code_gen(gen_info);
-        let expr_ty = expr_value.get_type();//self.expr.get_ty(gen_info.ty_info, gen_info.params_ty);
+        let expr_ty = expr_value.get_type();//self.expr.get_ty(gen_info.ty_sub, gen_info.params_ty);
         let expr_ptr = gen_info.builder.build_alloca(expr_ty, "");
         gen_info.builder.build_store(expr_ptr, expr_value);
         let ptr = unsafe {
@@ -453,7 +354,7 @@ impl mir::NamePropertyMir {
         self,
         gen_info: &mut GenInfo,
     ) -> values::BasicValueEnum {
-        let expr_ty = self.expr.get_ty(gen_info.ty_info, gen_info.params_ty);
+        let expr_ty = self.expr.get_ty(gen_info.ty_sub, gen_info.params_ty);
         let index = match expr_ty {
             Type::StructType(ref x) => {
                 match x.ty {
