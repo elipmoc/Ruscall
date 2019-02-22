@@ -29,46 +29,31 @@ impl TypeSubstitute {
             (Type::TGen(_, _), Type::TGen(_, _)) => panic!("hoge"),
             (Type::TGen(_, ty_id), ty) | (ty, Type::TGen(_, ty_id)) => self.unify(ty, Type::TyVar(ty_id)),
             (Type::TyVar(id), ty) | (ty, Type::TyVar(id)) => {
-                self.safe_insert(id.clone(), ty.clone());
+                self.tvar_insert(id.clone(), ty.clone());
                 Ok(ty)
             }
             (Type::LambdaType(ty1), Type::LambdaType(ty2)) => self.lambda_unify(*ty1, *ty2),
-            (Type::TupleType(ty1), Type::TupleType(ty2)) => self.tuple_unify(*ty1, *ty2),
+            (Type::TupleType(ty1), Type::TupleType(ty2)) => Ok(Type::TupleType(Box::new(self.tuple_unify(*ty1, *ty2)?))),
+            (Type::StructType(ty1), Type::StructType(ty2)) => self.struct_unify(*ty1, *ty2),
             (ty1, ty2) => create_error(&ty1, &ty2)
         }
     }
 
     //型変数に型を代入する
-    fn safe_insert(&mut self, ty_id: TypeId, insert_ty: Type) {
+    fn tvar_insert(&mut self, ty_id: TypeId, insert_ty: Type) {
         if occurs_check(&self.ty_sub, &insert_ty, &ty_id) == false {
             println!("{:?}=>{:?}", ty_id, insert_ty);
             self.ty_sub.insert(ty_id, insert_ty);
         } else {
-            println!("occurs! {:?}=>{:?}", ty_id, insert_ty);
-        }
-    }
-
-    fn qual_left(&mut self, q1: Qual<Type>, q2: &Qual<Type>) -> Result<Qual<Type>, String> {
-        match q2.ps.get(&q2.t) {
-            Some(p) => self.qual_add_condition_unify(q1, p.cond.clone()),
-            None => Ok(q1)
+            panic!("occurs");
         }
     }
 
     pub fn qual_unify(&mut self, q1: Qual<Type>, q2: Qual<Type>) -> Result<Qual<Type>, String> {
-        let q1 = self.last_qual(q1)?;
-        let q2 = self.last_qual(q2)?;
-        let q1 = self.qual_left(q1, &q2)?;
-        let q2 = self.qual_left(q2, &q1)?;
         let t = self.unify(q1.t, q2.t)?;
         let ps = self.preds_merge_unify(q1.ps, q2.ps)?;
+        let ps = self.preds_reduction(ps)?;
         Ok(Qual { ps, t })
-    }
-
-    pub fn last_qual(&mut self, q: Qual<Type>) -> Result<Qual<Type>, String> {
-        let ty = self.type_look_up(&q.t, true);
-        let ps = self.preds_reduction(q.ps)?;
-        Ok(Qual { ps, t: ty })
     }
 
     pub fn preds_reduction(&mut self, ps: Preds) -> Result<Preds, String> {
@@ -81,8 +66,8 @@ impl TypeSubstitute {
                     new_ps.insert(p.ty.clone(), p);
                 }
                 None => {
-                    let q = self.qual_add_condition_unify(Qual::new(p.ty), p.cond)?;
-                    new_ps = self.preds_merge_unify(new_ps, q.ps)?;
+                    let ps = self.qual_add_condition_unify(Qual::new(p.ty), p.cond)?.ps;
+                    new_ps = self.preds_merge_unify(new_ps, ps)?;
                 }
             }
         };
@@ -94,7 +79,6 @@ impl TypeSubstitute {
     }
 
     pub fn preds_merge_unify(&mut self, ps1: Preds, mut ps2: Preds) -> Result<Preds, String> {
-        let ps1 = self.preds_reduction(ps1)?;
         let mut new_ps = Preds::new();
         for (k, p1) in ps1.into_iter() {
             match ps2.remove(&k) {
@@ -133,8 +117,7 @@ impl TypeSubstitute {
     }
 
     //Qualに新たに制約を追加する操作と単一化処理
-    pub fn qual_add_condition_unify(&mut self, q: Qual<Type>, c: Condition) -> Result<Qual<Type>, String> {
-        let mut q = self.last_qual(q)?;
+    pub fn qual_add_condition_unify(&mut self, mut q: Qual<Type>, c: Condition) -> Result<Qual<Type>, String> {
         use self::Type::*;
         match &q.t {
             t @ TCon { .. } => { return create_error(&t, &c); }
@@ -184,9 +167,7 @@ impl TypeSubstitute {
                 let new_fn_ty = self.fn_unify(*fn_ty1, *fn_ty2)?;
                 Ok(Pred { cond: Condition::Call(Box::new(new_fn_ty)), ty: p1.ty })
             }
-            (c, Empty) | (Empty, c) => {
-                Ok(Pred { ty: p1.ty, cond: c })
-            }
+            (cond, Empty) | (Empty, cond) => Ok(Pred { ty: p1.ty, cond }),
             (Items(impl_items1), Items(impl_items2)) => {
                 let impl_items = ImplItems::merge(
                     *impl_items1, *impl_items2,
@@ -200,8 +181,7 @@ impl TypeSubstitute {
     }
 
     //タプルと型制約の単一化
-    fn tuple_condition_unify<T: TupleTypeBase + Debug>(&mut self, tuple_ty: T, c: Condition)
-                                                       -> Result<T, String> {
+    fn tuple_condition_unify<T: TupleTypeBase + Debug>(&mut self, tuple_ty: T, c: Condition) -> Result<T, String> {
         match c {
             c @ Condition::Call(_) => { return create_error(&tuple_ty, &c); }
             Condition::Items(ref impl_items) => {
@@ -229,24 +209,33 @@ impl TypeSubstitute {
         if ty1.param_types.len() != ty2.param_types.len() {
             return create_error(&ty1, &ty2);
         }
-        let mut new_param_types: Vec<Type> = Vec::with_capacity(ty1.param_types.len());
+        let mut param_types: Vec<Type> = Vec::with_capacity(ty1.param_types.len());
         for (x, y) in ty1.param_types.into_iter().zip(ty2.param_types) {
             let ty = self.unify(x, y)?;
-            new_param_types.push(ty);
+            param_types.push(ty);
         }
-        let new_ret_type = self.unify(ty1.ret_type, ty2.ret_type)?;
-        Ok(FuncType { param_types: new_param_types, ret_type: new_ret_type })
+        let ret_type = self.unify(ty1.ret_type, ty2.ret_type)?;
+        Ok(FuncType { param_types, ret_type })
     }
 
     //タプルの単一化処理
-    fn tuple_unify(&mut self, ty1: TupleType, ty2: TupleType) -> Result<Type, String> {
-        if ty1.element_tys.len() != ty2.element_tys.len() {
+    fn tuple_unify<T: TupleTypeBase + Debug>(&mut self, ty1: T, ty2: T) -> Result<T, String> {
+        if ty1.get_elements_len() != ty2.get_elements_len() {
             return create_error(&ty1, &ty2);
         }
-        for (x, y) in ty1.element_tys.clone().into_iter().zip(ty2.element_tys) {
-            self.unify(x, y)?;
+        for idx in 0..ty1.get_elements_len() {
+            self.unify(ty1.get_elements_at(idx).clone(), ty2.get_elements_at(idx).clone())?;
         }
-        Ok(Type::TupleType(Box::new(ty1)))
+        Ok(ty1)
+    }
+
+    //構造体の単一化処理
+    fn struct_unify(&mut self, ty1: StructType, ty2: StructType) -> Result<Type, String> {
+        if ty1.name != ty2.name {
+            return create_error(&ty1, &ty2);
+        }
+        self.tuple_unify(ty1.ty.clone(), ty2.ty.clone())?;
+        Ok(Type::StructType(Box::new(ty1)))
     }
 
     //ラムダの単一化処理
