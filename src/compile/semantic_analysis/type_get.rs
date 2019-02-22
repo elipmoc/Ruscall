@@ -1,21 +1,22 @@
 use super::super::error::Error;
 use super::super::types::*;
 use super::type_inference::type_substitute::TypeSubstitute;
+use super::type_inference::type_env::TypeEnv;
 use super::mir::*;
 use super::type_inference::assump_env::AssumpEnv;
 
 type TyCheckResult<T> = Result<T, Error>;
 
 trait TypeGet {
-    fn ty_get(&self, &mut TypeSubstitute, assump_env: AssumpEnv) -> TyCheckResult<(AssumpEnv, Qual<Type>)>;
+    fn ty_get(&self, &mut TypeSubstitute, &mut TypeEnv, assump_env: AssumpEnv) -> TyCheckResult<(AssumpEnv, Qual<Type>)>;
 }
 
-fn ty_get_all<Item: TypeGet, T: Iterator<Item=Item>>(iter: T, ty_sub: &mut TypeSubstitute, assump_env: AssumpEnv) -> TyCheckResult<(AssumpEnv, Vec<Qual<Type>>)>
+fn ty_get_all<Item: TypeGet, T: Iterator<Item=Item>>(iter: T, ty_sub: &mut TypeSubstitute, ty_env: &mut TypeEnv, assump_env: AssumpEnv) -> TyCheckResult<(AssumpEnv, Vec<Qual<Type>>)>
 {
     let (assump_env, ty_list) =
         iter.fold(Ok((assump_env, vec![])), |acc, x| {
             let (assump_env, mut ty_list) = acc?;
-            let (assump_env, ty) = x.ty_get(ty_sub, assump_env)?;
+            let (assump_env, ty) = x.ty_get(ty_sub, ty_env, assump_env)?;
             ty_list.push(ty);
             Ok((assump_env, ty_list))
         })?;
@@ -28,7 +29,7 @@ impl ProgramMir {
         //外部関数宣言の型チェック
         let (mut assump, _) =
             ty_get_all(
-                self.ex_dec_func_list.iter(), &mut self.ty_sub, assump,
+                self.ex_dec_func_list.iter(), &mut self.ty_sub, &mut self.ty_env, assump,
             )?;
         {
             self.explicit_func_list.iter()
@@ -44,12 +45,12 @@ impl ProgramMir {
         }
         //関数宣言の型チェック
         let (assump, _) =
-            ty_get_all(self.implicit_func_list.iter().map(|(_, x)| x), &mut self.ty_sub, assump)?;
+            ty_get_all(self.implicit_func_list.iter().map(|(_, x)| x), &mut self.ty_sub, &mut self.ty_env, assump)?;
         //関数定義の型チェック
         let (assump, _) =
-            ty_get_all(self.explicit_func_list.iter().map(|x| x), &mut self.ty_sub, assump)?;
+            ty_get_all(self.explicit_func_list.iter().map(|x| x), &mut self.ty_sub, &mut self.ty_env, assump)?;
         // main関数の型をチェック
-        let main_func_q = assump.global_get(&"main".to_string()).unwrap().clone().fresh_inst(&mut self.ty_sub);
+        let main_func_q = assump.global_get(&"main".to_string()).unwrap().clone().fresh_inst(&mut self.ty_env);
         let main_func_ty = Type::create_func_type(vec![Type::create_tuple_type(vec![])], Type::create_int32());
         self.ty_sub.qual_unify(main_func_q, Qual::new(main_func_ty)).map_err(|msg| Error::new(self.get_func_mir(&"main".to_string()).unwrap().pos, &msg))?;
 
@@ -60,8 +61,8 @@ impl ProgramMir {
 }
 
 impl<'a> TypeGet for &'a ImplicitFunc {
-    fn ty_get(&self, ty_sub: &mut TypeSubstitute, assump: AssumpEnv) -> TyCheckResult<(AssumpEnv, Qual<Type>)> {
-        let (mut assump, q) = (&self.func).ty_get(ty_sub, assump)?;
+    fn ty_get(&self, ty_sub: &mut TypeSubstitute, ty_env: &mut TypeEnv, assump: AssumpEnv) -> TyCheckResult<(AssumpEnv, Qual<Type>)> {
+        let (mut assump, q) = (&self.func).ty_get(ty_sub, ty_env, assump)?;
         let scheme = Scheme::quantify(q.tv_list(), q);
         assump.global_set(self.func.name.clone(), scheme.clone());
         Ok((assump, scheme.get_qual().clone()))
@@ -69,10 +70,10 @@ impl<'a> TypeGet for &'a ImplicitFunc {
 }
 
 impl<'a> TypeGet for &'a ExplicitFunc {
-    fn ty_get(&self, ty_sub: &mut TypeSubstitute, assump: AssumpEnv) -> TyCheckResult<(AssumpEnv, Qual<Type>)> {
+    fn ty_get(&self, ty_sub: &mut TypeSubstitute, ty_env: &mut TypeEnv, assump: AssumpEnv) -> TyCheckResult<(AssumpEnv, Qual<Type>)> {
         match assump.global_get(&self.func.name).unwrap().clone() {
             Scheme::Forall { qual, .. } => {
-                let (mut assump, ty) = (&self.func).ty_get(ty_sub, assump)?;
+                let (mut assump, ty) = (&self.func).ty_get(ty_sub, ty_env, assump)?;
 
                 let ty = Scheme::quantify(ty.t.get_lambda_ty().func_ty.param_types.tv_list(), ty);
                 let mut ty = ty.get_qual().clone().apply(&ty_sub, true);
@@ -89,9 +90,9 @@ impl<'a> TypeGet for &'a ExplicitFunc {
 }
 
 impl<'a> TypeGet for &'a DecFuncMir {
-    fn ty_get(&self, ty_sub: &mut TypeSubstitute, assump: AssumpEnv) -> TyCheckResult<(AssumpEnv, Qual<Type>)> {
+    fn ty_get(&self, ty_sub: &mut TypeSubstitute, ty_env: &mut TypeEnv, assump: AssumpEnv) -> TyCheckResult<(AssumpEnv, Qual<Type>)> {
         let func_type_q = self.ty.clone();
-        let func_q = Qual::new(ty_sub.ty_env.global_get(self.name.clone()));
+        let func_q = Qual::new(ty_env.global_get(self.name.clone()));
         let q = ty_sub.qual_unify(
             func_q,
             Qual {
@@ -104,20 +105,20 @@ impl<'a> TypeGet for &'a DecFuncMir {
 }
 
 impl<'a> TypeGet for &'a FuncMir {
-    fn ty_get(&self, ty_sub: &mut TypeSubstitute, assump: AssumpEnv) -> TyCheckResult<(AssumpEnv, Qual<Type>)> {
-        ty_sub.ty_env.in_nest();
+    fn ty_get(&self, ty_sub: &mut TypeSubstitute, ty_env: &mut TypeEnv, assump: AssumpEnv) -> TyCheckResult<(AssumpEnv, Qual<Type>)> {
+        ty_env.in_nest();
         let params_ty: Vec<Type>
             = (0..self.params_len)
             .map(|id| {
                 let id = self.params_len - id - 1;
-                let ty = ty_sub.ty_env.get(id.to_string());
+                let ty = ty_env.get(id.to_string());
                 ty
             }).collect();
-        let (assump, ret_q) = (&self.body).ty_get(ty_sub, assump)?;
+        let (assump, ret_q) = (&self.body).ty_get(ty_sub, ty_env, assump)?;
         let func_q =
             match assump.global_get(&self.name) {
                 Some(scheme) => scheme.get_qual().clone(),
-                None => Qual::new(ty_sub.ty_env.global_get(self.name.clone()))
+                None => Qual::new(ty_env.global_get(self.name.clone()))
             };
 
         let q = ty_sub.qual_unify(
@@ -130,48 +131,48 @@ impl<'a> TypeGet for &'a FuncMir {
                 ),
             },
         ).map_err(|msg| Error::new(self.pos, &msg))?;
-        ty_sub.ty_env.out_nest();
+        ty_env.out_nest();
         Ok((assump, q))
     }
 }
 
 
 impl<'a> TypeGet for &'a ExprMir {
-    fn ty_get(&self, ty_sub: &mut TypeSubstitute, assump: AssumpEnv) -> TyCheckResult<(AssumpEnv, Qual<Type>)> {
+    fn ty_get(&self, ty_sub: &mut TypeSubstitute, ty_env: &mut TypeEnv, assump: AssumpEnv) -> TyCheckResult<(AssumpEnv, Qual<Type>)> {
         match self {
-            ExprMir::NumMir(x) => x.ty_get(ty_sub, assump),
-            ExprMir::BoolMir(x) => x.ty_get(ty_sub, assump),
-            ExprMir::IfMir(x) => x.ty_get(ty_sub, assump),
-            ExprMir::CallMir(x) => x.ty_get(ty_sub, assump),
-            ExprMir::OpMir(x) => x.ty_get(ty_sub, assump),
-            ExprMir::VariableMir(x) => x.ty_get(ty_sub, assump),
-            ExprMir::GlobalVariableMir(x) => x.ty_get(ty_sub, assump),
-            ExprMir::TupleMir(x) => x.ty_get(ty_sub, assump),
-            ExprMir::TupleStructMir(x) => x.ty_get(ty_sub, assump),
-            ExprMir::IndexPropertyMir(x) => x.ty_get(ty_sub, assump),
-            ExprMir::NamePropertyMir(x) => x.ty_get(ty_sub, assump),
-            ExprMir::LambdaMir(x) => x.ty_get(ty_sub, assump)
+            ExprMir::NumMir(x) => x.ty_get(ty_sub, ty_env, assump),
+            ExprMir::BoolMir(x) => x.ty_get(ty_sub, ty_env, assump),
+            ExprMir::IfMir(x) => x.ty_get(ty_sub, ty_env, assump),
+            ExprMir::CallMir(x) => x.ty_get(ty_sub, ty_env, assump),
+            ExprMir::OpMir(x) => x.ty_get(ty_sub, ty_env, assump),
+            ExprMir::VariableMir(x) => x.ty_get(ty_sub, ty_env, assump),
+            ExprMir::GlobalVariableMir(x) => x.ty_get(ty_sub, ty_env, assump),
+            ExprMir::TupleMir(x) => x.ty_get(ty_sub, ty_env, assump),
+            ExprMir::TupleStructMir(x) => x.ty_get(ty_sub, ty_env, assump),
+            ExprMir::IndexPropertyMir(x) => x.ty_get(ty_sub, ty_env, assump),
+            ExprMir::NamePropertyMir(x) => x.ty_get(ty_sub, ty_env, assump),
+            ExprMir::LambdaMir(x) => x.ty_get(ty_sub, ty_env, assump)
         }
     }
 }
 
 impl TypeGet for NumMir {
-    fn ty_get(&self, _ty_sub: &mut TypeSubstitute, assump: AssumpEnv) -> TyCheckResult<(AssumpEnv, Qual<Type>)> {
+    fn ty_get(&self, _ty_sub: &mut TypeSubstitute, _ty_env: &mut TypeEnv, assump: AssumpEnv) -> TyCheckResult<(AssumpEnv, Qual<Type>)> {
         Ok((assump, Qual::new(Type::create_int32())))
     }
 }
 
 impl TypeGet for BoolMir {
-    fn ty_get(&self, _ty_sub: &mut TypeSubstitute, assump: AssumpEnv) -> TyCheckResult<(AssumpEnv, Qual<Type>)> {
+    fn ty_get(&self, _ty_sub: &mut TypeSubstitute, _ty_env: &mut TypeEnv, assump: AssumpEnv) -> TyCheckResult<(AssumpEnv, Qual<Type>)> {
         Ok((assump, Qual::new(Type::create_bool())))
     }
 }
 
 impl TypeGet for IfMir {
-    fn ty_get(&self, ty_sub: &mut TypeSubstitute, assump: AssumpEnv) -> TyCheckResult<(AssumpEnv, Qual<Type>)> {
-        let (assump, cond_ty) = (&self.cond).ty_get(ty_sub, assump)?;
-        let (assump, t_expr_ty) = (&self.t_expr).ty_get(ty_sub, assump)?;
-        let (assump, f_expr_ty) = (&self.f_expr).ty_get(ty_sub, assump)?;
+    fn ty_get(&self, ty_sub: &mut TypeSubstitute, ty_env: &mut TypeEnv, assump: AssumpEnv) -> TyCheckResult<(AssumpEnv, Qual<Type>)> {
+        let (assump, cond_ty) = (&self.cond).ty_get(ty_sub, ty_env, assump)?;
+        let (assump, t_expr_ty) = (&self.t_expr).ty_get(ty_sub, ty_env, assump)?;
+        let (assump, f_expr_ty) = (&self.f_expr).ty_get(ty_sub, ty_env, assump)?;
         let q1 = ty_sub.qual_unify(cond_ty, Qual::new(Type::create_bool()))
             .map_err(|msg| Error::new(self.pos, &msg))?;
         let q2 = ty_sub.qual_unify(t_expr_ty, f_expr_ty)
@@ -187,15 +188,15 @@ impl TypeGet for IfMir {
 }
 
 impl TypeGet for CallMir {
-    fn ty_get(&self, ty_sub: &mut TypeSubstitute, assump: AssumpEnv) -> TyCheckResult<(AssumpEnv, Qual<Type>)> {
+    fn ty_get(&self, ty_sub: &mut TypeSubstitute, ty_env: &mut TypeEnv, assump: AssumpEnv) -> TyCheckResult<(AssumpEnv, Qual<Type>)> {
         let (assump, params_qs) =
-            ty_get_all(self.params.iter(), ty_sub, assump)?;
+            ty_get_all(self.params.iter(), ty_sub, ty_env, assump)?;
         let (pss, param_types) = Qual::split(params_qs);
         let ret_type = Type::TyVar(self.ty_id.clone());
-        let (assump, func_q) = (&self.func).ty_get(ty_sub, assump)?;
+        let (assump, func_q) = (&self.func).ty_get(ty_sub, ty_env, assump)?;
         let func_q = ty_sub.qual_add_condition_unify(func_q, Condition::Call(Box::new(FuncType { param_types, ret_type })))
             .map_err(|msg| Error::new(self.func.get_pos(), &msg))?;
-        let ret_ty = ty_sub.look_up(&self.ty_id,false);
+        let ret_ty = ty_sub.look_up(&self.ty_id, false);
         let ps = ty_sub.predss_merge_unify(pss)
             .map_err(|msg| Error::new(self.func.get_pos(), &msg))?;
         let ps = ty_sub.preds_merge_unify(ps, func_q.ps)
@@ -205,19 +206,19 @@ impl TypeGet for CallMir {
 }
 
 impl TypeGet for OpMir {
-    fn ty_get(&self, ty_sub: &mut TypeSubstitute, assump: AssumpEnv) -> TyCheckResult<(AssumpEnv, Qual<Type>)> {
+    fn ty_get(&self, ty_sub: &mut TypeSubstitute, ty_env: &mut TypeEnv, assump: AssumpEnv) -> TyCheckResult<(AssumpEnv, Qual<Type>)> {
         let ret_ty = match &(self.op) as &str {
             "==" => Type::create_bool(),
             _ => Type::create_int32(),
         };
 
         let (assump, l_expr_ty) = (&self.l_expr)
-            .ty_get(ty_sub, assump)?;
+            .ty_get(ty_sub, ty_env, assump)?;
         let l_q = ty_sub.qual_unify(l_expr_ty, Qual::new(Type::create_int32()))
             .map_err(|msg| Error::new(self.l_expr.get_pos(), &msg))?;
 
         let (assump, r_expr_ty) = (&self.r_expr)
-            .ty_get(ty_sub, assump)?;
+            .ty_get(ty_sub, ty_env, assump)?;
         let r_q = ty_sub.qual_unify(r_expr_ty, Qual::new(Type::create_int32()))
             .map_err(|msg| Error::new(self.r_expr.get_pos(), &msg))?;
         let ps = ty_sub.preds_merge_unify(r_q.ps, l_q.ps)
@@ -227,8 +228,8 @@ impl TypeGet for OpMir {
 }
 
 impl<'a> TypeGet for &'a VariableMir {
-    fn ty_get(&self, ty_sub: &mut TypeSubstitute, assump: AssumpEnv) -> TyCheckResult<(AssumpEnv, Qual<Type>)> {
-        let q = Qual::new(ty_sub.ty_env.get(self.id.to_string()));
+    fn ty_get(&self, ty_sub: &mut TypeSubstitute, ty_env: &mut TypeEnv, assump: AssumpEnv) -> TyCheckResult<(AssumpEnv, Qual<Type>)> {
+        let q = Qual::new(ty_env.get(self.id.to_string()));
         let q = ty_sub.qual_unify(q, Qual::new(Type::TyVar(self.ty_id.clone())))
             .map_err(|msg| Error::new(self.pos, &msg))?;
         Ok((assump, q))
@@ -236,16 +237,16 @@ impl<'a> TypeGet for &'a VariableMir {
 }
 
 impl TypeGet for GlobalVariableMir {
-    fn ty_get(&self, ty_sub: &mut TypeSubstitute, assump: AssumpEnv) -> TyCheckResult<(AssumpEnv, Qual<Type>)> {
+    fn ty_get(&self, ty_sub: &mut TypeSubstitute, ty_env: &mut TypeEnv, assump: AssumpEnv) -> TyCheckResult<(AssumpEnv, Qual<Type>)> {
         match assump.global_get(&self.id).cloned() {
             Some(scheme) => {
-                let q = scheme.fresh_inst(ty_sub);
+                let q = scheme.fresh_inst(ty_env);
                 let q = ty_sub.qual_unify(q, Qual::new(Type::TyVar(self.ty_id.clone())))
                     .map_err(|msg| Error::new(self.pos, &msg))?;
                 Ok((assump, q))
             }
             None => {
-                let q = Qual::new(ty_sub.ty_env.global_get(self.id.clone()));
+                let q = Qual::new(ty_env.global_get(self.id.clone()));
                 let q = ty_sub.qual_unify(q, Qual::new(Type::TyVar(self.ty_id.clone())))
                     .map_err(|msg| Error::new(self.pos, &msg))?;
                 Ok((assump, q))
@@ -255,9 +256,9 @@ impl TypeGet for GlobalVariableMir {
 }
 
 impl TypeGet for TupleMir {
-    fn ty_get(&self, ty_sub: &mut TypeSubstitute, assump: AssumpEnv) -> TyCheckResult<(AssumpEnv, Qual<Type>)> {
+    fn ty_get(&self, ty_sub: &mut TypeSubstitute, ty_env: &mut TypeEnv, assump: AssumpEnv) -> TyCheckResult<(AssumpEnv, Qual<Type>)> {
         let (assump, elements_qs) =
-            ty_get_all(self.elements.iter(), ty_sub, assump)?;
+            ty_get_all(self.elements.iter(), ty_sub, ty_env, assump)?;
         let (pss, element_tys) = Qual::split(elements_qs);
         let tuple_ty = Type::TupleType(Box::new(TupleType { element_tys }));
         let ps = ty_sub.predss_merge_unify(pss)
@@ -270,8 +271,8 @@ impl TypeGet for TupleMir {
 }
 
 impl TypeGet for TupleStructMir {
-    fn ty_get(&self, ty_sub: &mut TypeSubstitute, assump: AssumpEnv) -> TyCheckResult<(AssumpEnv, Qual<Type>)> {
-        let (assump, tuple_q) = self.tuple.ty_get(ty_sub, assump)?;
+    fn ty_get(&self, ty_sub: &mut TypeSubstitute, ty_env: &mut TypeEnv, assump: AssumpEnv) -> TyCheckResult<(AssumpEnv, Qual<Type>)> {
+        let (assump, tuple_q) = self.tuple.ty_get(ty_sub, ty_env, assump)?;
         let internal_ty = match self.ty.ty {
             StructInternalType::RecordType(ref x) => Type::TupleType(Box::new(TupleType {
                 element_tys: x.element_tys.iter()
@@ -287,26 +288,26 @@ impl TypeGet for TupleStructMir {
 }
 
 impl TypeGet for LambdaMir {
-    fn ty_get(&self, ty_sub: &mut TypeSubstitute, assump: AssumpEnv) -> TyCheckResult<(AssumpEnv, Qual<Type>)> {
+    fn ty_get(&self, ty_sub: &mut TypeSubstitute, ty_env: &mut TypeEnv, assump: AssumpEnv) -> TyCheckResult<(AssumpEnv, Qual<Type>)> {
         let (assump, envs_qs) =
-            ty_get_all(self.env.iter(), ty_sub, assump)?;
-        ty_sub.ty_env.in_nest();
+            ty_get_all(self.env.iter(), ty_sub, ty_env, assump)?;
+        ty_env.in_nest();
         let params_ty: Vec<Type> =
             (0..self.params_len)
                 .map(|id| {
                     let id = self.params_len - id - 1;
-                    let ty = ty_sub.ty_env.get((id).to_string());
+                    let ty = ty_env.get((id).to_string());
                     ty
                 }).collect();
         let func_ty = match assump.global_get(&self.func_name) {
             Some(scheme) => {
-                scheme.clone().fresh_inst(ty_sub)
+                scheme.clone().fresh_inst(ty_env)
             }
-            None => Qual::new(ty_sub.ty_env.global_get(self.func_name.clone()))
+            None => Qual::new(ty_env.global_get(self.func_name.clone()))
         };
         let func_ty = ty_sub.qual_unify(func_ty, Qual::new(Type::TyVar(self.func_id.clone())))
             .map_err(|msg| Error::new(self.pos, &msg))?;
-        ty_sub.ty_env.out_nest();
+        ty_env.out_nest();
         let mut new_envs_qs = Vec::with_capacity(envs_qs.len());
         {
             let iter = envs_qs.into_iter().zip(&params_ty);
@@ -319,7 +320,7 @@ impl TypeGet for LambdaMir {
         let (pss, envs_ty) = Qual::split(new_envs_qs);
         let ps = ty_sub.predss_merge_unify(pss)
             .map_err(|msg| Error::new(self.pos, &msg))?;
-        let ret_type = ty_sub.ty_env.no_name_get();
+        let ret_type = ty_env.no_name_get();
         let func_ty2 = FuncType { param_types: params_ty, ret_type };
         let func_q = ty_sub.qual_unify(func_ty, Qual::new(Type::create_func_type(func_ty2.param_types, func_ty2.ret_type)))
             .map_err(|msg| Error::new(self.pos, &msg))?;
@@ -352,8 +353,8 @@ impl TypeGet for LambdaMir {
 
 
 impl TypeGet for IndexPropertyMir {
-    fn ty_get(&self, ty_sub: &mut TypeSubstitute, assump: AssumpEnv) -> TyCheckResult<(AssumpEnv, Qual<Type>)> {
-        let (assump, expr_ty) = (&self.expr).ty_get(ty_sub, assump)?;
+    fn ty_get(&self, ty_sub: &mut TypeSubstitute, ty_env: &mut TypeEnv, assump: AssumpEnv) -> TyCheckResult<(AssumpEnv, Qual<Type>)> {
+        let (assump, expr_ty) = (&self.expr).ty_get(ty_sub, ty_env, assump)?;
         let property_ty =
             Type::TyVar(
                 self.ty_id.clone(),
@@ -368,8 +369,8 @@ impl TypeGet for IndexPropertyMir {
 }
 
 impl TypeGet for NamePropertyMir {
-    fn ty_get(&self, ty_sub: &mut TypeSubstitute, assump: AssumpEnv) -> TyCheckResult<(AssumpEnv, Qual<Type>)> {
-        let (assump, expr_ty) = (&self.expr).ty_get(ty_sub, assump)?;
+    fn ty_get(&self, ty_sub: &mut TypeSubstitute, ty_env: &mut TypeEnv, assump: AssumpEnv) -> TyCheckResult<(AssumpEnv, Qual<Type>)> {
+        let (assump, expr_ty) = (&self.expr).ty_get(ty_sub, ty_env, assump)?;
         let property_ty =
             Type::TyVar(
                 self.ty_id.clone(),

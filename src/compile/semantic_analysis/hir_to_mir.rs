@@ -3,7 +3,7 @@ use super::mir::*;
 use super::super::ir::hir::*;
 use super::variable_table::VariableTable;
 use super::super::types::*;
-use super::type_inference::type_substitute::TypeSubstitute;
+use super::type_inference::type_env::TypeEnv;
 use super::Error;
 use super::type_variable_table::TypeVariableTable;
 use std::collections::HashMap;
@@ -71,7 +71,7 @@ impl DefFuncAST {
         match dec_func_list.remove(&func_ir.name) {
             Some(x) => {
                 let mut ty_var_table = TypeVariableTable::new();
-                let func_q = x.ty.to_ty(struct_list, &mut ty_var_table, &mut program_ir.ty_sub);
+                let func_q = x.ty.to_ty(struct_list, &mut ty_var_table, &mut program_ir.ty_env);
                 program_ir.explicit_func_list.push(ExplicitFunc {
                     func: func_ir,
                     scheme: Scheme::Forall { qual: Qual { ps: func_q.ps, t: Type::create_func_type2(func_q.t) }, tgen_count: 0 },
@@ -91,7 +91,7 @@ impl DecFuncAST {
             name: self.name,
             extern_flag: self.extern_flag,
             pos: self.pos,
-            ty: self.ty.to_ty(struct_list, &mut ty_var_table, &mut program_ir.ty_sub),
+            ty: self.ty.to_ty(struct_list, &mut ty_var_table, &mut program_ir.ty_env),
         };
         match self.extern_flag {
             true => {
@@ -104,10 +104,10 @@ impl DecFuncAST {
 }
 
 impl FuncTypeAST {
-    fn to_ty(self, struct_list: &HashMap<String, DecStructHir>, ty_var_table: &mut TypeVariableTable, ty_sub: &mut TypeSubstitute) -> Qual<FuncType> {
-        let ret_q = self.ret_ty.to_ty(struct_list, ty_var_table, ty_sub);
+    fn to_ty(self, struct_list: &HashMap<String, DecStructHir>, ty_var_table: &mut TypeVariableTable, ty_env: &mut TypeEnv) -> Qual<FuncType> {
+        let ret_q = self.ret_ty.to_ty(struct_list, ty_var_table, ty_env);
         let param_qs: Vec<_> = self.params_ty.into_iter()
-            .map(|x| x.to_ty(struct_list, ty_var_table, ty_sub)).collect();
+            .map(|x| x.to_ty(struct_list, ty_var_table, ty_env)).collect();
         let (pss, param_ts) = Qual::split(param_qs);
         let mut ps = pss.into_iter().fold(HashMap::new(), |mut acc, ps| {
             acc.extend(ps.into_iter());
@@ -125,9 +125,9 @@ impl FuncTypeAST {
 }
 
 impl TupleTypeAST {
-    fn to_ty(self, struct_list: &HashMap<String, DecStructHir>, ty_var_table: &mut TypeVariableTable, ty_sub: &mut TypeSubstitute) -> TupleType {
+    fn to_ty(self, struct_list: &HashMap<String, DecStructHir>, ty_var_table: &mut TypeVariableTable, ty_env: &mut TypeEnv) -> TupleType {
         let element_qs: Vec<_> = self.elements_ty.into_iter()
-            .map(|x| x.to_ty(struct_list, ty_var_table, ty_sub)).collect();
+            .map(|x| x.to_ty(struct_list, ty_var_table, ty_env)).collect();
         let (_pss, element_ts) = Qual::split(element_qs);
         TupleType {
             element_tys: element_ts
@@ -136,10 +136,10 @@ impl TupleTypeAST {
 }
 
 impl RecordTypeAST {
-    fn to_ty(self, struct_list: &HashMap<String, DecStructHir>, ty_var_table: &mut TypeVariableTable, ty_sub: &mut TypeSubstitute) -> RecordType {
+    fn to_ty(self, struct_list: &HashMap<String, DecStructHir>, ty_var_table: &mut TypeVariableTable, ty_env: &mut TypeEnv) -> RecordType {
         let (names, element_qs): (Vec<_>, Vec<_>) = self.elements_ty.into_iter()
             .map(|(name, type_ast)|
-                (name, type_ast.to_ty(struct_list, ty_var_table, ty_sub))
+                (name, type_ast.to_ty(struct_list, ty_var_table, ty_env))
             ).unzip();
         let (_pss, element_ts) = Qual::split(element_qs);
         RecordType {
@@ -149,36 +149,36 @@ impl RecordTypeAST {
 }
 
 impl StructTypeAST {
-    fn to_ty(self, struct_list: &HashMap<String, DecStructHir>, ty_var_table: &mut TypeVariableTable, ty_sub: &mut TypeSubstitute) -> StructType {
+    fn to_ty(self, struct_list: &HashMap<String, DecStructHir>, ty_var_table: &mut TypeVariableTable, ty_env: &mut TypeEnv) -> StructType {
         let internal_ty =
             match self.ty {
-                StructInternalTypeAST::TupleTypeAST(x) => StructInternalType::TupleType(x.to_ty(struct_list, ty_var_table, ty_sub)),
-                StructInternalTypeAST::RecordTypeAST(x) => StructInternalType::RecordType(x.to_ty(struct_list, ty_var_table, ty_sub))
+                StructInternalTypeAST::TupleTypeAST(x) => StructInternalType::TupleType(x.to_ty(struct_list, ty_var_table, ty_env)),
+                StructInternalTypeAST::RecordTypeAST(x) => StructInternalType::RecordType(x.to_ty(struct_list, ty_var_table, ty_env))
             };
         StructType { ty: internal_ty, name: self.name }
     }
 }
 
 impl TypeAST {
-    fn to_ty(self, struct_list: &HashMap<String, DecStructHir>, ty_var_table: &mut TypeVariableTable, ty_sub: &mut TypeSubstitute) -> Qual<Type> {
+    fn to_ty(self, struct_list: &HashMap<String, DecStructHir>, ty_var_table: &mut TypeVariableTable, ty_env: &mut TypeEnv) -> Qual<Type> {
         match self {
             TypeAST::Type(x) => Qual::new(x),
             TypeAST::FuncTypeAST(x) => {
-                let ty_id = ty_sub.ty_env.fresh_type_id();
-                let func_q = x.to_ty(struct_list, ty_var_table, ty_sub);
+                let ty_id = ty_env.fresh_type_id();
+                let func_q = x.to_ty(struct_list, ty_var_table, ty_env);
                 let cond = Condition::Call(Box::new(func_q.t));
                 let mut ps = func_q.ps;
                 ps.insert(Type::TyVar(ty_id.clone()), Pred { ty: Type::TyVar(ty_id.clone()), cond });
                 Qual { t: Type::TyVar(ty_id), ps }
             }
             TypeAST::TupleTypeAST(x) => Qual::new(Type::TupleType(
-                Box::new(x.to_ty(struct_list, ty_var_table, ty_sub))
+                Box::new(x.to_ty(struct_list, ty_var_table, ty_env))
             )),
-            TypeAST::TypeVarName(ty_name) => Qual::new(ty_var_table.get_ty(ty_name, ty_sub)),
-            TypeAST::StructTypeAST(x) => Qual::new(Type::StructType(Box::new(x.to_ty(struct_list, ty_var_table, ty_sub)))),
+            TypeAST::TypeVarName(ty_name) => Qual::new(ty_var_table.get_ty(ty_name, ty_env)),
+            TypeAST::StructTypeAST(x) => Qual::new(Type::StructType(Box::new(x.to_ty(struct_list, ty_var_table, ty_env)))),
             TypeAST::IdTypeAST(id) => {
                 if struct_list.contains_key(&id) {
-                    Qual::new(Type::StructType(Box::new((&struct_list[&id]).ty.clone().to_ty(struct_list, ty_var_table, ty_sub))))
+                    Qual::new(Type::StructType(Box::new((&struct_list[&id]).ty.clone().to_ty(struct_list, ty_var_table, ty_env))))
                 } else {
                     panic!("実装めんどいな")
                 }
@@ -201,7 +201,7 @@ impl ExprAST {
             ExprAST::IfAST(x) => x.to_mir(program_ir, struct_list, var_table, lambda_count),
             ExprAST::OpAST(x) => x.to_mir(program_ir, struct_list, var_table, lambda_count),
             ExprAST::VariableAST(x) => {
-                match var_table.get_variable_ir(x.clone(), &mut program_ir.ty_sub) {
+                match var_table.get_variable_ir(x.clone(), &mut program_ir.ty_env) {
                     Some(x) => Ok(x),
                     _ => Err(Error::new(x.pos, "not found variable")),
                 }
@@ -231,7 +231,7 @@ impl IfAST {
             self.t_expr.to_mir(program_ir, struct_list, var_table, lambda_count)?,
             self.f_expr.to_mir(program_ir, struct_list, var_table, lambda_count)?,
             self.pos,
-            program_ir.ty_sub.ty_env.fresh_type_id(),
+            program_ir.ty_env.fresh_type_id(),
         ))
     }
 }
@@ -267,7 +267,7 @@ impl FuncCallAST {
         Ok(ExprMir::create_call_mir(
             func?,
             vec![param],
-            program_ir.ty_sub.ty_env.fresh_type_id(),
+            program_ir.ty_env.fresh_type_id(),
         ))
     }
 }
@@ -286,7 +286,7 @@ impl TupleAST {
                 .map(|x| x.to_mir(program_ir, struct_list, var_table, lambda_count))
                 .collect::<AstToIrResult<Vec<ExprMir>>>()?,
             self.pos,
-            program_ir.ty_sub.ty_env.fresh_type_id(),
+            program_ir.ty_env.fresh_type_id(),
         ))
     }
 }
@@ -306,8 +306,8 @@ impl TupleStructAST {
                 .map(|x| x.to_mir(program_ir, struct_list, var_table, lambda_count))
                 .collect::<AstToIrResult<Vec<ExprMir>>>()?,
             self.tuple.pos,
-            self.ty.to_ty(struct_list, &mut ty_var_table, &mut program_ir.ty_sub),
-            program_ir.ty_sub.ty_env.fresh_type_id(),
+            self.ty.to_ty(struct_list, &mut ty_var_table, &mut program_ir.ty_env),
+            program_ir.ty_env.fresh_type_id(),
         ))
     }
 }
@@ -324,7 +324,7 @@ impl LambdaAST {
             .env
             .iter()
             .map(
-                |x| match var_table.get_variable_ir(x.clone(), &mut program_ir.ty_sub) {
+                |x| match var_table.get_variable_ir(x.clone(), &mut program_ir.ty_env) {
                     Some(ExprMir::VariableMir(x)) => Ok(x),
                     _ => Err(Error::new(x.pos, "Lambda capture not Local Variable")),
                 },
@@ -353,8 +353,8 @@ impl LambdaAST {
         Ok(ExprMir::LambdaMir(Box::new(LambdaMir {
             env,
             func_name: lambda_name,
-            ty_id: program_ir.ty_sub.ty_env.fresh_type_id(),
-            func_id: program_ir.ty_sub.ty_env.fresh_type_id(),
+            ty_id: program_ir.ty_env.fresh_type_id(),
+            func_id: program_ir.ty_env.fresh_type_id(),
             pos: self.pos,
             params_len,
         })))
@@ -373,7 +373,7 @@ impl IndexPropertyAST {
             ExprMir::create_index_property_mir(
                 self.expr.to_mir(program_ir, struct_list, var_table, lambda_count)?,
                 self.pos,
-                program_ir.ty_sub.ty_env.fresh_type_id(),
+                program_ir.ty_env.fresh_type_id(),
                 self.index,
             )
         )
@@ -392,7 +392,7 @@ impl NamePropertyAST {
             ExprMir::create_name_property_mir(
                 self.expr.to_mir(program_ir, struct_list, var_table, lambda_count)?,
                 self.pos,
-                program_ir.ty_sub.ty_env.fresh_type_id(),
+                program_ir.ty_env.fresh_type_id(),
                 self.property_name,
             )
         )
@@ -402,6 +402,7 @@ impl NamePropertyAST {
 #[test]
 fn ast_to_ir_test() {
     use super::type_inference::type_substitute::TypeSubstitute;
+    use super::type_inference::type_env::TypeEnv;
     use combine::stream::state::SourcePosition;
     use compile::types::types::TypeId;
     let ast = ProgramAST {
@@ -433,6 +434,7 @@ fn ast_to_ir_test() {
         implicit_func_list: func_list,
         ex_dec_func_list: vec![],
         ty_sub: TypeSubstitute::new(),
+        ty_env: TypeEnv::new(),
     };
     let ir2 = ast.to_hir().unwrap().to_mir().unwrap();
     assert_eq!(ir2.implicit_func_list, ir.implicit_func_list);

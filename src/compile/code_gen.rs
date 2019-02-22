@@ -4,6 +4,7 @@ use self::inkwell::*;
 use self::inkwell::{values::BasicValue, values::AnyValue, types::BasicType, types::AnyType};
 use super::ir::mir;
 use super::semantic_analysis::type_inference::type_substitute::TypeSubstitute;
+use super::semantic_analysis::type_inference::type_env::TypeEnv;
 use super::semantic_analysis::type_inference::assump_env::AssumpEnv;
 use super::types::types::*;
 use std::collections::hash_map::HashMap;
@@ -37,10 +38,11 @@ impl mir::ProgramMir {
         let module = module::Module::create(file_name);
 
         let mut ty_sub = self.ty_sub;
+        let mut ty_env= self.ty_env;
         //外部関数宣言のコード化
         self.ex_dec_func_list
             .into_iter()
-            .for_each(|x| ex_func_gen(x, &module, &mut ty_sub));
+            .for_each(|x| ex_func_gen(x, &module, &mut ty_sub, &mut ty_env));
 
         let main_func = match self.implicit_func_list.get("main") {
             None => &self.explicit_func_list.iter().find(|x| x.func.name == "main").unwrap().func,
@@ -98,9 +100,9 @@ fn add_function(name: &String, ty: &Type, module: &module::Module, no_mangle: bo
     module.add_function(&mangled_name, ty.to_llvm_any_type(false).as_any_type_enum().into_function_type(), Some(module::Linkage::External))
 }
 
-fn ex_func_gen(dec_func_ir: mir::DecFuncMir, module: &module::Module, ty_sub: &mut TypeSubstitute) {
+fn ex_func_gen(dec_func_ir: mir::DecFuncMir, module: &module::Module, ty_sub: &mut TypeSubstitute, ty_env: &mut TypeEnv) {
     use compile::types::show_type::ShowType;
-    let func_id_type = ty_sub.ty_env.global_get(dec_func_ir.name.clone());
+    let func_id_type = ty_env.global_get(dec_func_ir.name.clone());
     match ty_sub.type_look_up(&func_id_type, false) {
         Type::LambdaType(ty) =>
             add_function(&dec_func_ir.name, &Type::LambdaType(ty.clone()), module, true),

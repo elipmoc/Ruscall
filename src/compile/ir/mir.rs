@@ -2,6 +2,7 @@ use combine::stream::state::SourcePosition;
 use super::ast::*;
 use super::super::types::*;
 use super::super::semantic_analysis::type_inference::type_substitute::TypeSubstitute;
+use super::super::semantic_analysis::type_inference::type_env::TypeEnv;
 use indexmap::IndexMap;
 
 #[derive(Debug, PartialEq)]
@@ -9,10 +10,9 @@ pub struct ProgramMir {
     //関数定義のリスト
     pub implicit_func_list: IndexMap<String, ImplicitFunc>,
     pub explicit_func_list: Vec<ExplicitFunc>,
-
     pub ex_dec_func_list: Vec<DecFuncMir>,
-
     pub ty_sub: TypeSubstitute,
+    pub ty_env: TypeEnv,
 
 }
 
@@ -23,6 +23,7 @@ impl ProgramMir {
             explicit_func_list: vec![],
             ex_dec_func_list: vec![],
             ty_sub: TypeSubstitute::new(),
+            ty_env: TypeEnv::new(),
         }
     }
     pub fn get_func_mir(&self, name: &String) -> Option<&FuncMir> {
