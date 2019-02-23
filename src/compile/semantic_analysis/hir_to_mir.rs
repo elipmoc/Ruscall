@@ -74,7 +74,7 @@ impl DefFuncAST {
                 let func_q = x.ty.to_ty(struct_list, &mut ty_var_table, &mut program_ir.ty_env);
                 program_ir.explicit_func_list.push(ExplicitFunc {
                     func: func_ir,
-                    scheme: Scheme::Forall { qual: Qual { ps: func_q.ps, t: Type::create_func_type2(func_q.t) }, tgen_count: 0 },
+                    scheme: Scheme::Forall { qual: Qual { ps: func_q.ps, t: Type::TApp(Box::new(func_q.t)) }, tgen_count: 0 },
                 })
             }
             None => { program_ir.implicit_func_list.insert(func_ir.name.clone(), ImplicitFunc { func: func_ir }); }
@@ -104,7 +104,7 @@ impl DecFuncAST {
 }
 
 impl FuncTypeAST {
-    fn to_ty(self, struct_list: &HashMap<String, DecStructHir>, ty_var_table: &mut TypeVariableTable, ty_env: &mut TypeEnv) -> Qual<FuncType> {
+    fn to_ty(self, struct_list: &HashMap<String, DecStructHir>, ty_var_table: &mut TypeVariableTable, ty_env: &mut TypeEnv) -> Qual<TApp> {
         let ret_q = self.ret_ty.to_ty(struct_list, ty_var_table, ty_env);
         let param_qs: Vec<_> = self.params_ty.into_iter()
             .map(|x| x.to_ty(struct_list, ty_var_table, ty_env)).collect();
@@ -115,10 +115,7 @@ impl FuncTypeAST {
         });
         ps.extend(ret_q.ps.into_iter());
         Qual {
-            t: FuncType {
-                ret_type: ret_q.t,
-                param_types: param_ts,
-            },
+            t: Type::create_func_type(param_ts, ret_q.t).to_func_ty(),
             ps: Preds(ps),
         }
     }
@@ -351,10 +348,8 @@ impl LambdaAST {
             }
         });
         Ok(ExprMir::LambdaMir(Box::new(LambdaMir {
-            env,
             func_name: lambda_name,
             ty_id: program_ir.ty_env.fresh_type_id(),
-            func_id: program_ir.ty_env.fresh_type_id(),
             pos: self.pos,
             params_len,
         })))

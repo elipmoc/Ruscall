@@ -219,18 +219,16 @@ pub struct CallMir {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct LambdaMir {
-    pub env: Vec<VariableMir>,
     pub func_name: String,
     pub params_len: usize,
     pub pos: SourcePosition,
     pub ty_id: TypeId,
-    pub func_id: TypeId,
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct DecFuncMir {
     pub name: String,
-    pub ty: Qual<FuncType>,
+    pub ty: Qual<TApp>,
     pub extern_flag: bool,
     pub pos: SourcePosition,
 }

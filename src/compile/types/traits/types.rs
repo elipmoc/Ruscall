@@ -66,14 +66,7 @@ impl Types for Type {
                     StructInternalType::RecordType(record_ty) => record_ty.element_tys.tv_list()
                 }
             }
-            LambdaType(lambda_ty) => {
-                let mut tv = match &lambda_ty.env_ty {
-                    Some(tuple_ty) => tuple_ty.element_tys.tv_list(),
-                    None => HashSet::new()
-                };
-                tv.extend(lambda_ty.func_ty.tv_list());
-                tv
-            }
+            TApp(fn_ty) => fn_ty.tv_list()
         }
     }
 
@@ -82,10 +75,10 @@ impl Types for Type {
     }
 }
 
-impl Types for FuncType {
+impl Types for TApp {
     fn tv_list(&self) -> HashSet<TypeId> {
-        let mut tv = self.param_types.tv_list();
-        tv.extend(self.ret_type.tv_list());
+        let mut tv = self.0.tv_list();
+        tv.extend(self.1.tv_list());
         tv
     }
     fn apply(self, ty_sub: &TypeSubstitute, inst_flag: bool) -> Self {

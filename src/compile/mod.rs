@@ -22,8 +22,12 @@ pub fn compile(input_file_name: &str, output_file_name: &str) -> Result<(), Stri
 }
 
 pub fn compile_from_str(str: &str, output_file_name: &str) -> Result<(), String> {
+    /*  match parse(str) {
+          Ok((program_ir, assump)) => Ok(output_file(program_ir.code_gen(output_file_name, assump))),
+          Err(err) => Err(err),
+      }*/
     match parse(str) {
-        Ok((program_ir, assump)) => Ok(output_file(program_ir.code_gen(output_file_name, assump))),
+        Ok((program_ir, assump)) => panic!("stop"),
         Err(err) => Err(err),
     }
 }

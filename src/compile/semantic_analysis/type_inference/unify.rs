@@ -32,7 +32,7 @@ impl TypeSubstitute {
                 self.tvar_insert(id.clone(), ty.clone());
                 Ok(ty)
             }
-            (Type::LambdaType(ty1), Type::LambdaType(ty2)) => self.lambda_unify(*ty1, *ty2),
+            (Type::TApp(ty1), Type::TApp(ty2)) => Ok(Type::TApp(Box::new(self.fn_unify(*ty1, *ty2)?))),
             (Type::TupleType(ty1), Type::TupleType(ty2)) => Ok(Type::TupleType(Box::new(self.tuple_unify(*ty1, *ty2)?))),
             (Type::StructType(ty1), Type::StructType(ty2)) => self.struct_unify(*ty1, *ty2),
             (ty1, ty2) => create_error(&ty1, &ty2)
@@ -97,8 +97,7 @@ impl TypeSubstitute {
         let ps = pss.into_iter()
             .fold(Ok(Preds::new()), |acc: Result<_, String>, ps2| {
                 let ps1 = acc?;
-                let ps = self.preds_merge_unify(ps1, ps2)?;
-                Ok(ps)
+                self.preds_merge_unify(ps1, ps2)
             })?;
         Ok(ps)
     }
@@ -110,7 +109,7 @@ impl TypeSubstitute {
                 match t {
                     Type::TyVar(ty_id) => tv_list.contains(&ty_id),
                     Type::TGen(_, _) => true,
-                    Type::TCon { .. } | Type::TupleType(_) | Type::LambdaType(_) | Type::StructType(_) => false
+                    Type::TCon { .. } | Type::TupleType(_) | Type::TApp(_) | Type::StructType(_) => false
                 }
             }).collect()
         )
@@ -140,13 +139,12 @@ impl TypeSubstitute {
                     None => q.ps.insert(tgen.clone(), Pred { ty: tgen.clone(), cond: c })
                 };
             }
-            LambdaType(x) => {
+            TApp(x) => {
                 match c {
                     Condition::Call(c) => {
-                        let env_len = x.env_ty.clone().map(|t| t.element_tys.len()).unwrap_or(0);
-                        let mut func_ty = x.func_ty.clone();
-                        func_ty.param_types = func_ty.param_types.clone().into_iter().skip(env_len).collect::<Vec<_>>();
-                        self.fn_unify(func_ty, *c)?;
+                        let mut func_ty = x.clone();
+                        //func_ty.param_types = func_ty.param_types.clone().into_iter().collect::<Vec<_>>();
+                        self.fn_unify(*func_ty, *c)?;
                     }
                     Condition::Empty => (),
                     c => { return create_error(&x, &c); }
@@ -205,17 +203,8 @@ impl TypeSubstitute {
     }
 
     //関数の単一化処理
-    fn fn_unify(&mut self, ty1: FuncType, ty2: FuncType) -> Result<FuncType, String> {
-        if ty1.param_types.len() != ty2.param_types.len() {
-            return create_error(&ty1, &ty2);
-        }
-        let mut param_types: Vec<Type> = Vec::with_capacity(ty1.param_types.len());
-        for (x, y) in ty1.param_types.into_iter().zip(ty2.param_types) {
-            let ty = self.unify(x, y)?;
-            param_types.push(ty);
-        }
-        let ret_type = self.unify(ty1.ret_type, ty2.ret_type)?;
-        Ok(FuncType { param_types, ret_type })
+    fn fn_unify(&mut self, ty1: TApp, ty2: TApp) -> Result<TApp, String> {
+        Ok(TApp(self.unify(ty1.0, ty2.0)?, self.unify(ty1.1, ty2.1)?))
     }
 
     //タプルの単一化処理
@@ -236,16 +225,5 @@ impl TypeSubstitute {
         }
         self.tuple_unify(ty1.ty.clone(), ty2.ty.clone())?;
         Ok(Type::StructType(Box::new(ty1)))
-    }
-
-    //ラムダの単一化処理
-    fn lambda_unify(&mut self, ty1: LambdaType, ty2: LambdaType) -> Result<Type, String> {
-        match (ty1.env_ty.clone(), ty2.env_ty) {
-            (Some(x), Some(y)) => { self.tuple_unify(x, y)?; }
-            (None, None) => (),
-            (None, x) | (x, None) => { return create_error(&"void", &x); }
-        }
-        self.fn_unify(ty1.func_ty.clone(), ty2.func_ty)?;
-        Ok(Type::LambdaType(Box::new(ty1)))
     }
 }

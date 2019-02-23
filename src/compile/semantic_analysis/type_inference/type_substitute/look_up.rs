@@ -16,21 +16,14 @@ impl TypeSubstitute {
         match ty {
             Type::TyVar(ty_id) => self.look_up(ty_id, inst_flag),
             Type::TupleType(x) => Type::TupleType(Box::new(self.tuple_look_up(x, inst_flag))),
-            Type::LambdaType(x) => self.lambda_look_up(x, inst_flag),
+            Type::TApp(x) => Type::TApp(Box::new(self.func_look_up(x, inst_flag))),
             Type::StructType(x) => self.struct_look_up(x, inst_flag),
             Type::TCon { .. } => ty.clone(),
             Type::TGen(_, ty_id) => if inst_flag { self.look_up(&ty_id, true) } else { ty.clone() },
         }
     }
-    pub fn func_look_up(&self, ty: &FuncType, inst_flag: bool) -> FuncType {
-        FuncType {
-            param_types:
-            ty.param_types
-                .iter()
-                .map(|ty| self.type_look_up(ty, inst_flag))
-                .collect(),
-            ret_type: self.type_look_up(&ty.ret_type, inst_flag),
-        }
+    pub fn func_look_up(&self, ty: &TApp, inst_flag: bool) -> TApp {
+        TApp(self.type_look_up(&ty.0, inst_flag), self.type_look_up(&ty.1, inst_flag))
     }
 
     fn tuple_look_up(&self, ty: &TupleType, inst_flag: bool) -> TupleType {
@@ -41,13 +34,6 @@ impl TypeSubstitute {
                 .map(|ty| self.type_look_up(ty, inst_flag))
                 .collect(),
         }
-    }
-
-    fn lambda_look_up(&self, ty: &LambdaType, inst_flag: bool) -> Type {
-        Type::LambdaType(Box::new(LambdaType {
-            env_ty: ty.env_ty.clone().map(|x| self.tuple_look_up(&x, inst_flag)),
-            func_ty: self.func_look_up(&ty.func_ty, inst_flag),
-        }))
     }
 
     fn record_look_up(&self, ty: &RecordType, inst_flag: bool) -> RecordType {

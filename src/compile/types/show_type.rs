@@ -20,21 +20,21 @@ impl ShowType for Type {
     fn show(&self) -> String {
         match self {
             Type::TCon { name } => name.clone(),
-            Type::TGen(n, ty_id) => format!("TGen {} {:?}", n, ty_id),
+            Type::TGen(n, ty_id) => format!("TGen({} {:?})", n, ty_id),
             Type::TupleType(x) => x.show(),
             Type::TyVar(ty_id) => ty_id.get_id().to_string(),
-            Type::LambdaType(x) => x.show(),
+            Type::TApp(x) => x.show(),
             Type::StructType(x) => x.show(),
         }
     }
 }
 
-impl ShowType for FuncType {
+impl ShowType for TApp {
     fn show(&self) -> String {
-        self.param_types
-            .iter()
-            .fold("".to_string(), |acc, x| acc + &x.show() + "->")
-            + &self.ret_type.show()
+        match self.0 {
+            Type::TApp(_) => format!("({})->{}", self.0.show(), self.1.show()),
+            _ => format!("{}->{}", self.0.show(), self.1.show())
+        }
     }
 }
 
@@ -65,15 +65,6 @@ impl ShowType for StructType {
                 StructInternalType::TupleType(ref x) => x.show(),
                 StructInternalType::RecordType(ref x) => x.show()
             }
-    }
-}
-
-impl ShowType for LambdaType {
-    fn show(&self) -> String {
-        "Lambda( env:".to_string()
-            + &self.env_ty.clone().map(|x| x.show()).unwrap_or("void".to_string())
-            + ","
-            + "func:" + &self.func_ty.show() + ")"
     }
 }
 

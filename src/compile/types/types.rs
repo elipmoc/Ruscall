@@ -17,7 +17,7 @@ pub enum Type {
     TGen(usize, TypeId),
     TupleType(Box<TupleType>),
     TyVar(TypeId),
-    LambdaType(Box<LambdaType>),
+    TApp(Box<TApp>),
     StructType(Box<StructType>),
 }
 
@@ -28,22 +28,26 @@ impl Type {
     pub fn create_bool() -> Type {
         Type::TCon { name: "Bool".to_string() }
     }
-    pub fn create_func_type(param_types: Vec<Type>, ret_type: Type) -> Type {
-        Type::LambdaType(Box::new(LambdaType { env_ty: None, func_ty: FuncType { param_types, ret_type } }))
-    }
-    pub fn create_func_type2(func_ty: FuncType) -> Type {
-        Type::LambdaType(Box::new(LambdaType { env_ty: None, func_ty }))
+    pub fn create_func_type(mut params_ty: Vec<Type>, ret_ty: Type) -> Type {
+        if params_ty.len() == 0 { ret_ty } else {
+            let param_ty = params_ty.pop().unwrap();
+            let ret_ty = Type::TApp(Box::new(TApp(param_ty, ret_ty)));
+            Type::create_func_type(params_ty, ret_ty)
+        }
     }
     pub fn create_tuple_type(element_tys: Vec<Type>) -> Type {
         Type::TupleType(Box::new(TupleType { element_tys }))
     }
-    pub fn create_lambda_type(env_tys: Vec<Type>, func_ty: FuncType) -> Type {
-        Type::LambdaType(Box::new(LambdaType { env_ty: Some(TupleType { element_tys: env_tys }), func_ty }))
-    }
-    pub fn get_lambda_ty(&self) -> &LambdaType {
+    pub fn get_func_ty(&self) -> &TApp {
         match self {
-            Type::LambdaType(ty) => ty,
-            _ => panic!("not LabdaType")
+            Type::TApp(ty) => ty,
+            _ => panic!("not FuncType")
+        }
+    }
+    pub fn to_func_ty(self) -> TApp {
+        match self {
+            Type::TApp(ty) => *ty,
+            _ => panic!("not FuncType")
         }
     }
     pub fn get_tuple_ty(&self) -> &TupleType {
@@ -55,10 +59,7 @@ impl Type {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct FuncType {
-    pub param_types: Vec<Type>,
-    pub ret_type: Type,
-}
+pub struct TApp(pub Type, pub Type);
 
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -142,12 +143,6 @@ impl TupleTypeBase for RecordType {
     fn get_elements_from_record_name(&self, record_name: &String) -> Option<&Type> {
         self.element_tys.iter().find(|(name, _)| name == record_name).map(|(_, ty)| ty)
     }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct LambdaType {
-    pub env_ty: Option<TupleType>,
-    pub func_ty: FuncType,
 }
 
 //タプルぽく振る舞えるかの制約

@@ -37,11 +37,11 @@ impl ProgramMir {
                 .chain(self.ex_dec_func_list.iter().map(|x| (
                     x.name.clone(),
                     Qual {
-                        t: Type::LambdaType(Box::new(LambdaType { env_ty: None, func_ty: x.ty.t.clone() })),
+                        t: Type::TApp(Box::new(x.ty.t.clone())),
                         ps: x.ty.ps.clone(),
                     }
                 )))
-                .for_each(|(name, qual)| assump.global_set(name, Scheme::quantify(qual.t.get_lambda_ty().func_ty.param_types.tv_list(), qual)));
+                .for_each(|(name, qual)| assump.global_set(name, Scheme::quantify(qual.t.get_func_ty().0.tv_list(), qual)));
         }
         //関数宣言の型チェック
         let (assump, _) =
@@ -75,7 +75,7 @@ impl<'a> TypeGet for &'a ExplicitFunc {
             Scheme::Forall { qual, .. } => {
                 let (mut assump, ty) = (&self.func).ty_get(ty_sub, ty_env, assump)?;
 
-                let ty = Scheme::quantify(ty.t.get_lambda_ty().func_ty.param_types.tv_list(), ty);
+                let ty = Scheme::quantify(ty.t.get_func_ty().0.tv_list(), ty);
                 let mut ty = ty.get_qual().clone().apply(&ty_sub, true);
                 let mut qual = qual.clone().apply(&ty_sub, true);
                 ty.ps = ty_sub.preds_simply(ty.ps, ty.t.tv_list());
@@ -96,7 +96,7 @@ impl<'a> TypeGet for &'a DecFuncMir {
         let q = ty_sub.qual_unify(
             func_q,
             Qual {
-                t: Type::LambdaType(Box::new(LambdaType { env_ty: None, func_ty: func_type_q.t })),
+                t: Type::TApp(Box::new(func_type_q.t)),
                 ps: func_type_q.ps,
             },
         ).map_err(|msg| Error::new(self.pos, &msg))?;
@@ -194,7 +194,7 @@ impl TypeGet for CallMir {
         let (pss, param_types) = Qual::split(params_qs);
         let ret_type = Type::TyVar(self.ty_id.clone());
         let (assump, func_q) = (&self.func).ty_get(ty_sub, ty_env, assump)?;
-        let func_q = ty_sub.qual_add_condition_unify(func_q, Condition::Call(Box::new(FuncType { param_types, ret_type })))
+        let func_q = ty_sub.qual_add_condition_unify(func_q, Condition::Call(Box::new(Type::create_func_type(param_types, ret_type).to_func_ty())))
             .map_err(|msg| Error::new(self.func.get_pos(), &msg))?;
         let ret_ty = ty_sub.look_up(&self.ty_id, false);
         let ps = ty_sub.predss_merge_unify(pss)
@@ -289,8 +289,6 @@ impl TypeGet for TupleStructMir {
 
 impl TypeGet for LambdaMir {
     fn ty_get(&self, ty_sub: &mut TypeSubstitute, ty_env: &mut TypeEnv, assump: AssumpEnv) -> TyCheckResult<(AssumpEnv, Qual<Type>)> {
-        let (assump, envs_qs) =
-            ty_get_all(self.env.iter(), ty_sub, ty_env, assump)?;
         ty_env.in_nest();
         let params_ty: Vec<Type> =
             (0..self.params_len)
@@ -305,46 +303,17 @@ impl TypeGet for LambdaMir {
             }
             None => Qual::new(ty_env.global_get(self.func_name.clone()))
         };
-        let func_ty = ty_sub.qual_unify(func_ty, Qual::new(Type::TyVar(self.func_id.clone())))
+        let func_ty = ty_sub.qual_unify(func_ty, Qual::new(Type::TyVar(self.ty_id.clone())))
             .map_err(|msg| Error::new(self.pos, &msg))?;
         ty_env.out_nest();
-        let mut new_envs_qs = Vec::with_capacity(envs_qs.len());
-        {
-            let iter = envs_qs.into_iter().zip(&params_ty);
-            for (q1, ty) in iter {
-                let q = ty_sub.qual_unify(q1, Qual::new(ty.clone()))
-                    .map_err(|msg| Error::new(self.pos, &msg))?;
-                new_envs_qs.push(q);
-            }
-        }
-        let (pss, envs_ty) = Qual::split(new_envs_qs);
-        let ps = ty_sub.predss_merge_unify(pss)
-            .map_err(|msg| Error::new(self.pos, &msg))?;
+
         let ret_type = ty_env.no_name_get();
-        let func_ty2 = FuncType { param_types: params_ty, ret_type };
-        let func_q = ty_sub.qual_unify(func_ty, Qual::new(Type::create_func_type(func_ty2.param_types, func_ty2.ret_type)))
+        let func_q = ty_sub.qual_unify(func_ty, Qual::new(Type::create_func_type(params_ty, ret_type)))
             .map_err(|msg| Error::new(self.pos, &msg))?;
-        let func_ty2 = match func_q.t {
-            Type::LambdaType(x) => x.func_ty,
-            _ => panic!("error!")
+        let mut lambda_q = Qual {
+            ps: func_q.ps,
+            t: func_q.t,
         };
-        let mut lambda_q = if envs_ty.len() == 0 {
-            Qual {
-                ps: func_q.ps,
-                t: Type::LambdaType(Box::new(LambdaType {
-                    func_ty: func_ty2.clone(),
-                    env_ty: None,
-                })),
-            }
-        } else {
-            Qual {
-                ps: func_q.ps,
-                t: Type::create_lambda_type(envs_ty, func_ty2.clone()),
-            }
-        };
-        let ps = ty_sub.preds_merge_unify(ps, lambda_q.ps)
-            .map_err(|msg| Error::new(self.pos, &msg))?;
-        lambda_q.ps = ps;
         let lambda_q = ty_sub.qual_unify(lambda_q, Qual::new(Type::TyVar(self.ty_id.clone())))
             .map_err(|msg| Error::new(self.pos, &msg))?;
         Ok((assump, lambda_q))

@@ -17,15 +17,7 @@ pub fn occurs_check(hash_map: &TypeSubstituteHashMap, ty: &Type, ty_id: &TypeId)
         }
         Type::TCon { .. } | Type::TGen(_, _) => false,
         Type::TupleType(x) => x.occurs_check(hash_map, ty_id),
-        Type::LambdaType(x) => {
-            let x = &**x;
-            x.env_ty.as_ref().unwrap_or(&TupleType { element_tys: vec![] })
-                .element_tys.iter().any(|e| occurs_check(hash_map, e, ty_id))
-                ||
-                x.func_ty.occurs_check(hash_map, ty_id)
-                ||
-                occurs_check(hash_map, &x.func_ty.ret_type, ty_id)
-        }
+        Type::TApp(x) => x.occurs_check(hash_map, ty_id),
         Type::StructType(x) => {
             match x.ty {
                 StructInternalType::TupleType(ref x) => x.occurs_check(hash_map, ty_id),
@@ -41,10 +33,9 @@ impl TupleType {
     }
 }
 
-impl FuncType {
+impl TApp {
     fn occurs_check(&self, hash_map: &TypeSubstituteHashMap, ty_id: &TypeId) -> bool {
-        self.param_types.iter().any(|e| occurs_check(hash_map, e, ty_id))
-            ||
-            occurs_check(hash_map, &self.ret_type, ty_id)
+        occurs_check(hash_map, &self.0, ty_id) ||
+            occurs_check(hash_map, &self.1, ty_id)
     }
 }

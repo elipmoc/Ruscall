@@ -1,4 +1,4 @@
-extern crate inkwell;
+/*extern crate inkwell;
 
 use compile::types::*;
 use self::inkwell::*;
@@ -104,4 +104,4 @@ impl StructType {
             }
         }
     }
-}
+}*/

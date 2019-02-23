@@ -9,7 +9,7 @@ pub struct Pred {
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum Condition {
-    Call(Box<FuncType>),
+    Call(Box<TApp>),
     Empty,
     Items(Box<ImplItems>),
 }

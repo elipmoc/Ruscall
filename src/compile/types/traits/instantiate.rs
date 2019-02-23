@@ -30,7 +30,7 @@ impl Instantiate for Type {
         use self::Type::*;
         match self {
             ty @ TCon { .. } => ty,
-            TGen(n,_) => fresh_types[n].clone(),
+            TGen(n, _) => fresh_types[n].clone(),
             ty @ TyVar(_) => ty,
             TupleType(tuple_ty) => {
                 let mut tuple_ty = *tuple_ty;
@@ -51,27 +51,15 @@ impl Instantiate for Type {
                 };
                 StructType(Box::new(struct_ty))
             }
-            LambdaType(lambda_ty) => {
-                let mut lambda_ty = *lambda_ty;
-                lambda_ty.env_ty = match lambda_ty.env_ty {
-                    Some(mut tuple_ty) => {
-                        tuple_ty.element_tys = tuple_ty.element_tys.inst(fresh_types);
-                        Some(tuple_ty)
-                    }
-                    None => None
-                };
-                lambda_ty.func_ty.param_types = lambda_ty.func_ty.param_types.inst(fresh_types);
-                lambda_ty.func_ty.ret_type = lambda_ty.func_ty.ret_type.inst(fresh_types);
-                LambdaType(Box::new(lambda_ty))
-            }
+            TApp(func_ty) => TApp(Box::new(func_ty.inst(fresh_types)))
         }
     }
 }
 
-impl Instantiate for FuncType {
+impl Instantiate for TApp {
     fn inst(mut self, fresh_types: &Vec<Type>) -> Self {
-        self.param_types = self.param_types.inst(fresh_types);
-        self.ret_type = self.ret_type.inst(fresh_types);
+        self.0 = self.0.inst(fresh_types);
+        self.1 = self.1.inst(fresh_types);
         self
     }
 }

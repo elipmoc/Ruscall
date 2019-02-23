@@ -15,7 +15,7 @@ pub struct CodeGenResult<'a> {
     pub builder: builder::Builder,
     pub module: module::Module,
 }
-
+/*
 type FuncList = HashMap<String, mir::FuncMir>;
 
 struct GenInfo<'a> {
@@ -384,4 +384,4 @@ impl mir::NamePropertyMir {
         };
         gen_info.builder.build_load(ptr, "")
     }
-}
+}*/
